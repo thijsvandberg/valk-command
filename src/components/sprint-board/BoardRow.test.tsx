@@ -314,7 +314,9 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     const sp = screen.getByTestId("sp");
     const epic = screen.getByTestId("epic-picker");
 
-    expect(sp.parentElement?.className).not.toContain("hidden");
+    // Set value is width-gated (BRDG-451), not a hover-reveal slot.
+    expect(sp.parentElement?.className).toContain("@[30rem]/boardrow:inline-flex");
+    expect(sp.parentElement?.className).not.toContain("group-hover/row:inline-flex");
     expect(epic.compareDocumentPosition(sp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -339,8 +341,11 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       onStoryPointsChange: vi.fn(),
       onGuestimationChange: vi.fn(),
     });
-    // Inline (resting) value, not a hover-only placeholder.
-    expect(screen.getByTestId("sp").parentElement?.className).not.toContain("hidden");
+    // Inline (resting) value, not a hover-only placeholder: revealed by a width gate
+    // (BRDG-451), never by row hover.
+    const cls = screen.getByTestId("sp").parentElement!.className;
+    expect(cls).toContain("@[30rem]/boardrow:inline-flex");
+    expect(cls).not.toContain("group-hover/row:inline-flex");
   });
 
   it("keeps the guestimate flow on a board row that is in a refinement session", () => {
@@ -351,8 +356,11 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       onGuestimationChange: vi.fn(),
       refinementSessions: [{ name: "Refine A" } as never],
     });
-    // The planning guess still rests inline; it is not collapsed to an SP-only placeholder.
-    expect(screen.getByTestId("sp").parentElement?.className).not.toContain("hidden");
+    // The planning guess still rests inline; it is not collapsed to an SP-only hover
+    // placeholder. It is width-gated (BRDG-451), not hover-gated.
+    const cls = screen.getByTestId("sp").parentElement!.className;
+    expect(cls).toContain("@[30rem]/boardrow:inline-flex");
+    expect(cls).not.toContain("group-hover/row:inline-flex");
   });
 
   it("freezes the estimate in its slot while open, so a first pick does not remount it (BRDG-323)", () => {
@@ -527,6 +535,87 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     const cluster = labelEl.parentElement!;
     expect(cluster.className).toContain("hidden");
     expect(cluster.className).toContain("@[52rem]/boardrow:inline-flex");
+  });
+
+  // Progressive badge hiding on a narrow list column (BRDG-451). jsdom can't evaluate
+  // container queries, so we assert the display-toggle gating classes are present in the
+  // agreed staggered order (refinement 40 > BV 34 > SP 30 > epic 26): a larger breakpoint
+  // drops earlier, so refinement disappears first and epic survives longest.
+  describe("progressive badge hiding on narrow columns (BRDG-451)", () => {
+    // Walk up from a badge's leaf to the nearest ancestor carrying a `@[Nrem]/boardrow`
+    // gate, returning that element (robust to how deeply the badge nests its own markup).
+    const GATE_RE = /@\[(\d+)rem\]\/boardrow:(?:inline-)?flex/;
+    function gateOf(leaf: HTMLElement | null): HTMLElement {
+      let cur = leaf;
+      while (cur) {
+        if (typeof cur.className === "string" && GATE_RE.test(cur.className)) return cur;
+        cur = cur.parentElement;
+      }
+      throw new Error("no @[Nrem]/boardrow gate ancestor found");
+    }
+    const remOf = (el: HTMLElement) => Number(el.className.match(GATE_RE)![1]);
+
+    it("gates the SP value badge with hidden + @[30rem]/boardrow:inline-flex", () => {
+      renderRow({ ticket: makeTicket({ storyPoints: 5 }) });
+      const gate = gateOf(screen.getByTestId("sp"));
+      expect(gate.className).toContain("hidden");
+      expect(gate.className).toContain("@[30rem]/boardrow:inline-flex");
+    });
+
+    it("gates the BV value badge with hidden + @[34rem]/boardrow:inline-flex", () => {
+      renderRow({ ticket: makeTicket({ businessValue: 8 }) });
+      const gate = gateOf(screen.getByTestId("bv"));
+      expect(gate.className).toContain("hidden");
+      expect(gate.className).toContain("@[34rem]/boardrow:inline-flex");
+    });
+
+    it("gates the refinement badge with hidden + @[40rem]/boardrow:inline-flex", () => {
+      renderRow({ refinementSessions: [{ name: "Refine A" } as never] });
+      const gate = gateOf(screen.getByTestId("icon-boxes"));
+      expect(gate.className).toContain("hidden");
+      expect(gate.className).toContain("@[40rem]/boardrow:inline-flex");
+    });
+
+    it("gates the epic picker branch with hidden + @[26rem]/boardrow:flex", () => {
+      renderRow({ onEpicChange: vi.fn() });
+      const gate = gateOf(screen.getByTestId("epic-picker"));
+      expect(gate.className).toContain("hidden");
+      expect(gate.className).toContain("@[26rem]/boardrow:flex");
+      // Keeps graceful compression above the gate before it finally hides.
+      expect(gate.className).toContain("min-w-0");
+      expect(gate.className).toContain("shrink");
+    });
+
+    it("gates the epic badge branch (no edit handler) with hidden + @[26rem]/boardrow:flex", () => {
+      renderRow();
+      const gate = gateOf(screen.getByTestId("epic-badge"));
+      expect(gate.className).toContain("hidden");
+      expect(gate.className).toContain("@[26rem]/boardrow:flex");
+    });
+
+    it("staggers the four gates so they drop in order refinement > BV > SP > epic", () => {
+      renderRow({
+        ticket: makeTicket({ storyPoints: 5, businessValue: 8 }),
+        refinementSessions: [{ name: "Refine A" } as never],
+        onEpicChange: vi.fn(),
+      });
+      const refine = remOf(gateOf(screen.getByTestId("icon-boxes")));
+      const bv = remOf(gateOf(screen.getByTestId("bv")));
+      const sp = remOf(gateOf(screen.getByTestId("sp")));
+      const epic = remOf(gateOf(screen.getByTestId("epic-picker")));
+      expect(refine).toBeGreaterThan(bv);
+      expect(bv).toBeGreaterThan(sp);
+      expect(sp).toBeGreaterThan(epic);
+    });
+
+    it("never width-gates the selection checkbox (core interaction stays at any width)", () => {
+      const { container } = renderRow();
+      const gutter = container.querySelector("div.w-3\\.5")!;
+      expect(gutter.className).not.toContain("@[");
+      const box = gutter.querySelector("span")!;
+      // The box fades in on hover via opacity, not display-gating on width.
+      expect(box.className).not.toContain("@[");
+    });
   });
 
   // Story Writer landing session decorations (BRDG-325). All optional; absent on the board.

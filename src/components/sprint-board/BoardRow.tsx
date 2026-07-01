@@ -771,21 +771,26 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
                 </span>
               )}
+              {/* Refinement badge drops first as the column narrows (BRDG-451): widest
+                  gate of the four, so it hides before BV/SP/epic. Gated externally by
+                  display so the shared trigger keeps its own event/focus handling. */}
               {tags.has("refinement") && refinementSessions && refinementSessions.length > 0 && (
-                <RefinementGemTrigger
-                  sessions={refinementSessions}
-                  currentKey={ticket.key}
-                  ticketInfoMap={ticketInfoMap}
-                  onRemoveFromRefinement={onRemoveFromRefinement}
-                  onViewRefinement={onViewRefinement}
-                >
-                  <span
-                    className="inline-flex h-5 shrink-0 items-center justify-center"
-                    style={{ color: "var(--meta-refine-fg)" }}
+                <span className="hidden shrink-0 @[40rem]/boardrow:inline-flex">
+                  <RefinementGemTrigger
+                    sessions={refinementSessions}
+                    currentKey={ticket.key}
+                    ticketInfoMap={ticketInfoMap}
+                    onRemoveFromRefinement={onRemoveFromRefinement}
+                    onViewRefinement={onViewRefinement}
                   >
-                    <Boxes size={14} strokeWidth={1.75} className="shrink-0" />
-                  </span>
-                </RefinementGemTrigger>
+                    <span
+                      className="inline-flex h-5 shrink-0 items-center justify-center"
+                      style={{ color: "var(--meta-refine-fg)" }}
+                    >
+                      <Boxes size={14} strokeWidth={1.75} className="shrink-0" />
+                    </span>
+                  </RefinementGemTrigger>
+                </span>
               )}
 
               {/* "Jira changed" badge (BRDG-325): positioned at the far left of the
@@ -805,9 +810,13 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   the row (BRDG-131). Rows without an epic show the hover-revealed
                   "Add epic" placeholder above instead. Suppressed when grouped by epic
                   (hideEpic). */}
+              {/* Epic survives longest (BRDG-451): narrowest gate of the four, so it
+                  keeps its grouping context after refinement/BV/SP have dropped. Both
+                  branches use `flex` semantics and keep `min-w-0 shrink` so the chip
+                  still compresses gracefully above the 26rem gate before it hides. */}
               {tags.has("epic") && !hideEpic && ticket.epic && ticket.epicKey && (
                 onEpicChange && !isRemoved ? (
-                  <span className="flex min-w-0 shrink" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                  <span className="hidden min-w-0 shrink @[26rem]/boardrow:flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                     <EpicPicker
                       value={{ key: ticket.epicKey, name: ticket.epic }}
                       onChange={(epic) => onEpicChange(ticket.key, epic)}
@@ -818,7 +827,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                     />
                   </span>
                 ) : (
-                  <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
+                  <span className="hidden min-w-0 shrink @[26rem]/boardrow:flex">
+                    <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
+                  </span>
                 )
               )}
 
@@ -858,7 +869,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   placeholder cluster above, so a set value simply renders inline here
                   in natural order (BRDG-310). */}
               {showEstimateValue && (
-                <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <span className="hidden shrink-0 @[30rem]/boardrow:inline-flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                   <EstimatePicker
                     storyPoints={ticket.storyPoints}
                     guestimation={ticket.guestimation ?? null}
@@ -873,7 +884,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </span>
               )}
               {showBvValue && (
-                <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <span className="hidden shrink-0 @[34rem]/boardrow:inline-flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                   <BusinessValuePicker
                     value={ticket.businessValue}
                     onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
