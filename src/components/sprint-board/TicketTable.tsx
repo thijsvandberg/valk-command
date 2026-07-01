@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, useEffect, Fragment, type ReactNode } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, useLayoutEffect, Fragment, type ReactNode } from "react";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint, PlaceholderTicket } from "@/types/ticket";
 import { PlaceholderRow } from "@/components/sprint-board/PlaceholderRow";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
@@ -431,6 +431,27 @@ export function TicketTable({
 
   const effectiveScrollRef = scrollContainerRef ?? tableContainerRef;
 
+  // BRDG-416: the virtualizer's scrollMargin must be the table's offset within the
+  // external scroll container. Reading `tableContainerRef.current?.offsetTop` in render
+  // returned 0 on first paint (ref not attached yet) and never recomputed reactively, so
+  // the virtual window mis-positioned when content sits above the table (analytics panel).
+  // Measure it in a layout effect into state instead, and re-measure when the scroll
+  // container resizes (content opening above it changes the table's offset).
+  const [tableOffsetTop, setTableOffsetTop] = useState(0);
+  useLayoutEffect(() => {
+    if (!scrollContainerRef) return;
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const measure = () => setTableOffsetTop((prev) => (prev === el.offsetTop ? prev : el.offsetTop));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    const scroller = scrollContainerRef.current;
+    if (scroller) ro.observe(scroller);
+    return () => ro.disconnect();
+  }, [scrollContainerRef]);
+  const tableScrollMargin = scrollContainerRef ? tableOffsetTop : 0;
+
   // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: enableVirtualization ? tickets.length : 0,
@@ -439,7 +460,7 @@ export function TicketTable({
     overscan: VIRTUALIZER_OVERSCAN,
     measureElement: (el) => el.getBoundingClientRect().height,
     // When using an external scroll container, account for content above the table
-    scrollMargin: scrollContainerRef ? (tableContainerRef.current?.offsetTop ?? 0) : 0,
+    scrollMargin: tableScrollMargin,
   });
 
   // Reset scroll position when sort or filter changes
@@ -453,8 +474,7 @@ export function TicketTable({
   }
 
   const virtualRows = enableVirtualization ? rowVirtualizer.getVirtualItems() : [];
-  const scrollMarginValue = scrollContainerRef ? (tableContainerRef.current?.offsetTop ?? 0) : 0;
-  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start - scrollMarginValue : 0;
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start - tableScrollMargin : 0;
   const paddingBottom = virtualRows.length > 0
     ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
     : 0;
