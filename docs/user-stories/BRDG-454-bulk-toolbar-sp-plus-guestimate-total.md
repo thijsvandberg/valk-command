@@ -30,13 +30,17 @@ Reuse the existing dual-badge pattern already in the toolbar (SP + BV side by si
 2. **Render a second badge** in `BulkActionBar` right after the SP badge, gated on `selectedEffectivePoints !== undefined && selectedEffectivePoints > selectedPoints`. That single guard covers "only show when it differs", because effective points can only ever be greater than SP-only (SP-only never counts guestimates, effective points adds them for SP-less tickets).
 3. **Visual distinction** so the two slate badges are not confused: the combined badge keeps the SP slate tone but wears the "penciled-in" dashed treatment already used for guestimates on rows (dashed border, matching the row marker family), with a tooltip like `Story Points + guestimate for unestimated tickets`. The plain SP badge is unchanged. See Open Questions for the exact marker if the dashed treatment reads poorly at badge size.
 
+The same treatment is applied to the two sprint-board surfaces that show an SP total: the primary board (`SprintBoard.tsx`, single-sprint and grouped/All views) and the side-by-side compare view (`MultiSprintView.tsx`, `/sprint-board/compare`). Both pass `selectedEffectivePoints` alongside `selectedPoints`.
+
 **Out of scope / non-goals:**
 - No change to the SP-only badge, the BV badge, or the inbox variant of the toolbar (inbox does not pass SP totals).
+- The epic-detail child-ticket bulk bar (`EpicChildrenSection.tsx`) also shows an SP total and could get the same combined badge (`EpicChild` carries `guestimation`), but it is a separate surface outside the sprint board; left as a follow-up (see Open Questions).
 - No change to how guestimate or SP are stored, edited, or synced.
 - No change to the per-group `GroupStatBar` header totals or the fullness meter — this story is only the bulk-selection toolbar.
 - The literal "sum of all SP + sum of all guestimates" interpretation (double-counting tickets that have both) was explicitly rejected.
 
 ## Open Questions
+- **Extend the combined badge to the epic-detail child-ticket bulk bar?** `EpicChildrenSection.tsx` shows an SP total for selected epic children and `EpicChild` carries `guestimation`, so the same badge is a drop-in. Not done here (separate surface, outside the sprint board). Recommended default: add it in a small follow-up if PO wants full consistency across every bulk bar.
 - **Exact visual marker for the combined badge.** RESOLVED: implemented the recommended default — the solid/tinted slate badge is the committed SP total, the dashed "penciled-in" slate badge (`MetricBadge penciled`) is the SP + guestimate total, with tooltip `Story Points + guestimate for unestimated tickets`. If review finds the dashed border too subtle at this size, a short `+g` label or distinct icon remains a drop-in follow-up (behaviour unaffected).
 
 ## Implementation Plan

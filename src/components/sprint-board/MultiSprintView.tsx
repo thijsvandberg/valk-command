@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import type { Ticket, Sprint, POStatus, TicketReadiness, JiraStatus, IssueType } from "@/types/ticket";
+import { effectivePoints } from "@/types/ticket";
 import {
   usePendingTicketEdits,
   applyPendingEdits,
@@ -496,9 +497,12 @@ export function MultiSprintView({
     });
   }, [allBothChecked, leftTickets, rightTickets]);
   const totalChecked = checkedKeys.size;
-  const totalSelectedPoints = [...leftTickets, ...rightTickets]
-    .filter((t) => checkedKeys.has(t.key))
-    .reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+  const selectedForPoints = [...leftTickets, ...rightTickets].filter((t) => checkedKeys.has(t.key));
+  const totalSelectedPoints = selectedForPoints.reduce((s, t) => s + (t.storyPoints ?? 0), 0);
+  const totalSelectedEffectivePoints = selectedForPoints.reduce(
+    (s, t) => s + effectivePoints(t.storyPoints, t.guestimation),
+    0,
+  );
 
   return (
     <DndContext sensors={sensors} collisionDetection={compareCollisionDetection} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
@@ -624,6 +628,7 @@ export function MultiSprintView({
             count={totalChecked}
             totalCount={totalItems}
             selectedPoints={totalSelectedPoints}
+            selectedEffectivePoints={totalSelectedEffectivePoints}
             allChecked={allBothChecked}
             onToggleAll={toggleAll}
             onClear={() => setCheckedKeys(new Set())}
