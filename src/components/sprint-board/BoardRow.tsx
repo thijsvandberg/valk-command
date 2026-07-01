@@ -584,9 +584,13 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 variant="list"
                 size="lg"
                 showKey={showKey}
-                // BRDG-453: drop the ticket key only at the very narrowest step of the
-                // row ladder, so the title keeps the most room. Gated to the board's
-                // @container/boardrow, so other TicketStatusPill usages keep the key.
+                // BRDG-453: drop the leading pill segments in a fixed order at the
+                // narrow end so only the issue-type icon + title survive the tightest
+                // column: readiness first (24rem), then status (20rem), then the key
+                // (18rem). Gated to the board's @container/boardrow, so other
+                // TicketStatusPill usages keep every segment.
+                readinessGateClassName="hidden @[24rem]/boardrow:flex"
+                statusGateClassName="hidden @[20rem]/boardrow:flex"
                 keyGateClassName="hidden @[18rem]/boardrow:flex"
                 showStatus={showStatus}
                 removedFromJira={isRemoved}

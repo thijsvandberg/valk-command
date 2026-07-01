@@ -73,6 +73,26 @@ describe("TicketStatusPill", () => {
     expect(wrapper.className).not.toContain("hidden");
   });
 
+  it("applies statusGateClassName to the status wrapper (opt-in, BRDG-453)", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" statusGateClassName="hidden @[20rem]/boardrow:flex" />);
+    const wrapper = screen.getByText("TODO").closest("div");
+    expect(wrapper?.className).toContain("hidden");
+    expect(wrapper?.className).toContain("@[20rem]/boardrow:flex");
+  });
+
+  it("applies readinessGateClassName to the readiness wrapper (opt-in, BRDG-453)", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readinessGateClassName="hidden @[24rem]/boardrow:flex" />);
+    const wrapper = screen.getByLabelText("Ready for Development").closest("div");
+    expect(wrapper?.className).toContain("hidden");
+    expect(wrapper?.className).toContain("@[24rem]/boardrow:flex");
+  });
+
+  it("does not gate status/readiness when the props are omitted (other views unchanged)", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" />);
+    expect(screen.getByText("TODO").closest("div")?.className).not.toContain("@[");
+    expect(screen.getByLabelText("Ready for Development").closest("div")?.className).not.toContain("@[");
+  });
+
   it("renders abbreviated Jira status text", () => {
     render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="IN PROGRESS" />);
     expect(screen.getByText("PROG")).toBeTruthy();

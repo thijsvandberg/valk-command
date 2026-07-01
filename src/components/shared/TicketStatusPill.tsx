@@ -754,6 +754,12 @@ export interface TicketStatusPillProps {
    *  passes a container-query gate (`hidden @[18rem]/boardrow:flex`) so the key drops
    *  only on a very narrow list column, without affecting other views (BRDG-453). */
   keyGateClassName?: string;
+  /** Extra className applied to the status segment wrapper. Opt-in; the board gates it
+   *  so the status chip drops on a very narrow list column (BRDG-453). */
+  statusGateClassName?: string;
+  /** Extra className applied to the readiness segment wrapper. Opt-in; the board gates
+   *  it so the readiness dot drops on a very narrow list column (BRDG-453). */
+  readinessGateClassName?: string;
   /** Hide the jira status segment (default: true) */
   showStatus?: boolean;
   /** Show the readiness segment (default: true). Set false for read-only reference pills. */
@@ -800,6 +806,8 @@ export function TicketStatusPill({
   removedFromJira,
   showKey = true,
   keyGateClassName,
+  statusGateClassName,
+  readinessGateClassName,
   showStatus = true,
   showReadiness = true,
   onHeader = false,
@@ -1104,14 +1112,14 @@ export function TicketStatusPill({
         // DELETED is a derived soft-delete state (not a JiraStatus): muted rose
         // + strikethrough, sitting outside the lifecycle set (BRDG-322).
         <span
-          className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-caption font-semibold line-through"
+          className={`inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-caption font-semibold line-through ${statusGateClassName ?? ""}`}
           style={{ backgroundColor: JIRA_STATUS_COLORS.DELETED.bg, color: JIRA_STATUS_COLORS.DELETED.text }}
         >
           <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: JIRA_STATUS_COLORS.DELETED.text }} />
           DELETED
         </span>
       ) : (
-        <div className="relative flex shrink-0">
+        <div className={`relative flex shrink-0 ${statusGateClassName ?? ""}`}>
           <button
             ref={jiraStatusBtnRef}
             type="button"
@@ -1139,7 +1147,7 @@ export function TicketStatusPill({
 
       {/* Readiness */}
       {showReadiness && (
-        <div className={`relative flex shrink-0 ${elevated ? "" : "-ml-1"}`}>
+        <div className={`relative flex shrink-0 ${elevated ? "" : "-ml-1"} ${readinessGateClassName ?? ""}`}>
           <button
             ref={readinessBtnRef}
             type="button"
