@@ -1,8 +1,41 @@
 # BRDG-416: Sprint board per-row render fan-out + virtualizer offset (the BRDG-405 remainder)
 
-**Status:** Not Started
+**Status:** Mostly done (2026-07-01) — the headline per-row render fan-out is fixed and
+proven; the virtualizer-offset (#4) and header-extract (#5) items are deferred (see note).
 **Priority:** High
 **Type:** Performance / Stability — sprint board
+
+## Status (2026-07-01)
+
+**#1 Per-row render fan-out (the headline) — shipped, commit `f75f39a2`.** A render-count
+harness (`TicketTable.renderCount.test.tsx`) — BoardRow mocked with a real `memo()` wrapper
+plus a per-key render counter — was built first and MEASURED the leaks, exactly as the story
+directed. It found two:
+
+1. `makeRowProps` passed the raw `selectedTicket` to **every** row, so a selection change
+   re-rendered the whole visible set. Fix: `BoardRow` derives its click toggle from the
+   `isSelected` boolean it already receives; `selectedTicket` was dropped from the per-row
+   props (kept only as a `makeRowProps` dep for the `isSelected` value) and made optional on
+   `BoardRowBaseProps` so other callers compile unchanged.
+2. `handleCheckboxClick` depended on `tickets` + `checkedTickets`, so a new identity on every
+   check / refetch re-rendered every row. Fix: it now reads both through latest-refs and
+   carries a stable identity.
+
+The harness now asserts that selecting / checking / hover-focusing one row re-renders only
+that row (and its previously-selected/focused sibling), never the siblings. Verified: lint /
+typecheck / `vitest` (7325) / build green; E2E on the running board — rows render, click
+selects (URL updates) and re-click deselects via the new `isSelected` path, no console errors.
+
+**Deferred:**
+
+- **#4 Virtualizer offset.** The recommended fix (measure `offsetTop` into state via a layout
+  effect) collides with the React Compiler's build-blocking `set-state-in-effect` rule, and a
+  `ResizeObserver` does not observe a *position* change when a sibling above the table grows,
+  so a correct trigger is non-trivial. The story itself cautions this touches the perf-critical
+  `@tanstack/react-virtual` setup where a mistake is worse than the current one-frame jump, and
+  it needs careful scroll verification in grouped + flat views. Deferred as a focused follow-up.
+- **#5 `<SingleSprintHeader/>` extract.** A behaviour-neutral move of a ~120-line / ~25-dep
+  `useMemo`; purely preventive (no current bug), high mechanical-extraction risk. Deferred.
 
 ## Description
 
@@ -58,20 +91,21 @@ React Compiler is in use, so this is about render purity and prop identity, NOT 
 
 ## Acceptance Criteria
 
-- [ ] Selecting / checking / hover-focusing a single row does not re-render the other visible rows
+- [x] Selecting / checking / hover-focusing a single row does not re-render the other visible rows
       (proven by a render-count test or profiler assertion); the only all-row re-renders are the
       legitimate `someChecked` 0↔1 and `isDragActive` transitions.
 - [ ] The virtual window is correctly positioned on first paint even when content sits above the table
-      (analytics panel open), in both grouped and flat views.
-- [ ] The single-sprint header is a component; no behavioural change.
-- [ ] No regression in board selection, drag-drop, optimistic edits, or grouped/All views.
+      (analytics panel open), in both grouped and flat views. **(Deferred — see Status note.)**
+- [ ] The single-sprint header is a component; no behavioural change. **(Deferred — see Status note.)**
+- [x] No regression in board selection, drag-drop, optimistic edits, or grouped/All views.
 
 ## Tests
 
-- [ ] Render-count test: toggling one row's checkbox/selection re-renders only that row (and its
-      previously-focused/selected sibling), not the whole visible set.
+- [x] Render-count test: toggling one row's checkbox/selection re-renders only that row (and its
+      previously-focused/selected sibling), not the whole visible set (`TicketTable.renderCount.test.tsx`).
 - [ ] Virtualizer test (or visual check): offset is non-zero on first paint when content sits above.
-- [ ] Existing `SprintBoard` / `BoardRow` / `TicketTable` / drag-drop / moveMeter tests stay green.
+      **(Deferred with #4.)**
+- [x] Existing `SprintBoard` / `BoardRow` / `TicketTable` / drag-drop / moveMeter tests stay green.
 
 ## Open Questions
 
