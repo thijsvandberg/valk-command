@@ -820,10 +820,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               {/* Epic survives longest (BRDG-451): narrowest gate of the four, so it
                   keeps its grouping context after refinement/BV/SP have dropped. Both
                   branches use `flex` semantics and keep `min-w-0 shrink` so the chip
-                  still compresses gracefully above the 26rem gate before it hides. */}
+                  still compresses gracefully above the 30rem gate before it hides. */}
               {tags.has("epic") && !hideEpic && ticket.epic && ticket.epicKey && (
                 onEpicChange && !isRemoved ? (
-                  <span className="hidden min-w-0 shrink @[26rem]/boardrow:flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                  <span className="hidden min-w-0 shrink @[30rem]/boardrow:flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                     <EpicPicker
                       value={{ key: ticket.epicKey, name: ticket.epic }}
                       onChange={(epic) => onEpicChange(ticket.key, epic)}
@@ -834,7 +834,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                     />
                   </span>
                 ) : (
-                  <span className="hidden min-w-0 shrink @[26rem]/boardrow:flex">
+                  <span className="hidden min-w-0 shrink @[30rem]/boardrow:flex">
                     <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
                   </span>
                 )
@@ -876,7 +876,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   placeholder cluster above, so a set value simply renders inline here
                   in natural order (BRDG-310). */}
               {showEstimateValue && (
-                <span className="hidden shrink-0 @[30rem]/boardrow:inline-flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <span className="hidden shrink-0 @[34rem]/boardrow:inline-flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                   <EstimatePicker
                     storyPoints={ticket.storyPoints}
                     guestimation={ticket.guestimation ?? null}
@@ -891,7 +891,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </span>
               )}
               {showBvValue && (
-                <span className="hidden shrink-0 @[34rem]/boardrow:inline-flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <span className="hidden shrink-0 @[38rem]/boardrow:inline-flex" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                   <BusinessValuePicker
                     value={ticket.businessValue}
                     onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}

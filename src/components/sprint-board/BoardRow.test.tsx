@@ -315,7 +315,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     const epic = screen.getByTestId("epic-picker");
 
     // Set value is width-gated (BRDG-451), not a hover-reveal slot.
-    expect(sp.parentElement?.className).toContain("@[30rem]/boardrow:inline-flex");
+    expect(sp.parentElement?.className).toContain("@[34rem]/boardrow:inline-flex");
     expect(sp.parentElement?.className).not.toContain("group-hover/row:inline-flex");
     expect(epic.compareDocumentPosition(sp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -344,7 +344,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     // Inline (resting) value, not a hover-only placeholder: revealed by a width gate
     // (BRDG-451), never by row hover.
     const cls = screen.getByTestId("sp").parentElement!.className;
-    expect(cls).toContain("@[30rem]/boardrow:inline-flex");
+    expect(cls).toContain("@[34rem]/boardrow:inline-flex");
     expect(cls).not.toContain("group-hover/row:inline-flex");
   });
 
@@ -359,7 +359,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     // The planning guess still rests inline; it is not collapsed to an SP-only hover
     // placeholder. It is width-gated (BRDG-451), not hover-gated.
     const cls = screen.getByTestId("sp").parentElement!.className;
-    expect(cls).toContain("@[30rem]/boardrow:inline-flex");
+    expect(cls).toContain("@[34rem]/boardrow:inline-flex");
     expect(cls).not.toContain("group-hover/row:inline-flex");
   });
 
@@ -555,18 +555,18 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     }
     const remOf = (el: HTMLElement) => Number(el.className.match(GATE_RE)![1]);
 
-    it("gates the SP value badge with hidden + @[30rem]/boardrow:inline-flex", () => {
+    it("gates the SP value badge with hidden + @[34rem]/boardrow:inline-flex", () => {
       renderRow({ ticket: makeTicket({ storyPoints: 5 }) });
       const gate = gateOf(screen.getByTestId("sp"));
       expect(gate.className).toContain("hidden");
-      expect(gate.className).toContain("@[30rem]/boardrow:inline-flex");
+      expect(gate.className).toContain("@[34rem]/boardrow:inline-flex");
     });
 
-    it("gates the BV value badge with hidden + @[34rem]/boardrow:inline-flex", () => {
+    it("gates the BV value badge with hidden + @[38rem]/boardrow:inline-flex", () => {
       renderRow({ ticket: makeTicket({ businessValue: 8 }) });
       const gate = gateOf(screen.getByTestId("bv"));
       expect(gate.className).toContain("hidden");
-      expect(gate.className).toContain("@[34rem]/boardrow:inline-flex");
+      expect(gate.className).toContain("@[38rem]/boardrow:inline-flex");
     });
 
     it("gates the refinement badge with hidden + @[40rem]/boardrow:inline-flex", () => {
@@ -576,21 +576,21 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       expect(gate.className).toContain("@[40rem]/boardrow:inline-flex");
     });
 
-    it("gates the epic picker branch with hidden + @[26rem]/boardrow:flex", () => {
+    it("gates the epic picker branch with hidden + @[30rem]/boardrow:flex", () => {
       renderRow({ onEpicChange: vi.fn() });
       const gate = gateOf(screen.getByTestId("epic-picker"));
       expect(gate.className).toContain("hidden");
-      expect(gate.className).toContain("@[26rem]/boardrow:flex");
+      expect(gate.className).toContain("@[30rem]/boardrow:flex");
       // Keeps graceful compression above the gate before it finally hides.
       expect(gate.className).toContain("min-w-0");
       expect(gate.className).toContain("shrink");
     });
 
-    it("gates the epic badge branch (no edit handler) with hidden + @[26rem]/boardrow:flex", () => {
+    it("gates the epic badge branch (no edit handler) with hidden + @[30rem]/boardrow:flex", () => {
       renderRow();
       const gate = gateOf(screen.getByTestId("epic-badge"));
       expect(gate.className).toContain("hidden");
-      expect(gate.className).toContain("@[26rem]/boardrow:flex");
+      expect(gate.className).toContain("@[30rem]/boardrow:flex");
     });
 
     it("staggers the four gates so they drop in order refinement > BV > SP > epic", () => {
