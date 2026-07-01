@@ -2,9 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { mutate as globalMutate } from "swr";
-import { Inbox, Plus, Bell, BellDot } from "lucide-react";
 import { trailingDoneDepStart, interpolateRank, spliceKeyIntoOrder } from "@/lib/sprint-insert-position";
-import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { Sprint, Ticket, IssueType, PlaceholderTicket, TicketReadiness, JiraStatus } from "@/types/ticket";
@@ -51,6 +49,7 @@ import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { makeBoardAdapter, makeBoardDispatchAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
 import { pruneSelectionToVisible } from "@/components/sprint-board/row-actions/prune-selection";
+import { SingleSprintHeader } from "@/components/sprint-board/SingleSprintHeader";
 import { SprintBoardHeader } from "@/components/sprint-board/SprintBoardHeader";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/components/sprint-board/SprintBoardDragDrop";
@@ -960,128 +959,44 @@ export default function SprintBoard() {
   }, [f, toggleColumn]);
 
   const { activeViewId: fActiveViewId, statusFilter: fStatusFilter, setStatusFilter: fSetStatusFilter } = f;
-  const singleSprintHeader = useMemo<ReactNode>(() => {
-    if (isAllView || fActiveViewId || groups.length > 0) return undefined;
-    const isBacklog = activeSprintId === "__backlog__";
-    if (!isBacklog && !activeSprint) return undefined;
-    const label = isBacklog ? "Backlog" : activeSprint!.name;
-    const key = isBacklog ? "__backlog__" : activeSprint!.id;
-    const CRIT_TO_STATUS: Record<string, string> = { todo: "TO DO", "in-progress": "IN PROGRESS", test: "TEST", done: "DONE" };
-    const STATUS_TO_CRIT: Record<string, StatCriterion> = { "TO DO": "todo", "IN PROGRESS": "in-progress", TEST: "test", DONE: "done" };
-    // Multi-select: every filtered status lights up its pill. The warning lens stays a
-    // separate single criterion handled via activeCriterion.
-    const activeCriteria = new Set<StatCriterion>(
-      [...fStatusFilter].map((s) => STATUS_TO_CRIT[s]).filter(Boolean) as StatCriterion[],
-    );
-    const activeCriterion: StatCriterion | null = warningLensActive ? "unpointed" : null;
-    // The "+" lives in the header next to "...", matching the grouped/All view's per-group create
-    // button. Jira rejects creating into a closed sprint, so it only shows where creation is allowed.
-    const canCreate = isBacklog || activeSprint?.state !== "closed";
-    const createAction = canCreate ? (
-      <button
-        type="button"
-        aria-label="Create story in this sprint"
-        onClick={(e) => { e.stopPropagation(); setFlatComposerOpen((v) => !v); }}
-        className={`flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:background-color_.12s_ease,color_.12s_ease] ${
-          flatComposerOpen
-            ? "bg-overlay-strong text-text-secondary"
-            : "text-text-muted hover:bg-overlay-default hover:text-text-secondary"
-        }`}
-      >
-        <Plus size={14} strokeWidth={2} aria-hidden />
-      </button>
-    ) : undefined;
-    // Subtle, icon-only open/close toggle for the status-update lines. Only shown when this
-    // sprint actually has updates (BRDG-414).
-    const updateCount = statusChangeMap.size;
-    const updatesToggle = updateCount > 0 ? (
-      <button
-        type="button"
-        aria-label={updatesOpen ? "Hide status updates" : "Show status updates"}
-        aria-pressed={updatesOpen}
-        title={updatesOpen ? "Hide status updates" : `Show ${updateCount} status update${updateCount === 1 ? "" : "s"}`}
-        onClick={(e) => { e.stopPropagation(); setUpdatesOpen((v) => !v); }}
-        className={`flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:background-color_.12s_ease,color_.12s_ease] ${
-          updatesOpen
-            ? "text-[var(--color-brand-400)] hover:bg-overlay-default"
-            : "text-text-muted hover:bg-overlay-default hover:text-text-secondary"
-        }`}
-      >
-        {updatesOpen ? <BellDot size={14} strokeWidth={2} aria-hidden /> : <Bell size={14} strokeWidth={2} aria-hidden />}
-      </button>
-    ) : undefined;
-    return (
-      <GroupStatBar
-        createAction={createAction}
-        updatesAction={updatesToggle}
-        sortField={f.sortField}
-        sortDir={f.sortDir}
-        onMetricSort={handleMetricSort}
-        onMetricToggleColumn={handleMetricToggleColumn}
-        spColumnHidden={!f.visibleTags.has("storyPoints")}
-        bvColumnHidden={!f.visibleTags.has("businessValue")}
-        // Use the unfiltered sprint set so the status breakdown always shows every
-        // pill — otherwise filtering down to one status hides the others and you
-        // can no longer click to toggle the filter back off.
-        tickets={allTickets}
-        label={label}
-        labelWidthClass=""
-        isActive={!isBacklog && activeSprint?.state === "active"}
-        leadingIcon={isBacklog ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
-        activeCriterion={activeCriterion}
-        activeCriteria={activeCriteria}
-        onFilterChange={(crit) => {
-          if (crit === null) {
-            // Only the warning lens emits null (a re-click of its active pill). While the
-            // lens is on, null means "turn it off" (BRDG-313, req 2).
-            if (warningLensActive) { setWarningLensActive(false); return; }
-            fSetStatusFilter(new Set());
-            return;
-          }
-          if (crit === "unpointed") {
-            // Enter the transient warning lens; never mutate the persistent filters, so
-            // turning it off restores the prior view exactly (BRDG-313, req 1/2).
-            setWarningLensActive(true);
-            return;
-          }
-          const status = CRIT_TO_STATUS[crit];
-          if (!status) return;
-          // Toggle the status in/out of the filter set so clicks expand the filter
-          // instead of replacing it. Activating a status leaves the warning lens.
-          if (warningLensActive) setWarningLensActive(false);
-          const next = new Set(fStatusFilter);
-          if (next.has(status)) next.delete(status);
-          else next.add(status);
-          fSetStatusFilter(next);
-        }}
-        {...(!isBacklog && activeSprint
-          ? {
-              onPin: () => handleAddSlotWithSprint(key),
-              isPinned: slotSprintsSet.has(key),
-              pinDisabled: slotSprintsSet.size >= 8,
-              sprint: activeSprint,
-              onEditSprintDetails: () => handleEditSprintFromGroup(key),
-              onCloseSprint: activeSprint.state === "active" ? () => handleCloseSprintFromGroup(key) : undefined,
-              // Start happens inside the edit modal (date validation + Start button live there).
-              onStartSprint: activeSprint.state === "future" ? () => handleEditSprintFromGroup(key) : undefined,
-              onSync: (onProgress: (p: GroupSyncProgress) => void) => handleSyncGroup({ kind: "sprint", id: key, label }, onProgress),
-              syncKind: "sprint" as const,
-            }
-          : {})}
-        {...(!isBacklog && activeSprint && planningVisible
-          ? {
-              planningOn: true,
-              pencilCapacity: pencilCapacityMap[key] ?? null,
-              onPencilCapacityChange: (v: number | null) => setPencilCapacity(key, v),
-              // Always the whole sprint, regardless of the active filter / warning lens.
-              usedPointsOverride: sprintUsedMap[key] ?? 0,
-              capacityMeterShown: capacityMeterShownMap[key] ?? false,
-              onToggleCapacityMeter: () => setCapacityMeterShownMap((prev) => ({ ...prev, [key]: !(prev[key] ?? false) })),
-            }
-          : {})}
-      />
-    );
-  }, [isAllView, fActiveViewId, fStatusFilter, fSetStatusFilter, warningLensActive, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup, flatComposerOpen, planningVisible, pencilCapacityMap, setPencilCapacity, sprintUsedMap, capacityMeterShownMap, setCapacityMeterShownMap, f.sortField, f.sortDir, f.visibleTags, handleMetricSort, handleMetricToggleColumn, statusChangeMap, updatesOpen]);
+  // BRDG-416: the flat-view header is a memoised component (SingleSprintHeader) rather
+  // than a ~25-dependency useMemo. The host only decides applicability; `flatHeader`
+  // must stay `undefined` (not a null-rendering element) when hidden, because TicketTable
+  // keys layout decisions off its truthiness.
+  const showSingleSprintHeader = !isAllView && !fActiveViewId && groups.length === 0
+    && (activeSprintId === "__backlog__" || !!activeSprint);
+  const singleSprintHeader: ReactNode = showSingleSprintHeader ? (
+    <SingleSprintHeader
+      activeSprintId={activeSprintId}
+      activeSprint={activeSprint}
+      allTickets={allTickets}
+      statusFilter={fStatusFilter}
+      setStatusFilter={fSetStatusFilter}
+      warningLensActive={warningLensActive}
+      setWarningLensActive={setWarningLensActive}
+      flatComposerOpen={flatComposerOpen}
+      setFlatComposerOpen={setFlatComposerOpen}
+      updatesOpen={updatesOpen}
+      setUpdatesOpen={setUpdatesOpen}
+      statusChangeCount={statusChangeMap.size}
+      sortField={f.sortField}
+      sortDir={f.sortDir}
+      onMetricSort={handleMetricSort}
+      onMetricToggleColumn={handleMetricToggleColumn}
+      visibleTags={f.visibleTags}
+      slotSprintsSet={slotSprintsSet}
+      onPinSprint={handleAddSlotWithSprint}
+      onEditSprintDetails={handleEditSprintFromGroup}
+      onCloseSprintFromGroup={handleCloseSprintFromGroup}
+      onSyncGroup={handleSyncGroup}
+      planningVisible={planningVisible}
+      pencilCapacityMap={pencilCapacityMap}
+      setPencilCapacity={setPencilCapacity}
+      sprintUsedMap={sprintUsedMap}
+      capacityMeterShownMap={capacityMeterShownMap}
+      setCapacityMeterShownMap={setCapacityMeterShownMap}
+    />
+  ) : undefined;
 
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;
