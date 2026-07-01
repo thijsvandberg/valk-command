@@ -1,7 +1,9 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import useSWR, { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import useSWR, { useSWRConfig } from "swr";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Inbox, Undo2, CheckCircle2 } from "lucide-react";
@@ -312,7 +314,8 @@ function InboxView() {
     return next;
   }, [visibleTags, groupBy]);
 
-  const refreshCount = useCallback(() => void globalMutate(COUNT_KEY), []);
+  const { mutate: swrMutate } = useSWRConfig();
+  const refreshCount = useCallback(() => void swrMutate(COUNT_KEY), [swrMutate]);
 
   // Restore marked-read tickets: clear their read stamp on the server, then
   // revalidate so they slot back into the list.

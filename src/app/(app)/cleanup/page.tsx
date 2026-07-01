@@ -2,7 +2,9 @@
 
 import { Fragment, useMemo, useState, useCallback, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import useSWR, { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import useSWR, { useSWRConfig } from "swr";
 import dynamic from "next/dynamic";
 import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp, Sparkles, Zap } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -272,14 +274,15 @@ export default function CleanupPage() {
 
   // Refresh the list (badges) plus any open breakdown drawer after a disposition
   // write. Both the explicit list key and the drawer's detail key are revalidated.
+  const { mutate: swrMutate } = useSWRConfig();
   const refreshAfterDisposition = useCallback(
     (keys: string[]) => {
       void mutateCleanup();
       for (const k of keys) {
-        void globalMutate(`/api/cleanup/${encodeURIComponent(k)}/disposition`);
+        void swrMutate(`/api/cleanup/${encodeURIComponent(k)}/disposition`);
       }
     },
-    [mutateCleanup],
+    [mutateCleanup, swrMutate],
   );
 
   const bulkDispose = useCallback(
