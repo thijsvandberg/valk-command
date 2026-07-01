@@ -1,5 +1,20 @@
 # Implementation Performance Log
 
+## BRDG-451 + BRDG-453 — progressive board-row badge/chrome hiding on narrow columns (2026-07-01)
+
+Two stacked stories: 451 staggers the four trailing badges (refinement 40 / BV 34 / SP 30 / epic 26) via `@container/boardrow` display-gates; 453 extends the ladder to avatar (48), checkbox gutter (22) and the ticket key (18, opt-in `keyGateClassName` on the shared `TicketStatusPill`). Both mechanical once the pattern was set. Full suite green (7337), build green, verified live via computed-`display` sweeps across window widths.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Correctly identified the reusable `hidden @[Xrem]/boardrow:inline-flex` warning-badge pattern and flagged the shared-pill key-gating as needing an opt-in prop (not an unconditional gate) so other views keep the key. |
+| Implement | 451 trivial. 453 mostly trivial except the avatar gate (below). |
+| Verify | Computed-style probes (append a span with the exact class into a real `@container/boardrow` row, read `getComputedStyle().display`) proved far more reliable than screenshots for confirming each staggered breakpoint. |
+
+Key bottlenecks / lessons:
+- **The avatar gate ate ~an hour on a self-inflicted red herring.** The avatar (`@[44rem]`) read `display:none` at a *measured* row width of 45.94rem while the 40rem gate showed, so I chased phantom causes: block-vs-flex cascade, a Tailwind "class abutting `${` in a template literal isn't scanned" theory, dev CSS staleness, and a full `rm -rf .next`. **The real cause: container queries evaluate the container's CONTENT inline-size, which is ~2rem narrower than `getBoundingClientRect()` (the row's reserved 3px accent border + insets, see [[project_boardrow_accent_border_offset]]).** At border-box 45.94rem the content box was <44rem, so `@[44rem]` correctly hadn't triggered. A clean probe of the bare class (no template literal) at full width proved the rule was fine all along. Lesson: when a container-query gate seems off by a hair, suspect content-box vs border-box BEFORE the build pipeline — and probe the bare class, don't debug through the component.
+- **CSSOM introspection is unreliable in Turbopack dev.** `document.styleSheets` walks kept returning empty/partial rule sets (even `.hidden` came back missing), and the compiled syntax is `@container boardrow (width >= Nrem)`, not `min-width:` — so both my grep and my CSSOM checks initially misfired. Verify container-query behaviour by computed `display` on a live element, not by reading rules.
+- **`npm run build` into the shared `.next` then `npm run dev` on top left the dev server serving mixed artifacts.** Reinforces the CLAUDE.md rule: restart dev after any build.
+
 ## BRDG-450 — test/verify-loop hardening: serialize runs + single jira-client mock (2026-07-01)
 
 Self-referential infra story (changes the test harness while running under it). Five commits: vitest `bail` removed + `maxWorkers: 4`; the shared `createJiraClientMock` completed (7 missing exports stubbed, `isLive` made a writable data property, `overrides` widened to top-level helpers); 52 inline jira-client mocks migrated to the factory via a one-off codemod; two guard tests (runtime-superset completeness + source-scan factory-usage); a `tools/scripts/run-tests.sh` lock wrapper with `npm run test` + the PostToolUse hook rewired through it. Final `npm run verify` green (645 files / 7304 tests via the wrapper) + `npm run build` green.
