@@ -76,6 +76,17 @@ describe("MetricBadge", () => {
     expect(bv.container.querySelector(".lucide-trending-up")).toBeInTheDocument();
   });
 
+  it("renders a dashed, unfilled outline with no fade when penciled (BRDG-454)", () => {
+    render(<MetricBadge metric="sp" value={8} penciled />);
+    const badge = screen.getByText("8").closest("span")!;
+    expect(badge.className).toContain("border-dashed");
+    // Penciled keeps a transparent fill and, unlike `dimmed`, is not faded.
+    expect(badge.getAttribute("style")).toContain("background-color: transparent");
+    expect(badge.className).not.toContain("opacity-55");
+    // Border tone is derived from the slate SP text color, so it stays theme-aware.
+    expect(badge.getAttribute("style")).toContain("border-color");
+  });
+
   it("uses the theme-aware violet tone for BV with no value ramp (3 and 8 match)", () => {
     const a = render(<MetricBadge metric="bv" value={3} tinted />);
     const three = screen.getByText("3").closest("span")!;

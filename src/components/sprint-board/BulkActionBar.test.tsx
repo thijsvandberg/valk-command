@@ -35,6 +35,32 @@ describe("BulkActionBar", () => {
     expect(screen.getByLabelText("Business Value: 7")).toBeTruthy();
   });
 
+  // BRDG-454: a second SP total that folds in guestimates for unestimated tickets.
+  it("shows both SP totals when the SP+guestimate total exceeds SP-only", () => {
+    render(<BulkActionBar {...defaultProps} selectedPoints={5} selectedEffectivePoints={8} />);
+    const spTotals = screen.getAllByLabelText(/Story Points/);
+    expect(spTotals.length).toBe(2);
+    expect(screen.getByLabelText("Story Points: 5")).toBeTruthy();
+    expect(screen.getByLabelText("Story Points: 8")).toBeTruthy();
+  });
+
+  it("renders the SP+guestimate total as a penciled (dashed) badge", () => {
+    render(<BulkActionBar {...defaultProps} selectedPoints={5} selectedEffectivePoints={8} />);
+    const combined = screen.getByLabelText("Story Points: 8").closest("span")!;
+    expect(combined.className).toContain("border-dashed");
+  });
+
+  it("shows only the SP-only total when SP+guestimate equals it (no guestimate-only tickets)", () => {
+    render(<BulkActionBar {...defaultProps} selectedPoints={5} selectedEffectivePoints={5} />);
+    expect(screen.getAllByLabelText(/Story Points/).length).toBe(1);
+    expect(screen.getByLabelText("Story Points: 5")).toBeTruthy();
+  });
+
+  it("does not render the SP+guestimate total when selectedEffectivePoints is omitted", () => {
+    render(<BulkActionBar {...defaultProps} selectedPoints={5} />);
+    expect(screen.getAllByLabelText(/Story Points/).length).toBe(1);
+  });
+
   it("hides SP when 0 (optional counters, e.g. inbox)", () => {
     render(<BulkActionBar {...defaultProps} selectedPoints={0} />);
     expect(screen.queryByLabelText(/Story Points/)).toBeNull();

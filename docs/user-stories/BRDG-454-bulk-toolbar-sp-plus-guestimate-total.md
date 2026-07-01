@@ -37,23 +37,27 @@ Reuse the existing dual-badge pattern already in the toolbar (SP + BV side by si
 - The literal "sum of all SP + sum of all guestimates" interpretation (double-counting tickets that have both) was explicitly rejected.
 
 ## Open Questions
-- **Exact visual marker for the combined badge.** Recommended default: reuse the guestimate "penciled-in" dashed slate treatment plus a clarifying tooltip. If the dashed border is too subtle next to the solid SP badge at this size, fall back to a short suffix/label (e.g. a small `+g`) or a distinct icon. This is a pure design polish call for the implementer/design review; behaviour is unaffected either way.
+- **Exact visual marker for the combined badge.** RESOLVED: implemented the recommended default — the solid/tinted slate badge is the committed SP total, the dashed "penciled-in" slate badge (`MetricBadge penciled`) is the SP + guestimate total, with tooltip `Story Points + guestimate for unestimated tickets`. If review finds the dashed border too subtle at this size, a short `+g` label or distinct icon remains a drop-in follow-up (behaviour unaffected).
 
 ## Implementation Plan
-1. `SprintBoard.tsx` — import `effectivePoints`, add the `selectedEffectivePoints` reducer, pass the new prop. <!-- around line 1128 -->
-2. `BulkActionBar.tsx` — add `selectedEffectivePoints?: number` to props and render the gated second badge with its penciled treatment + tooltip. <!-- props ~158, render ~244-250 -->
+**Design decision:** render the combined total with `MetricBadge metric="sp"` but a dashed "penciled-in" treatment (no fill, slate text) to match the board's guestimate marker language — solid/tinted SP = committed points, dashed SP = includes guestimate. A small dedicated `penciled` prop on `MetricBadge` carries this (kept separate from the existing `dimmed` prop, which means "column hidden from rows" and is intentionally faded). Tooltip: `Story Points + guestimate for unestimated tickets`.
+
+1. `MetricBadge.tsx` — add an optional `penciled?: boolean` prop that applies a dashed slate outline with no fill (reuses the dashed/no-fill guestimate language, full opacity). <!-- MetricBadge.tsx dimmedCls area ~76-81 -->
+2. `SprintBoard.tsx` — add a value import of `effectivePoints`, compute `selectedEffectivePoints = sel.reduce((s, t) => s + effectivePoints(t.storyPoints, t.guestimation), 0)`, pass it as a new prop. <!-- import ~line 8, builder ~line 1126-1128 -->
+3. `BulkActionBar.tsx` — add `selectedEffectivePoints?: number` to props; render a second SP badge (`penciled`, with the tooltip) right after the SP-only badge, gated on `selectedEffectivePoints !== undefined && selectedPoints !== undefined && selectedEffectivePoints > selectedPoints`. The `>` gate alone guarantees it only shows when it differs (effective points can never be less than SP-only). <!-- props ~119/158, render ~244-250 -->
+4. Tests in `BulkActionBar.test.tsx` + a `penciled` render test in `MetricBadge.test.tsx`.
 
 ## Acceptance Criteria
-- [ ] With multiple tickets selected, the toolbar shows the SP-only total exactly as today (sum of real `storyPoints`). <!-- BulkActionBar.tsx:244, SprintBoard.tsx:1128 -->
-- [ ] When at least one selected ticket has no SP but has a guestimate, a second total appears next to it showing SP + guestimate, computed as the sum of `effectivePoints(storyPoints, guestimation)` over the selection. <!-- effectivePoints in src/types/ticket.ts:153 -->
-- [ ] A ticket that has both real SP and a retained guestimate contributes only its SP to the combined total (no double-counting). <!-- effectivePoints: storyPoints wins -->
-- [ ] When no selected ticket adds a guestimate (combined total equals SP-only), only the SP-only badge is shown. <!-- guard: selectedEffectivePoints > selectedPoints -->
-- [ ] The combined badge is visually distinct from the SP-only badge and carries a tooltip explaining it includes guestimates for unestimated tickets. <!-- MetricBadge tooltip + penciled treatment -->
+- [x] With multiple tickets selected, the toolbar shows the SP-only total exactly as today (sum of real `storyPoints`). <!-- BulkActionBar.tsx:244, SprintBoard.tsx:1128 -->
+- [x] When at least one selected ticket has no SP but has a guestimate, a second total appears next to it showing SP + guestimate, computed as the sum of `effectivePoints(storyPoints, guestimation)` over the selection. <!-- effectivePoints in src/types/ticket.ts:153 -->
+- [x] A ticket that has both real SP and a retained guestimate contributes only its SP to the combined total (no double-counting). <!-- effectivePoints: storyPoints wins -->
+- [x] When no selected ticket adds a guestimate (combined total equals SP-only), only the SP-only badge is shown. <!-- guard: selectedEffectivePoints > selectedPoints -->
+- [x] The combined badge is visually distinct from the SP-only badge and carries a tooltip explaining it includes guestimates for unestimated tickets. <!-- MetricBadge penciled dashed treatment + tooltipContent -->
 
 ## Tests
-- [ ] `BulkActionBar` shows only the SP badge when `selectedEffectivePoints === selectedPoints` (no guestimate-only tickets). <!-- src/components/sprint-board/BulkActionBar.test.tsx -->
-- [ ] `BulkActionBar` shows both badges with the correct combined value when `selectedEffectivePoints > selectedPoints`. <!-- BulkActionBar.test.tsx -->
-- [ ] Existing `effectivePoints` behaviour (SP wins, else guestimate, 0/null handling) stays green. <!-- src/types/ticket.test.ts (already covers this) -->
+- [x] `BulkActionBar` shows only the SP badge when `selectedEffectivePoints === selectedPoints` (no guestimate-only tickets). <!-- src/components/sprint-board/BulkActionBar.test.tsx -->
+- [x] `BulkActionBar` shows both badges with the correct combined value when `selectedEffectivePoints > selectedPoints`. <!-- BulkActionBar.test.tsx -->
+- [x] Existing `effectivePoints` behaviour (SP wins, else guestimate, 0/null handling) stays green. <!-- src/types/ticket.test.ts (already covers this) -->
 
 ## Related
 - [[BRDG-323]] — guestimate is retained after real SP is set; the reason a ticket can hold both and why the combined total must not double-count.

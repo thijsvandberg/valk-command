@@ -117,6 +117,7 @@ function IconAction({
 export function BulkActionBar({
   count,
   selectedPoints,
+  selectedEffectivePoints,
   selectedBV,
   allChecked,
   totalCount,
@@ -156,6 +157,9 @@ export function BulkActionBar({
 }: {
   count: number;
   selectedPoints?: number;
+  // SP + guestimate total (effective points): SP where set, else the guestimate. Only
+  // rendered when it exceeds selectedPoints, i.e. some selected ticket is guestimate-only.
+  selectedEffectivePoints?: number;
   selectedBV?: number;
   allChecked?: boolean;
   totalCount?: number;
@@ -244,6 +248,17 @@ export function BulkActionBar({
         {selectedPoints !== undefined && selectedPoints > 0 && (
           <MetricBadge metric="sp" value={selectedPoints} tinted />
         )}
+        {/* SP + guestimate: only when a guestimate-only ticket lifts the total above SP-only. */}
+        {selectedEffectivePoints !== undefined &&
+          selectedPoints !== undefined &&
+          selectedEffectivePoints > selectedPoints && (
+            <MetricBadge
+              metric="sp"
+              value={selectedEffectivePoints}
+              penciled
+              tooltipContent="Story Points + guestimate for unestimated tickets"
+            />
+          )}
         {selectedBV !== undefined && selectedBV > 0 && (
           <MetricBadge metric="bv" value={selectedBV} tinted />
         )}

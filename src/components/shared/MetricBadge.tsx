@@ -30,6 +30,7 @@ export function MetricBadge({
   onDoubleClick,
   activeSortDir,
   dimmed = false,
+  penciled = false,
 }: {
   metric: MetricKind;
   value: number | null;
@@ -49,6 +50,9 @@ export function MetricBadge({
   activeSortDir?: "asc" | "desc";
   // When the per-row column for this metric is hidden, the header chip reads as "off the rows".
   dimmed?: boolean;
+  // "Penciled-in" dashed outline with no fill (BRDG-454): a projected total that folds in
+  // guestimates, set apart from the solid committed-SP badge without changing its tone.
+  penciled?: boolean;
 }) {
   const Icon = metric === "sp" ? Hash : TrendingUp;
   const palette = value != null ? (metric === "sp" ? getSpColor(value) : getBvColor(value)) : null;
@@ -74,11 +78,16 @@ export function MetricBadge({
     : "";
   const activeCls = activeSortDir ? "shadow-[0_0_0_1.5px_var(--color-brand-400)]" : "";
   const dimmedCls = dimmed ? "border-dashed border-border-strong opacity-55" : "";
+  const penciledCls = penciled ? "border border-dashed" : "";
 
   const badge = (
     <span
-      className={`inline-flex items-center rounded-md font-medium tabular-nums ${sz.wrap} ${interactiveCls} ${activeCls} ${dimmedCls} ${className}`}
-      style={{ color: fg, backgroundColor: dimmed ? "transparent" : bg }}
+      className={`inline-flex items-center rounded-md font-medium tabular-nums ${sz.wrap} ${interactiveCls} ${activeCls} ${dimmedCls} ${penciledCls} ${className}`}
+      style={{
+        color: fg,
+        backgroundColor: penciled || dimmed ? "transparent" : bg,
+        ...(penciled ? { borderColor: `color-mix(in srgb, ${fg} 55%, transparent)` } : {}),
+      }}
       aria-label={title}
       title={tooltip ? undefined : title}
       {...(interactive
