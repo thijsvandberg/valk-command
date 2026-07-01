@@ -472,44 +472,55 @@ export const GroupStatBar = memo(function GroupStatBar({
           )
         )}
       </div>
-      <StatPill size="sm" variant="default">
-        {liveTickets.length} {pluralize(liveTickets.length, "item")}
-      </StatPill>
+      {/* BRDG-453: on a very narrow header the summary chips drop in order so the pin +
+          group name always survive. Larger container-query size drops earlier: BV first
+          (@lg), then the SP total (@md), then the item count last (@sm). The per-status
+          breakdown already sheds first at @4xl (below). Gated on the GroupStatBar's own
+          @container; named sizes so the rules always compile. */}
+      <span className="hidden @sm:inline-flex">
+        <StatPill size="sm" variant="default">
+          {liveTickets.length} {pluralize(liveTickets.length, "item")}
+        </StatPill>
+      </span>
       {showMetrics && totalPoints > 0 && (
-        <MetricBadge
-          metric="sp"
-          value={totalPoints}
-          tinted
-          activeSortDir={sortField === "points" ? sortDir : undefined}
-          dimmed={spColumnHidden}
-          onClick={metricInteractive ? () => handleMetricClick("sp") : undefined}
-          onDoubleClick={metricInteractive ? () => handleMetricDoubleClick("sp") : undefined}
-          tooltipContent={
-            metricInteractive
-              ? metricActionTooltip("Story points", totalPoints, showBvAvg ? spAvg : null, "per estimated ticket", getSpColor(totalPoints).solid, spColumnHidden)
-              : showBvAvg && spAvg
-                ? metricTooltip("Story points", totalPoints, spAvg, "per estimated ticket", getSpColor(totalPoints).solid)
-                : undefined
-          }
-        />
+        <span className="hidden @md:inline-flex">
+          <MetricBadge
+            metric="sp"
+            value={totalPoints}
+            tinted
+            activeSortDir={sortField === "points" ? sortDir : undefined}
+            dimmed={spColumnHidden}
+            onClick={metricInteractive ? () => handleMetricClick("sp") : undefined}
+            onDoubleClick={metricInteractive ? () => handleMetricDoubleClick("sp") : undefined}
+            tooltipContent={
+              metricInteractive
+                ? metricActionTooltip("Story points", totalPoints, showBvAvg ? spAvg : null, "per estimated ticket", getSpColor(totalPoints).solid, spColumnHidden)
+                : showBvAvg && spAvg
+                  ? metricTooltip("Story points", totalPoints, spAvg, "per estimated ticket", getSpColor(totalPoints).solid)
+                  : undefined
+            }
+          />
+        </span>
       )}
       {showMetrics && bvTickets.length > 0 && (
-        <MetricBadge
-          metric="bv"
-          value={bvTotal}
-          tinted
-          activeSortDir={sortField === "bv" ? sortDir : undefined}
-          dimmed={bvColumnHidden}
-          onClick={metricInteractive ? () => handleMetricClick("bv") : undefined}
-          onDoubleClick={metricInteractive ? () => handleMetricDoubleClick("bv") : undefined}
-          tooltipContent={
-            metricInteractive
-              ? metricActionTooltip("Business value", bvTotal, showBvAvg ? bvAvg : null, "per scored ticket", getBvColor(bvTotal).solid, bvColumnHidden)
-              : showBvAvg && bvAvg
-                ? metricTooltip("Business value", bvTotal, bvAvg, "per scored ticket", getBvColor(bvTotal).solid)
-                : undefined
-          }
-        />
+        <span className="hidden @lg:inline-flex">
+          <MetricBadge
+            metric="bv"
+            value={bvTotal}
+            tinted
+            activeSortDir={sortField === "bv" ? sortDir : undefined}
+            dimmed={bvColumnHidden}
+            onClick={metricInteractive ? () => handleMetricClick("bv") : undefined}
+            onDoubleClick={metricInteractive ? () => handleMetricDoubleClick("bv") : undefined}
+            tooltipContent={
+              metricInteractive
+                ? metricActionTooltip("Business value", bvTotal, showBvAvg ? bvAvg : null, "per scored ticket", getBvColor(bvTotal).solid, bvColumnHidden)
+                : showBvAvg && bvAvg
+                  ? metricTooltip("Business value", bvTotal, bvAvg, "per scored ticket", getBvColor(bvTotal).solid)
+                  : undefined
+            }
+          />
+        </span>
       )}
       {planningOn && onPencilCapacityChange && (!isActive || capacityMeterShown) && (
         <FullnessMeter

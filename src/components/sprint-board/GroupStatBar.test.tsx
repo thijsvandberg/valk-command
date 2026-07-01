@@ -68,6 +68,41 @@ describe("GroupStatBar", () => {
     expect(screen.getByLabelText("Story Points: 10")).toBeTruthy();
   });
 
+  // BRDG-453: on a very narrow header the summary chips drop in a fixed order so the
+  // pin + group name always survive. Larger container-query size drops earlier:
+  // BV (@lg) first, then SP total (@md), then the item count (@sm) last.
+  describe("narrow-header chip gating (BRDG-453)", () => {
+    function gateWith(el: HTMLElement | null, token: string): HTMLElement | null {
+      let cur = el;
+      while (cur) {
+        if (typeof cur.className === "string" && cur.className.includes(token)) return cur;
+        cur = cur.parentElement;
+      }
+      return null;
+    }
+
+    it("gates the item count with hidden + @sm:inline-flex (survives longest)", () => {
+      render(<GroupStatBar tickets={TICKETS} />);
+      const gate = gateWith(screen.getByText("5 items"), "@sm:inline-flex");
+      expect(gate).not.toBeNull();
+      expect(gate!.className).toContain("hidden");
+    });
+
+    it("gates the SP total with hidden + @md:inline-flex", () => {
+      render(<GroupStatBar tickets={TICKETS} />);
+      const gate = gateWith(screen.getByLabelText("Story Points: 10"), "@md:inline-flex");
+      expect(gate).not.toBeNull();
+      expect(gate!.className).toContain("hidden");
+    });
+
+    it("gates the BV total with hidden + @lg:inline-flex (drops first of the three)", () => {
+      render(<GroupStatBar tickets={[makeTicket({ key: "VPL-1", businessValue: 6 })]} />);
+      const gate = gateWith(screen.getByLabelText("Business Value: 6"), "@lg:inline-flex");
+      expect(gate).not.toBeNull();
+      expect(gate!.className).toContain("hidden");
+    });
+  });
+
   it("surfaces unpointed tickets via the warning icon for the active sprint", () => {
     render(<GroupStatBar tickets={TICKETS} isActive />);
     // VPL-3 and VPL-5 have no points; collapsed into the warning icon's label.
