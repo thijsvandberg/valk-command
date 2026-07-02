@@ -186,6 +186,15 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   // table. This column is no longer written; it is only read once by the lazy
   // legacy backfill (backfillLegacyNewStoryReads) and otherwise left in place.
   newStoryReadAt: text("new_story_read_at"),
+  // Stakeholder test documentation (BRDG-426): the validated markdown block that
+  // is also written to the Jira description as an ":::expand Test documentation"
+  // panel. The Bridge copy is the source of truth for sprint-level bundling and
+  // the missing-doc overview (BRDG-461).
+  testDoc: text("test_doc"),
+  testDocUpdatedAt: text("test_doc_updated_at"),
+  // "ok" | "needs_input" | "not_stakeholder_relevant" — lets BRDG-461 tell
+  // "missing" apart from "deliberately not documented".
+  testDocClassification: text("test_doc_classification"),
 });
 
 // Backlog Deprecation Review (BRDG-284): persisted Tier-2 deep-dive queue.
