@@ -139,6 +139,6 @@ The status-change line in `StatusChangeLine.tsx` was refined through PO review i
 ## Related
 
 - Prototype: `src/app/dev/exploration/status-changes/page.tsx` (variant 1 chosen; 2/3 kept for comparison), `src/app/dev/exploration/status-change-linking/page.tsx` (line-binding + toggle-icon study), and the `/dev/exploration` hub entry.
-- [[BRDG-426-generate-test-prompt]] — follow-up that makes the inert "Generate test prompt" button real (agent skill + `/api/tickets/[key]/generate-test-prompt`).
+- [[BRDG-426-generate-test-doc]] — follow-up that makes the inert "Generate test prompt" button real (rescoped to stakeholder test documentation; agent skill + `/api/tickets/[key]/generate-test-doc`).
 - Builds on: `src/lib/sprint-insert-position.ts` (`trailingDoneDepStart`, `spliceKeyIntoOrder`), `docs/architecture/optimistic-updates.md`, `docs/architecture/jira-sync.md`, `new_story_read` read-state pattern, `usePipelines` signals.
 - [[BRDG-039-test-center]] — test status (`testStatus`, `lastTestRunAt`) overlaps with the Test-row signals.
