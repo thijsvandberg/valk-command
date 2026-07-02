@@ -197,12 +197,33 @@ See [database-schema.md](database-schema.md) for table definitions:
 
 ## UI Components
 
+### Chrome (BRDG-460)
+
+Between the shared `ViewHeader` and the pane area sits a single 44px bar:
+`panes/AppToolbar.tsx`, showing per visible pane the active app's label (drag source for
+moving apps between panes), any app-registered controls (via `registerToolbar` in
+`panes/PaneContext.tsx`, e.g. the Diff version pickers), and a close button. Opening and
+closing pane apps happens through `panes/AppsMenu.tsx`, an "Apps" dropdown mounted in the
+`ViewHeader` actions cluster (left of Wrap up); open apps show a checkmark and the menu
+stays open so several panes can be toggled in one visit. The former 8-button
+`ApplicationListBar` was removed by BRDG-460 (file parked in `deleted/`). Focus mode
+(Cmd+.) hides the view header and the `AppToolbar`; the pane layout persists per ticket in
+localStorage under `sw:{ticketKey}:panes`.
+
+The quick-prompt chips above the chat composer render as one non-wrapping, horizontally
+scrolling row (hidden scrollbar, right-edge fade) of small dual-action chips: the label
+fills the input, the send segment submits immediately. There is no cap on the number of
+chips; every configured prompt for the issue type appears, with contextual chips leading
+("Find related") and trailing ("Review story"). The composer's `QuickActionsPopover`
+still lists all actions unconditionally as the click-once fallback.
+
 Located in `src/components/story-writer/`:
 
 | Component | Purpose |
 |-----------|---------|
 | `StoryWriterLayout` | Main container with chat + editor layout |
 | `StoryWriterChat` | Chat interface for AI interaction |
+| `panes/AppsMenu` | Header dropdown that opens/closes pane apps (replaces ApplicationListBar) |
 | `StoryWriterEditor` | Rich text editor for draft editing |
 | `DiffPane` | Side-by-side diff viewer |
 | `ChatMessageParts` | Message rendering with structured output |

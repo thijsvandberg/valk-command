@@ -150,7 +150,7 @@ exploration at `/dev/exploration/story-writer-chrome`:
 - [x] The quick-prompt chips render as ONE non-wrapping row that scrolls horizontally with a hidden scrollbar and a right-edge fade. <!-- StoryWriterChat.tsx chip row container, data-testid="quick-chip-row" -->
 - [x] Chips are one size smaller but keep the dual action: label fills the input, the send segment submits immediately; disabled states and enableCodebase behaviour unchanged. <!-- StoryWriterChat.tsx chip buttons -->
 - [x] The 5-chip cap is gone: all configured prompts for the issue type (plus contextual chips in lead/trail order) appear in the row. <!-- getVisibleChips in StoryWriterChat.tsx, slice + MAX_VISIBLE_CHIPS removed -->
-- [ ] `docs/architecture/story-writer.md` reflects the new chrome (Apps dropdown, single bar). <!-- docs update -->
+- [x] `docs/architecture/story-writer.md` reflects the new chrome (Apps dropdown, single bar). <!-- Chrome subsection added under UI Components -->
 
 ## Tests
 
