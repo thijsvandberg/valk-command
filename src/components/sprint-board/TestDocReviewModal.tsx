@@ -49,18 +49,22 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
 
   // No synchronous setState here: this runs from an effect, and the queue-reset
   // state (phase/progress/taskId) is handled by resetForNext in event handlers.
+  // A failed POST must land in a terminal review state (spinner off, Regenerate
+  // enabled), not spin forever next to the error banner.
   const startGeneration = useCallback((key: string) => {
     ticketsApi
       .generateTestDoc(key)
       .then((data) => {
         if (!data.taskId) {
           setError("No task ID returned from workspace");
+          setPhase("review");
           return;
         }
         setTaskId(data.taskId);
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : "Failed to start generation");
+        setPhase("review");
       });
   }, []);
 

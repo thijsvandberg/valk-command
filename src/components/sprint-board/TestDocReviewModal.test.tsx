@@ -168,6 +168,17 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("a failed generate POST lands in review state with the error, spinner off", async () => {
+    mockGenerateTestDoc.mockRejectedValue(new Error("Unknown skill: generate-test-doc"));
+    render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Failed to start generation/)).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("test-doc-progress")).not.toBeInTheDocument();
+    expect(screen.getByText("Regenerate").closest("button")).not.toBeDisabled();
+  });
+
   it("unstructured output degrades to the raw text with a warning", async () => {
     render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
     await waitFor(() => expect(streamTaskId).not.toBeNull());
