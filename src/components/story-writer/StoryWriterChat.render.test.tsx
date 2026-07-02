@@ -1,11 +1,13 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Message } from "@/types/chat";
 import { StoryWriterChat } from "./StoryWriterChat";
 
 vi.mock("swr", () => ({
-  default: () => ({ data: undefined }),
+  default: vi.fn(() => ({ data: undefined })),
 }));
+
+import useSWR from "swr";
 
 vi.mock("@/components/story-writer/ChatMessageParts", () => ({
   ChatMessage: ({ message }: { message: Message }) => (
@@ -116,5 +118,56 @@ describe("StoryWriterChat failed-send surfaces (BRDG-459)", () => {
     renderChat({ streamError: "The workspace took too long to respond" });
 
     expect(screen.getByText("The workspace took too long to respond")).toBeInTheDocument();
+  });
+});
+
+describe("StoryWriterChat quick-prompt chip row (BRDG-460)", () => {
+  const SIX_PROMPTS = [
+    { id: "p0", label: "Improve story", text: "Improve my story." },
+    { id: "p1", label: "Investigate", text: "Investigate this." },
+    { id: "p2", label: "Make more concise", text: "Make it concise." },
+    { id: "p3", label: "Add test scenarios", text: "Add tests." },
+    { id: "p4", label: "Technical analysis", text: "Analyse." },
+    { id: "p5", label: "Suggest title", text: "Suggest a title." },
+  ];
+
+  beforeEach(() => {
+    vi.mocked(useSWR).mockReturnValue({
+      data: { prompts: { story: SIX_PROMPTS } },
+    } as never);
+  });
+
+  afterEach(() => {
+    vi.mocked(useSWR).mockImplementation(() => ({ data: undefined }) as never);
+  });
+
+  it("renders every configured prompt in one non-wrapping scrollable row", () => {
+    renderChat();
+
+    for (const p of SIX_PROMPTS) {
+      expect(screen.getByRole("button", { name: p.label })).toBeInTheDocument();
+    }
+    const row = screen.getByTestId("quick-chip-row");
+    expect(row.className).toContain("overflow-x-auto");
+    expect(row.className).not.toContain("flex-wrap");
+  });
+
+  it("keeps the dual action: label fills the input, the send segment submits immediately", () => {
+    const onSend = vi.fn().mockResolvedValue(true);
+    renderChat({ onSend });
+
+    fireEvent.click(screen.getByRole("button", { name: "Improve story" }));
+    expect(screen.getByPlaceholderText("Describe what to improve...")).toHaveValue(
+      "Improve my story.",
+    );
+
+    // Direct send is blocked while the input holds text; clear it first.
+    fireEvent.change(screen.getByPlaceholderText("Describe what to improve..."), {
+      target: { value: "" },
+    });
+    const sendButtons = screen.getAllByTitle("Submit immediately");
+    expect(sendButtons).toHaveLength(SIX_PROMPTS.length);
+    fireEvent.click(sendButtons[1]);
+    expect(onSend).toHaveBeenCalledWith("Investigate this.");
   });
 });

@@ -147,15 +147,15 @@ exploration at `/dev/exploration/story-writer-chrome`:
 - [x] When split mode is active, the dropdown also lists the split-target entry (ticket key + scissors icon), like the old bar did. <!-- AppsMenu.tsx, writer.targetTicketKey branch mirroring the old ApplicationListBar -->
 - [x] The per-app toolbar keeps all current behaviour: app labels, app-registered controls (Diff version pickers, Editor formatting toggle), close buttons, drag-to-move. <!-- AppToolbar.tsx untouched -->
 - [x] Focus mode behaviour is unchanged: the per-app toolbar still hides; the Apps button hides with the view header (as the old bar did) and returns on focus-mode exit. <!-- AppToolbar.tsx focusMode check unchanged; FocusModeWrapper collapses #view-header-portal, verified during planning -->
-- [ ] The quick-prompt chips render as ONE non-wrapping row that scrolls horizontally with a hidden scrollbar and a right-edge fade. <!-- StoryWriterChat.tsx chip row container ~579 -->
-- [ ] Chips are one size smaller but keep the dual action: label fills the input, the send segment submits immediately; disabled states and enableCodebase behaviour unchanged. <!-- StoryWriterChat.tsx chip buttons ~590-620 -->
-- [ ] The 5-chip cap is gone: all configured prompts for the issue type (plus contextual chips in lead/trail order) appear in the row. <!-- getVisibleChips in StoryWriterChat.tsx ~163-188, slice removed -->
+- [x] The quick-prompt chips render as ONE non-wrapping row that scrolls horizontally with a hidden scrollbar and a right-edge fade. <!-- StoryWriterChat.tsx chip row container, data-testid="quick-chip-row" -->
+- [x] Chips are one size smaller but keep the dual action: label fills the input, the send segment submits immediately; disabled states and enableCodebase behaviour unchanged. <!-- StoryWriterChat.tsx chip buttons -->
+- [x] The 5-chip cap is gone: all configured prompts for the issue type (plus contextual chips in lead/trail order) appear in the row. <!-- getVisibleChips in StoryWriterChat.tsx, slice + MAX_VISIBLE_CHIPS removed -->
 - [ ] `docs/architecture/story-writer.md` reflects the new chrome (Apps dropdown, single bar). <!-- docs update -->
 
 ## Tests
 
-- [ ] `getVisibleChips` returns all prompts (no cap) and preserves lead → API → trail ordering with >5 prompts. <!-- StoryWriterChat.test.ts (currently asserts the cap; update) -->
-- [ ] Chip row renders non-wrapping scroll container; chip label click fills input, send segment click sends immediately. <!-- StoryWriterChat.render.test.tsx -->
+- [x] `getVisibleChips` returns all prompts (no cap) and preserves lead → API → trail ordering with >5 prompts. <!-- StoryWriterChat.test.ts, cap tests rewritten -->
+- [x] Chip row renders non-wrapping scroll container; chip label click fills input, send segment click sends immediately. <!-- StoryWriterChat.render.test.tsx, BRDG-460 describe block -->
 - [x] AppsMenu renders all 8 apps, checkmarks on open apps, toggles openApp/closeApp on click, includes split-target when targetTicketKey is set. <!-- new panes/AppsMenu.test.tsx -->
 - [x] StoryWriterLayout renders the Apps button and no ApplicationListBar. <!-- StoryWriterLayout.test.tsx -->
 

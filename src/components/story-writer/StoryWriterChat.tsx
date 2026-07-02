@@ -150,14 +150,11 @@ const CONTEXTUAL_PROMPTS: ContextualPrompt[] = [
     label: "Review story",
     text: "Review this story. Score its quality and provide specific feedback on completeness, clarity, acceptance criteria, and testability.",
     order: 1,
-    // Trails the editable prompts so it is the first chip dropped once the cap is hit
+    // Trails the editable prompts so the review action stays at the end of the row
     placement: "trail",
     visible: ({ hasDraft }) => hasDraft,
   },
 ];
-
-/** Maximum number of chips rendered; trailing chips are dropped first. */
-export const MAX_VISIBLE_CHIPS = 5;
 
 /** Pure helper: merge API prompts with contextual prompts based on story state */
 export function getVisibleChips(
@@ -185,7 +182,8 @@ export function getVisibleChips(
   const lead = visible.filter((cp) => cp.placement === "lead").map(stripInternal);
   const trail = visible.filter((cp) => cp.placement === "trail").map(stripInternal);
 
-  return [...lead, ...filtered, ...trail].slice(0, MAX_VISIBLE_CHIPS);
+  // No cap: the row scrolls horizontally, so every configured prompt stays reachable (BRDG-460)
+  return [...lead, ...filtered, ...trail];
 }
 
 const promptsFetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -577,14 +575,18 @@ export function StoryWriterChat({
       )}
 
       <div className="shrink-0 border-t border-border-default">
-        <div className="px-3 pt-2.5 pb-1.5">
-          <div className="flex flex-wrap items-center gap-1.5 min-h-[32px]">
+        <div className="px-3 pt-2 pb-1">
+          <div
+            data-testid="quick-chip-row"
+            className="flex items-center gap-1.5 min-h-[26px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ maskImage: "linear-gradient(to right, black calc(100% - 40px), transparent)" }}
+          >
             {mergedChips.map((s) => {
               const isCtxFindRelated = s.id === "ctx-find-related";
               return (
                 <div
                   key={s.id}
-                  className="group flex items-stretch rounded-lg border border-border-default bg-overlay-subtle overflow-hidden hover:border-[var(--color-brand-500)]/20 hover:bg-[var(--color-brand-500)]/[0.04] transition-colors duration-150"
+                  className="group flex shrink-0 items-stretch rounded-lg border border-border-default bg-overlay-subtle overflow-hidden hover:border-[var(--color-brand-500)]/20 hover:bg-[var(--color-brand-500)]/[0.04] transition-colors duration-150"
                   style={{ animation: "chipFadeIn 200ms ease-out both" }}
                 >
                   <button
@@ -599,7 +601,7 @@ export function StoryWriterChat({
                       fillInput(s.text);
                     }}
                     disabled={isBusy}
-                    className="px-2.5 py-1.5 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="px-2 py-1 text-caption whitespace-nowrap font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     {s.label}
                   </button>
@@ -613,10 +615,10 @@ export function StoryWriterChat({
                       handleDirectSend(s.text, s.enableCodebase === true);
                     }}
                     disabled={isBusy || !!inputValue.trim()}
-                    className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    className="flex items-center justify-center border-l border-border-default px-1.5 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     title="Submit immediately"
                   >
-                    <SendHorizontal size={9} strokeWidth={2} />
+                    <SendHorizontal size={8} strokeWidth={2} />
                   </button>
                 </div>
               );

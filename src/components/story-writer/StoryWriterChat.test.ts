@@ -70,38 +70,38 @@ describe("getVisibleChips", () => {
     expect(firstApiIdx).toBeLessThan(reviewIdx);
   });
 
-  it("caps the chip list at 5", () => {
+  it("applies no cap: every configured prompt renders alongside the contextual chips (BRDG-460)", () => {
     const manyPrompts: QuickPrompt[] = [
       { id: "p0", label: "Improve", text: "..." },
       { id: "p1", label: "Concise", text: "..." },
       { id: "p2", label: "Tests", text: "..." },
       { id: "p3", label: "Technical", text: "..." },
       { id: "p4", label: "Extra", text: "..." },
+      { id: "p5", label: "Another", text: "..." },
+      { id: "p6", label: "Yet another", text: "..." },
     ];
     const ctx = { ...DEFAULT_CTX, hasTitle: true, hasDraft: true };
     const chips = getVisibleChips(manyPrompts, ctx);
-    expect(chips.length).toBe(5);
+    // lead (find-related) + 7 API + trail (review-story)
+    expect(chips.length).toBe(9);
+    expect(chips.filter((c) => !c.id.startsWith("ctx-")).length).toBe(7);
   });
 
-  it("drops the trailing 'Review story' chip before any API chip when over the cap", () => {
+  it("keeps the trailing 'Review story' chip last regardless of prompt count (BRDG-460)", () => {
     const manyPrompts: QuickPrompt[] = [
       { id: "p0", label: "Improve", text: "..." },
       { id: "p1", label: "Concise", text: "..." },
       { id: "p2", label: "Tests", text: "..." },
       { id: "p3", label: "Technical", text: "..." },
     ];
-    // lead (find-related) + 4 API = 5, leaving no room for the trailing review chip
     const ctx = { ...DEFAULT_CTX, hasTitle: true, hasDraft: true };
     const chips = getVisibleChips(manyPrompts, ctx);
-    expect(chips.length).toBe(5);
-    expect(chips.find((c) => c.id === "ctx-review-story")).toBeUndefined();
-    expect(chips.find((c) => c.id === "ctx-find-related")).toBeDefined();
-    expect(chips.filter((c) => !c.id.startsWith("ctx-")).length).toBe(4);
+    expect(chips.length).toBe(6);
+    expect(chips[0].id).toBe("ctx-find-related");
+    expect(chips[chips.length - 1].id).toBe("ctx-review-story");
   });
 
-  it("keeps the Investigate chip visible under the cap when ranked second (BRDG-435)", () => {
-    // Mirrors the default order: Investigate sits right after the Improve prompt so
-    // it survives the 5-chip cap even with the leading Find-related chip present.
+  it("keeps the Investigate chip visible when ranked second (BRDG-435, cap removed in BRDG-460)", () => {
     const prompts: QuickPrompt[] = [
       { id: "d-story-0", label: "Improve story", text: "..." },
       { id: "d-story-5", label: "Investigate", text: "...", enableCodebase: true },
@@ -112,7 +112,8 @@ describe("getVisibleChips", () => {
     ];
     const ctx = { ...DEFAULT_CTX, hasTitle: true };
     const chips = getVisibleChips(prompts, ctx);
-    expect(chips.length).toBe(5);
+    // lead + 6 prompts - the title suggestion (filtered because hasTitle)
+    expect(chips.length).toBe(6);
     expect(chips[0].id).toBe("ctx-find-related");
     expect(chips.find((c) => c.label === "Investigate")).toBeDefined();
   });
