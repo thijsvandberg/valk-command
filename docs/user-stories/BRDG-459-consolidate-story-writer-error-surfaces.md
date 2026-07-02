@@ -55,34 +55,45 @@ All four surfaces fire on the same failed send:
 
 ## Implementation Plan
 
-1. **Per-message error + dismiss** — `src/hooks/useStoryWriter.ts`, `src/components/story-writer/StoryWriterChat.tsx`, client `Message` type, `src/app/api/tickets/[key]/story-writer/messages/route.ts` (per-message delete).
-2. **Toolbar indicator** — `src/components/story-writer/panes/apps/ChatApp.tsx`, `src/hooks/useWorkspaceHealth.ts` (expose refresh), `src/components/shared/Tooltip.tsx` (reuse).
-3. **Banner narrowing** — `src/hooks/useStoryWriter.ts` (stop setting `streamError` on send failure).
-4. **Toast suppression + friendly detail** — `src/contexts/ActivityContext.tsx` (`collectNewToasts`), `src/components/sync/SyncToast.tsx`.
-5. **Cleanup** — remove "Clear failed messages" row and its now-unused wiring if nothing else consumes it.
+Key planning findings:
+- Failed messages ARE persisted server-side with a real UUID (`sendStoryWriterMessage` inserts the row before agent dispatch; `markMessageFailed` sets `status: "failed"`), but the error body (`agentErrorResponse`) only carries `{error, code}` so the client keeps its `temp-...` id. This also means the current retry path can send `retryMessageId: "temp-..."` which matches zero rows server-side (latent bug). Returning `messageId` in the error body fixes both.
+- `useWorkspaceHealth` is setInterval-based with a factored-out `check` callback; a module-level listener registry gives `useStoryWriter` a way to trigger an immediate re-check without hook plumbing.
+- `EpicWriterLayout.tsx` also renders `StoryWriterChat` with `onClearFailed` and must be updated; the epic writer gets the bubble/dismiss changes for free but no toolbar badge (it registers no chat toolbar).
+
+Steps in dependency order:
+
+1. **Type change** — add `errorMessage?: string` to the client `Message` type (client-populated only, no DB column; reloaded failed messages fall back to the generic text).
+2. **Server** — `src/lib/story-writer-messages.ts`: carry `messageId` on agent/story-writer errors so the route's error body becomes `{error, code, messageId}`; replace `deleteFailedMessages` with a per-message `deleteMessage(key, messageId)` scoped to the active conversation and `status IN ('pending','failed')`. Update DELETE handler in `src/app/api/tickets/[key]/story-writer/messages/route.ts` to `?id=<messageId>`.
+3. **Health re-check trigger** — `src/hooks/useWorkspaceHealth.ts`: module-level listener set + exported `triggerWorkspaceHealthCheck()`; hook instances register their `check` on mount.
+4. **Hook rewiring** — `src/hooks/useStoryWriter.ts`: on send/retry failure set `errorMessage` + reconcile server `messageId` onto the message, do NOT set `streamError`, call `triggerWorkspaceHealthCheck()`; DUPLICATE path unchanged; replace `clearFailedMessages` with `dismissFailedMessage(messageId)` (local removal + best-effort DELETE for persisted ids).
+5. **Context plumbing** — `WriterContext.tsx`, `useStoryWriterActions.ts`, `EpicWriterLayout.tsx`: `onClearFailed` → `onDismissFailed(messageId)`.
+6. **StoryWriterChat** — failed bubble shows `msg.errorMessage ?? "Message could not be sent."` + retry + dismiss ×; remove the "Clear failed messages" row and `hasFailedMessages`; banner and dupWarning untouched.
+7. **Toolbar badge** — new `src/components/story-writer/WorkspaceStatusBadge.tsx` (own state, so the registerToolbar effect needs no new deps): null for connected/checking, red dot + label + Tooltip for unreachable (reuse the UNREACHABLE copy from `agent-errors.ts`); render inside ChatApp toolbar actions.
+8. **Toast suppression + friendly detail** — `collectNewToasts` marks story-writer failures seen but never toasts them; new `friendlyErrorDetail()` in `agent-errors.ts` (JSON-parse attempt → `friendlyAgentError`); `SyncToast.tsx` uses it for non-push entries.
+9. **Tests** — per the Tests section; update mocks in `ChatApp.test.tsx` / `WriterContext.test.tsx` (`onClearFailed` → `onDismissFailed`; mock `useWorkspaceHealth`).
 
 ## Acceptance Criteria
 
-- [ ] A failed send shows exactly one indicator in the message list: the failed bubble with the friendly reason (e.g. "Cannot reach the workspace. Is it running?"), "Tap to retry", and a dismiss ×. <!-- StoryWriterChat.tsx failed-bubble block; errorMessage set in useStoryWriter.ts catch blocks via friendlyAgentError -->
-- [ ] A failed send does NOT set the red `streamError` banner. <!-- useStoryWriter.ts sendMessage/retryMessage catch blocks -->
-- [ ] The banner still appears for message-less errors: stream timeout, task failure, draft-save failure. <!-- useTaskMonitoring.ts onError paths unchanged -->
-- [ ] The dismiss × removes only that failed message (state and, when persisted, server-side). <!-- StoryWriterChat.tsx bubble; DELETE messages route with messageId -->
-- [ ] The "Clear failed messages" row no longer exists. <!-- StoryWriterChat.tsx:567-577 removed -->
-- [ ] While the workspace is healthy (connected/checking), the Story Writer toolbar shows no status indicator. <!-- ChatApp.tsx toolbar actions, useWorkspaceHealth -->
-- [ ] When the workspace is unreachable, the toolbar shows a red dot + short label with a hover tooltip containing the friendly detail. <!-- ChatApp.tsx + shared Tooltip -->
-- [ ] A failed send triggers an immediate workspace health re-check so the indicator appears without waiting for the next poll. <!-- useWorkspaceHealth refresh, called from useStoryWriter failure path -->
-- [ ] Failed activity-log entries with type "story-writer" never produce a toast; they remain visible in the Activity Log page. <!-- ActivityContext.tsx collectNewToasts -->
-- [ ] Failed toasts of other types with a structured JSON errorDetail render the friendly message, not raw JSON. <!-- SyncToast.tsx via friendlyAgentError -->
-- [ ] Retry from the bubble still works and clears the error state on success. <!-- useStoryWriter.ts retryMessage -->
+- [x] A failed send shows exactly one indicator in the message list: the failed bubble with the friendly reason (e.g. "Cannot reach the workspace. Is it running?"), "Tap to retry", and a dismiss ×. <!-- StoryWriterChat.tsx failed-bubble block; errorMessage set in useStoryWriter.ts markSendFailed via friendlyAgentError -->
+- [x] A failed send does NOT set the red `streamError` banner. <!-- useStoryWriter.ts sendMessage/retryMessage catch blocks -->
+- [x] The banner still appears for message-less errors: stream timeout, task failure, draft-save failure. <!-- useTaskMonitoring.ts onError paths unchanged -->
+- [x] The dismiss × removes only that failed message (state and, when persisted, server-side). <!-- StoryWriterChat.tsx bubble; DELETE messages route ?id=; server messageId reconciled from the error body -->
+- [x] The "Clear failed messages" row no longer exists. <!-- removed from StoryWriterChat.tsx; onClearFailed replaced by onDismissFailed everywhere incl. EpicWriterLayout -->
+- [x] While the workspace is healthy (connected/checking), the Story Writer toolbar shows no status indicator. <!-- WorkspaceStatusBadge.tsx returns null unless unreachable -->
+- [x] When the workspace is unreachable, the toolbar shows a red dot + short label with a hover tooltip containing the friendly detail. <!-- WorkspaceStatusBadge.tsx in ChatApp toolbar actions + shared Tooltip -->
+- [x] A failed send triggers an immediate workspace health re-check so the indicator appears without waiting for the next poll. <!-- triggerWorkspaceHealthCheck in useWorkspaceHealth.ts, called from useStoryWriter markSendFailed -->
+- [x] Failed activity-log entries with type "story-writer" never produce a toast; they remain visible in the Activity Log page. <!-- ActivityContext.tsx collectNewToasts -->
+- [x] Failed toasts of other types with a structured JSON errorDetail render the friendly message, not raw JSON. <!-- SyncToast.tsx via friendlyErrorDetail in agent-errors.ts -->
+- [x] Retry from the bubble still works and clears the error state on success. <!-- useStoryWriter.ts retryMessage clears errorMessage on success; temp-id retry bug fixed via messageId reconciliation -->
 
 ## Tests
 
-- [ ] Failed bubble renders per-message friendly reason, retry, and dismiss; no banner rendered for the same failure. <!-- src/components/story-writer/StoryWriterChat.test.tsx -->
-- [ ] `sendMessage` failure sets `errorMessage` on the message and leaves `streamError` null; DUPLICATE path unchanged. <!-- src/hooks/useStoryWriter.test.ts -->
-- [ ] Toolbar indicator: nothing rendered for `connected`/`checking`, red dot + tooltip for `unreachable`. <!-- src/components/story-writer/panes/apps/ChatApp.test.tsx (mock useWorkspaceHealth) -->
-- [ ] `collectNewToasts` skips failed `story-writer` entries but still marks them seen (no toast on later polls either). <!-- src/contexts/ActivityContext.test.tsx -->
-- [ ] Toast errorDetail formatting: structured `{"code":"UNREACHABLE",...}` renders the friendly message; plain-string errorDetail renders unchanged. <!-- src/components/sync/SyncToast.test.tsx -->
-- [ ] Per-message dismiss removes only the dismissed failed message. <!-- src/hooks/useStoryWriter.test.ts -->
+- [x] Failed bubble renders per-message friendly reason, retry, and dismiss; no banner rendered for the same failure. <!-- src/components/story-writer/StoryWriterChat.render.test.tsx (StoryWriterChat.test.ts stays helper-only) -->
+- [x] `sendMessage` failure sets `errorMessage` on the message and leaves `streamError` null; DUPLICATE path unchanged. <!-- src/hooks/useStoryWriter.test.ts -->
+- [x] Toolbar indicator: nothing rendered for `connected`/`checking`, red dot + tooltip for `unreachable`. <!-- src/components/story-writer/WorkspaceStatusBadge.test.tsx; toolbar placement in panes/apps/ChatApp.test.tsx -->
+- [x] `collectNewToasts` skips failed `story-writer` entries but still marks them seen (no toast on later polls either). <!-- src/contexts/ActivityContext.test.ts -->
+- [x] Toast errorDetail formatting: structured `{"code":"UNREACHABLE",...}` renders the friendly message; plain-string errorDetail renders unchanged. <!-- covered as friendlyErrorDetail unit tests in src/lib/agent-errors.test.ts (SyncToast passes it through one line) -->
+- [x] Per-message dismiss removes only the dismissed failed message. <!-- src/hooks/useStoryWriter.test.ts + DELETE route tests in messages/route.test.ts -->
 
 ## Related
 
