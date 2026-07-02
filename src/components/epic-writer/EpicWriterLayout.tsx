@@ -109,7 +109,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             onModelChange={writer.setModel}
             onSend={writer.sendMessage}
             onRetry={writer.retryMessage}
-            onClearFailed={writer.clearFailedMessages}
+            onDismissFailed={writer.dismissFailedMessage}
             onCancel={writer.cancelCurrentTask}
             messageDraftMap={messageDraftMap}
             draftContentMap={draftContentMap}

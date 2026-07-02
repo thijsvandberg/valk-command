@@ -6,7 +6,7 @@ import { agentErrorResponse, errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import {
   sendStoryWriterMessage,
-  deleteFailedMessages,
+  deleteMessage,
   StoryWriterError,
   StoryWriterAgentError,
 } from "@/lib/story-writer-messages";
@@ -44,10 +44,13 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
     if (err instanceof StoryWriterAgentError) {
-      return agentErrorResponse(err.agentError, err.status);
+      return agentErrorResponse(err.agentError, err.status, err.messageId);
     }
     if (err instanceof StoryWriterError) {
-      return errorResponse(err.message, err.status, err.code);
+      const body: { error: string; code?: string; messageId?: string } = { error: err.message };
+      if (err.code !== undefined) body.code = err.code;
+      if (err.messageId !== undefined) body.messageId = err.messageId;
+      return NextResponse.json(body, { status: err.status });
     }
     throw err;
   }
@@ -62,14 +65,14 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
   const url = new URL(request.url);
-  const failedOnly = url.searchParams.get("failed") === "true";
+  const messageId = url.searchParams.get("id");
 
-  if (!failedOnly) {
-    return errorResponse("Missing query parameter", 400);
+  if (!messageId) {
+    return errorResponse("Missing query parameter: id", 400);
   }
 
   try {
-    const result = await deleteFailedMessages(key);
+    const result = await deleteMessage(key, messageId);
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof StoryWriterError) {

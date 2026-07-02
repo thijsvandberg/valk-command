@@ -1,6 +1,11 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useStoryWriter } from "./useStoryWriter";
+
+vi.mock("./useWorkspaceHealth", () => ({
+  triggerWorkspaceHealthCheck: vi.fn(),
+}));
+import { triggerWorkspaceHealthCheck } from "./useWorkspaceHealth";
 
 type ESListener = (event: MessageEvent | Event) => void;
 
@@ -275,6 +280,148 @@ describe("useStoryWriter", () => {
       await waitFor(() => expect(result.current.status).toBe("streaming"));
 
       expect(MockEventSource.instances.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("send failure handling (BRDG-459)", () => {
+    function mockFetchWithSession(handlers: {
+      onPostMessage: (postCount: number) => Response | Promise<Response>;
+    }) {
+      let postCount = 0;
+      return vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+        const url = typeof input === "string" ? input : (input as Request).url;
+        const method = init?.method ?? "GET";
+
+        if (url === API_BASE && method === "GET") {
+          return {
+            ok: true,
+            json: async () => ({
+              session: mockSession,
+              messages: mockMessages,
+              aiDrafts: [],
+              relatedCandidates: [],
+            }),
+          } as Response;
+        }
+        if (url.startsWith(`${API_BASE}/messages`) && method === "POST") {
+          postCount++;
+          return handlers.onPostMessage(postCount);
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+    }
+
+    it("attaches the friendly reason to the failed message, adopts the server id, and leaves the banner unset", async () => {
+      vi.mocked(triggerWorkspaceHealthCheck).mockClear();
+      mockFetchWithSession({
+        onPostMessage: () => ({
+          ok: false,
+          status: 502,
+          json: async () => ({ error: "Cannot reach workspace", code: "UNREACHABLE", messageId: "srv-msg-9" }),
+        }) as Response,
+      });
+
+      const { result } = renderHook(() => useStoryWriter(TICKET_KEY));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      let sent: boolean | undefined;
+      await act(async () => { sent = await result.current.sendMessage("hello"); });
+
+      expect(sent).toBe(false);
+      const failed = result.current.messages.find((m) => m.status === "failed");
+      expect(failed?.id).toBe("srv-msg-9");
+      expect(failed?.errorMessage).toBe("Cannot reach the workspace. Is it running?");
+      expect(result.current.streamError).toBeNull();
+      expect(result.current.status).toBe("ready");
+      expect(triggerWorkspaceHealthCheck).toHaveBeenCalled();
+    });
+
+    it("keeps the DUPLICATE path on the banner and removes the optimistic message", async () => {
+      mockFetchWithSession({
+        onPostMessage: () => ({
+          ok: false,
+          status: 409,
+          json: async () => ({ error: "Duplicate message", code: "DUPLICATE" }),
+        }) as Response,
+      });
+
+      const { result } = renderHook(() => useStoryWriter(TICKET_KEY));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      await act(async () => { await result.current.sendMessage("hello"); });
+
+      expect(result.current.messages.some((m) => m.status === "failed")).toBe(false);
+      expect(result.current.messages).toHaveLength(mockMessages.length);
+      expect(result.current.streamError).toBe("Duplicate message blocked");
+    });
+
+    it("clears the per-message error on successful retry", async () => {
+      mockFetchWithSession({
+        onPostMessage: (postCount) => postCount === 1
+          ? ({
+              ok: false,
+              status: 502,
+              json: async () => ({ error: "Cannot reach workspace", code: "UNREACHABLE", messageId: "srv-msg-9" }),
+            }) as Response
+          : ({
+              ok: true,
+              status: 201,
+              json: async () => ({ messageId: "srv-msg-9", taskId: "task-1" }),
+            }) as Response,
+      });
+
+      const { result } = renderHook(() => useStoryWriter(TICKET_KEY));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      await act(async () => { await result.current.sendMessage("hello"); });
+      await act(async () => { await result.current.retryMessage("srv-msg-9"); });
+
+      const retried = result.current.messages.find((m) => m.id === "srv-msg-9");
+      expect(retried?.status).toBe("sent");
+      expect(retried?.errorMessage).toBeUndefined();
+    });
+
+    it("dismisses a persisted failed message locally and via DELETE ?id=", async () => {
+      const fetchSpy = mockFetchWithSession({
+        onPostMessage: () => ({
+          ok: false,
+          status: 502,
+          json: async () => ({ error: "Cannot reach workspace", code: "UNREACHABLE", messageId: "srv-msg-9" }),
+        }) as Response,
+      });
+
+      const { result } = renderHook(() => useStoryWriter(TICKET_KEY));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      await act(async () => { await result.current.sendMessage("hello"); });
+      await act(async () => { await result.current.dismissFailedMessage("srv-msg-9"); });
+
+      expect(result.current.messages.some((m) => m.id === "srv-msg-9")).toBe(false);
+      const deleteCall = fetchSpy.mock.calls.find(([, init]) => init?.method === "DELETE");
+      expect(deleteCall?.[0]).toBe(`${API_BASE}/messages?id=srv-msg-9`);
+    });
+
+    it("skips the server delete when dismissing a temp-id message", async () => {
+      // No messageId in the error body, so the optimistic temp id is kept.
+      const fetchSpy = mockFetchWithSession({
+        onPostMessage: () => ({
+          ok: false,
+          status: 502,
+          json: async () => ({ error: "Cannot reach workspace", code: "UNREACHABLE" }),
+        }) as Response,
+      });
+
+      const { result } = renderHook(() => useStoryWriter(TICKET_KEY));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      await act(async () => { await result.current.sendMessage("hello"); });
+      const failed = result.current.messages.find((m) => m.status === "failed");
+      expect(failed?.id).toMatch(/^temp-/);
+
+      await act(async () => { await result.current.dismissFailedMessage(failed!.id); });
+
+      expect(result.current.messages.some((m) => m.status === "failed")).toBe(false);
+      expect(fetchSpy.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(false);
     });
   });
 

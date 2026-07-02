@@ -158,22 +158,28 @@ export interface SendMessageResult {
 export class StoryWriterError extends Error {
   status: number;
   code?: string;
-  constructor(message: string, status: number, code?: string) {
+  /** Persisted id of the message that was marked failed, so the client can reconcile its temp id (BRDG-459). */
+  messageId?: string;
+  constructor(message: string, status: number, code?: string, messageId?: string) {
     super(message);
     this.name = "StoryWriterError";
     this.status = status;
     this.code = code;
+    this.messageId = messageId;
   }
 }
 
 export class StoryWriterAgentError extends Error {
   status: number;
   agentError: AgentFetchError;
-  constructor(agentError: AgentFetchError, status: number) {
+  /** Persisted id of the message that was marked failed, so the client can reconcile its temp id (BRDG-459). */
+  messageId?: string;
+  constructor(agentError: AgentFetchError, status: number, messageId?: string) {
     super(agentError.error);
     this.name = "StoryWriterAgentError";
     this.status = status;
     this.agentError = agentError;
+    this.messageId = messageId;
   }
 }
 
@@ -243,7 +249,7 @@ async function logAndThrowAgentError(
     durationMs: Date.now() - messageStart,
     startedAt: messageStartedAt,
   });
-  throw new StoryWriterAgentError(result.error, result.status);
+  throw new StoryWriterAgentError(result.error, result.status, messageId);
 }
 
 async function logSuccess(key: string, summary: string, messageStart: number, messageStartedAt: string) {
@@ -760,7 +766,7 @@ export async function sendStoryWriterMessage(params: SendMessageParams): Promise
 
     if (epicRows.length === 0) {
       await markMessageFailed(messageId);
-      throw new StoryWriterError("No epics available", 404);
+      throw new StoryWriterError("No epics available", 404, undefined, messageId);
     }
 
     const epicsPayload = epicRows.map((e) => ({
@@ -878,6 +884,8 @@ export async function sendStoryWriterMessage(params: SendMessageParams): Promise
       throw new StoryWriterError(
         (recovered.body.error as string) ?? "Recovery failed",
         recovered.status,
+        undefined,
+        messageId,
       );
     }
 
@@ -897,9 +905,11 @@ export async function sendStoryWriterMessage(params: SendMessageParams): Promise
 }
 
 /**
- * Deletes failed/pending messages for a story writer session.
+ * Deletes a single message from the active session's conversation. Scoped to
+ * pending/failed rows because dismiss is only offered on failed sends; sent
+ * messages are conversation history and must never be deleted this way.
  */
-export async function deleteFailedMessages(key: string): Promise<{ success: boolean; deleted: number }> {
+export async function deleteMessage(key: string, messageId: string): Promise<{ success: boolean; deleted: number }> {
   const session = await db
     .select()
     .from(storyWriterSession)
@@ -919,6 +929,7 @@ export async function deleteFailedMessages(key: string): Promise<{ success: bool
     .delete(message)
     .where(
       and(
+        eq(message.id, messageId),
         eq(message.conversationId, session.conversationId),
         sql`${message.status} IN ('pending', 'failed')`,
       ),

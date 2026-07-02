@@ -6,6 +6,7 @@ import type { Message } from "@/types/chat";
 import type { StoryWriterStatus, RelatedStoryCandidate } from "@/types/story-writer";
 import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
 import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
+import { triggerWorkspaceHealthCheck } from "./useWorkspaceHealth";
 import { friendlyAgentError } from "@/lib/agent-errors";
 import { storyWriter as storyWriterApi, epicWriter as epicWriterApi, jira as jiraApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
 import type { EpicWriterPhase, EpicChildCardWithSprint } from "@/types/epic-writer";
@@ -15,6 +16,8 @@ export type { WorkspaceUsage } from "./useTaskMonitoring";
 export interface UseStoryWriterOptions {
   mode?: "story" | "epic";
 }
+
+type SendFailureBody = { error?: string; code?: string; messageId?: string } | null;
 
 export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOptions) {
   const mode = options?.mode ?? "story";
@@ -266,6 +269,19 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     return () => { cancelled = true; };
   }, [ticketKey, apiBase, setSession, sessionApi]);
 
+  // The failure reason lives on the message itself (BRDG-459); the streamError
+  // banner is reserved for errors with no message to attach to. The server may
+  // have persisted the message before the agent dispatch failed, so adopt its
+  // id when the error body carries one (this also lets retry/dismiss target
+  // the real row instead of an unknown temp id).
+  const markSendFailed = useCallback((localId: string, body: SendFailureBody) => {
+    setMessages((prev) => prev.map((m) => m.id === localId
+      ? { ...m, id: body?.messageId ?? m.id, status: "failed" as const, errorMessage: friendlyAgentError(body, "Failed to send message") }
+      : m));
+    setStatus("ready");
+    triggerWorkspaceHealthCheck();
+  }, []);
+
   const sendMessage = useCallback(async (content: string, skill?: string): Promise<boolean> => {
     if (!session) return false;
 
@@ -311,18 +327,13 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
           setStatus("ready");
           return false;
         }
-        // Mark message as failed in local state
-        setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, status: "failed" as const } : m));
-        setStreamError(friendlyAgentError(err.body, "Failed to send message"));
-        setStatus("ready");
+        markSendFailed(tempMsg.id, err.body as SendFailureBody);
         return false;
       }
-      setMessages((prev) => prev.map((m) => m.id === tempMsg.id ? { ...m, status: "failed" as const } : m));
-      setStreamError("Failed to send message");
-      setStatus("ready");
+      markSendFailed(tempMsg.id, null);
       return false;
     }
-  }, [session, ticketKey, monitoring, sessionApi]);
+  }, [session, ticketKey, monitoring, sessionApi, markSendFailed]);
 
   const retryMessage = useCallback(async (messageId: string): Promise<boolean> => {
     if (!session) return false;
@@ -347,28 +358,22 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
         model: modelRef.current,
       }) as { taskId: string };
 
-      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "sent" as const, workspaceTaskId: result.taskId } : m));
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "sent" as const, workspaceTaskId: result.taskId, errorMessage: undefined } : m));
       monitoring.startMonitoring(result.taskId);
       return true;
     } catch (err) {
-      if (err instanceof ApiError) {
-        setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "failed" as const } : m));
-        setStreamError(friendlyAgentError(err.body, "Failed to send message"));
-        setStatus("ready");
-        return false;
-      }
-      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "failed" as const } : m));
-      setStreamError("Failed to send message");
-      setStatus("ready");
+      markSendFailed(messageId, err instanceof ApiError ? (err.body as SendFailureBody) : null);
       return false;
     }
-  }, [session, messages, ticketKey, monitoring, sessionApi]);
+  }, [session, messages, ticketKey, monitoring, sessionApi, markSendFailed]);
 
-  const clearFailedMessages = useCallback(async () => {
+  const dismissFailedMessage = useCallback(async (messageId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    // Temp ids never reached the DB; only persisted rows need the server delete.
+    if (messageId.startsWith("temp-")) return;
     try {
-      await apiFetch<void>(`${apiBase}/messages?failed=true`, { method: "DELETE" });
-      setMessages((prev) => prev.filter((m) => m.status !== "failed" && m.status !== "pending"));
-    } catch { /* ignore */ }
+      await apiFetch<void>(`${apiBase}/messages?id=${encodeURIComponent(messageId)}`, { method: "DELETE" });
+    } catch { /* best-effort; a refreshSession will resurface the row if this failed */ }
   }, [apiBase]);
 
   const activateSplit = useCallback(async (targetKey?: string, sprintId?: string, title?: string, issueType?: string): Promise<{ targetTicketKey: string }> => {
@@ -573,7 +578,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     setModel,
     sendMessage,
     retryMessage,
-    clearFailedMessages,
+    dismissFailedMessage,
     cancelCurrentTask,
     updateLocalDraft: drafts.updateLocalDraft,
     updateLocalTitle: drafts.updateLocalTitle,

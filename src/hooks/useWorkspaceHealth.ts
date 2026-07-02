@@ -30,6 +30,15 @@ async function fetchHealth(): Promise<WorkspaceHealth> {
   }
 }
 
+// Mounted hook instances register their check here so non-hook callers (e.g.
+// a failed send in useStoryWriter) can force an immediate re-check instead of
+// leaving the UI stale until the next poll tick (BRDG-459).
+const healthCheckListeners = new Set<() => void>();
+
+export function triggerWorkspaceHealthCheck(): void {
+  for (const listener of healthCheckListeners) listener();
+}
+
 export function useWorkspaceHealth(pollInterval = 30_000): WorkspaceHealth {
   const [health, setHealth] = useState<WorkspaceHealth>({
     workspace: "checking",
@@ -63,11 +72,13 @@ export function useWorkspaceHealth(pollInterval = 30_000): WorkspaceHealth {
       if (!document.hidden) check();
     };
     document.addEventListener("visibilitychange", onVisible);
+    healthCheckListeners.add(check);
 
     return () => {
       mountedRef.current = false;
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
+      healthCheckListeners.delete(check);
     };
   }, [check, pollInterval]);
 

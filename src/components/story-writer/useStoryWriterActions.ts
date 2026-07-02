@@ -545,7 +545,7 @@ export function useStoryWriterActions({
     onTargetTitleChange: handleTargetTitleChange,
     onSend: writer.sendMessage,
     onRetry: writer.retryMessage,
-    onClearFailed: writer.clearFailedMessages,
+    onDismissFailed: writer.dismissFailedMessage,
     onCancel: writer.cancelCurrentTask,
     onCreateLink: stableOnCreateLink,
     linkedIssueKeys,

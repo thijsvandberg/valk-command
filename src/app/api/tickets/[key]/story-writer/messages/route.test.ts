@@ -29,7 +29,7 @@ vi.mock("@/lib/agent-proxy", () => ({
   agentHeaders: () => ({ Authorization: "Bearer test", "Content-Type": "application/json" }),
 }));
 
-import { POST } from "./route";
+import { POST, DELETE } from "./route";
 
 function makeParams(key: string) {
   return { params: Promise.resolve({ key }) };
@@ -208,7 +208,7 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
   });
 
   it("returns 502 when agent is unreachable", async () => {
-    seedSession(testDb, "VPL-100");
+    const { convId } = seedSession(testDb, "VPL-100");
     mockFetch.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
     const res = await POST(
@@ -219,6 +219,13 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
     expect(res.status).toBe(502);
     const data = await res.json();
     expect(data.code).toBe("UNREACHABLE");
+
+    // The error body carries the persisted failed message id so the client
+    // can reconcile its optimistic temp id (BRDG-459).
+    const msgs = testDb.select().from(message).where(eq(message.conversationId, convId)).all();
+    const failedMsg = msgs.find((m) => m.role === "user");
+    expect(failedMsg?.status).toBe("failed");
+    expect(data.messageId).toBe(failedMsg?.id);
   });
 
   describe("follow-up prompt optimization (BRDG-197)", () => {
@@ -334,6 +341,77 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
       expect(userMsg!.status).toBe("sent");
       expect(userMsg!.workspaceTaskId).toBe("task_epic_2");
     });
+  });
+});
+
+describe("DELETE /api/tickets/[key]/story-writer/messages", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    mockFetch.mockReset();
+  });
+
+  function makeDeleteRequest(key: string, id?: string) {
+    const qs = id ? `?id=${encodeURIComponent(id)}` : "";
+    return new Request(`http://localhost:3100/api/tickets/${key}/story-writer/messages${qs}`, {
+      method: "DELETE",
+    });
+  }
+
+  function seedMessage(convId: string, status: "pending" | "sent" | "failed") {
+    const id = randomUUID();
+    testDb.insert(message).values({
+      id,
+      conversationId: convId,
+      role: "user",
+      content: `Message ${id}`,
+      status,
+    }).run();
+    return id;
+  }
+
+  it("deletes a single failed message by id", async () => {
+    const { convId } = seedSession(testDb, "VPL-100");
+    const failedId = seedMessage(convId, "failed");
+    const otherFailedId = seedMessage(convId, "failed");
+
+    const res = await DELETE(makeDeleteRequest("VPL-100", failedId), makeParams("VPL-100"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.deleted).toBe(1);
+
+    const remaining = testDb.select().from(message).where(eq(message.conversationId, convId)).all();
+    expect(remaining.map((m) => m.id)).toEqual([otherFailedId]);
+  });
+
+  it("never deletes sent messages", async () => {
+    const { convId } = seedSession(testDb, "VPL-100");
+    const sentId = seedMessage(convId, "sent");
+
+    const res = await DELETE(makeDeleteRequest("VPL-100", sentId), makeParams("VPL-100"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.deleted).toBe(0);
+
+    const remaining = testDb.select().from(message).where(eq(message.conversationId, convId)).all();
+    expect(remaining).toHaveLength(1);
+  });
+
+  it("returns 400 when id is missing", async () => {
+    seedSession(testDb, "VPL-100");
+
+    const res = await DELETE(makeDeleteRequest("VPL-100"), makeParams("VPL-100"));
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 when no active session", async () => {
+    testDb.insert(ticket).values({ jiraKey: "VPL-999", title: "T", status: "TO DO" }).run();
+
+    const res = await DELETE(makeDeleteRequest("VPL-999", randomUUID()), makeParams("VPL-999"));
+
+    expect(res.status).toBe(404);
   });
 });
 

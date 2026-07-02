@@ -42,7 +42,7 @@ export interface WriterContextValue {
   onTargetTitleChange: (title: string) => void;
   onSend: (content: string, skill?: string) => Promise<boolean>;
   onRetry: (messageId: string) => Promise<boolean>;
-  onClearFailed: () => Promise<void>;
+  onDismissFailed: (messageId: string) => Promise<void>;
   onCancel: () => Promise<void>;
   onCreateLink: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys: Set<string>;

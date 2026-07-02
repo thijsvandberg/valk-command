@@ -19,6 +19,7 @@ import {
   PenLine,
   AlertCircle,
   RotateCcw,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -47,7 +48,7 @@ interface StoryWriterChatProps {
   onModelChange: (m: string) => void;
   onSend: (content: string, skill?: string) => Promise<boolean>;
   onRetry?: (messageId: string) => Promise<boolean>;
-  onClearFailed?: () => Promise<void>;
+  onDismissFailed?: (messageId: string) => Promise<void> | void;
   onCancel?: () => void;
   onFindRelated?: () => void;
   onOpenRelatedPanel?: () => void;
@@ -203,7 +204,7 @@ export function StoryWriterChat({
   onModelChange,
   onSend,
   onRetry,
-  onClearFailed,
+  onDismissFailed,
   onCancel,
   onFindRelated,
   onOpenRelatedPanel,
@@ -309,7 +310,6 @@ export function StoryWriterChat({
     return null;
   });
 
-  const hasFailedMessages = messages.some((m) => m.status === "failed" || m.status === "pending");
 
   const unansweredIdx =
     !isStreaming &&
@@ -487,7 +487,7 @@ export function StoryWriterChat({
                 <div className="flex justify-end mt-1">
                   <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-[var(--color-status-error)]/[0.06] border border-[var(--color-status-error)]/10">
                     <AlertCircle size={11} className="shrink-0 text-[var(--color-status-error)]/60" strokeWidth={1.5} />
-                    <span className="text-caption text-[var(--color-status-error)]/60">Message could not be sent.</span>
+                    <span className="text-caption text-[var(--color-status-error)]/60">{msg.errorMessage ?? "Message could not be sent."}</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -498,6 +498,18 @@ export function StoryWriterChat({
                     >
                       Tap to retry
                     </Button>
+                    {onDismissFailed && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        icon={<X size={10} strokeWidth={2} />}
+                        onClick={() => onDismissFailed(msg.id)}
+                        disabled={isBusy}
+                        aria-label="Dismiss failed message"
+                        className="text-[var(--color-status-error)]/50 hover:text-[var(--color-status-error)]/80 border-0 cursor-pointer"
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -561,18 +573,6 @@ export function StoryWriterChat({
       {dupWarning && (
         <div className="border-t border-[var(--color-status-warning)]/20 px-4 py-2">
           <span className="text-body-sm text-[var(--color-status-warning)]">Duplicate message blocked</span>
-        </div>
-      )}
-
-      {hasFailedMessages && !isStreaming && onClearFailed && (
-        <div className="border-t border-border-default px-4 py-1.5">
-          <button
-            type="button"
-            onClick={onClearFailed}
-            className="text-caption text-text-tertiary hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          >
-            Clear failed messages
-          </button>
         </div>
       )}
 

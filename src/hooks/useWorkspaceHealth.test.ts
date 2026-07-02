@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { useWorkspaceHealth } from "./useWorkspaceHealth";
+import { useWorkspaceHealth, triggerWorkspaceHealthCheck } from "./useWorkspaceHealth";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -172,6 +172,27 @@ describe("useWorkspaceHealth", () => {
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
 
     Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+  });
+
+  it("re-checks immediately on triggerWorkspaceHealthCheck (BRDG-459)", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: "ok", auth: { status: "valid", tokenExpiresAt: null } }),
+    } as Response);
+
+    const { unmount } = renderHook(() => useWorkspaceHealth(60_000));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+
+    triggerWorkspaceHealthCheck();
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+
+    // Unmounted instances are deregistered, so the trigger becomes a no-op.
+    unmount();
+    triggerWorkspaceHealthCheck();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it("reports expired claude credentials", async () => {

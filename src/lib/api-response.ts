@@ -60,9 +60,12 @@ export function successResponse<T>(
 export function agentErrorResponse(
   error: AgentError,
   status: number,
+  messageId?: string,
 ): NextResponse {
+  // messageId lets the client reconcile its optimistic temp id with the
+  // persisted failed message, so retry/dismiss target the real row (BRDG-459).
   return NextResponse.json(
-    { error: error.error, code: error.code },
+    { error: error.error, code: error.code, ...(messageId ? { messageId } : {}) },
     { status: status || 502 },
   );
 }

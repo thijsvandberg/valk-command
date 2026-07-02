@@ -8,6 +8,8 @@ export interface Message {
   status?: "pending" | "sent" | "failed";
   sequence?: number | null;
   cancelled?: boolean;
+  /** Client-only friendly reason for a failed send; not persisted, so reloaded failed messages fall back to generic copy. */
+  errorMessage?: string;
 }
 
 export type ConversationType = "chat" | "investigation";
