@@ -36,7 +36,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PaneProvider, usePaneContext } from "./panes/PaneContext";
 import { WriterProvider, useWriterContext } from "./panes/WriterContext";
-import { ApplicationListBar } from "./panes/ApplicationListBar";
+import { AppsMenu } from "./panes/AppsMenu";
 import { AppToolbar } from "./panes/AppToolbar";
 import { PaneArea } from "./panes/PaneArea";
 import { useStoryWriterActions } from "./useStoryWriterActions";
@@ -139,6 +139,10 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                   )}
                 </span>
               )}
+
+              {/* Pane apps live behind this dropdown since BRDG-460 replaced the
+                  ApplicationListBar toggle bar. */}
+              <AppsMenu />
 
               {/* Wrap up: the one primary action. Always pushes & closes the editor;
                   the panel only decides readiness and whether the chat is kept. */}
@@ -489,7 +493,6 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
             </div>
           )}
 
-          <ApplicationListBar />
           <AppToolbar />
           <PaneArea />
 

@@ -32,8 +32,10 @@ vi.mock("./panes/WriterContext", () => ({
   useWriterContext: vi.fn(),
 }));
 
-vi.mock("./panes/ApplicationListBar", () => ({
-  ApplicationListBar: () => <div data-testid="application-list-bar" />,
+// The real AppsMenu reads paneApps/paneVisible, which the thin usePaneContext
+// mock below does not provide.
+vi.mock("./panes/AppsMenu", () => ({
+  AppsMenu: () => <button data-testid="apps-menu">Apps</button>,
 }));
 
 vi.mock("./panes/AppToolbar", () => ({
@@ -343,6 +345,35 @@ describe("StoryWriterLayout", () => {
     render(<StoryWriterLayout ticketKey="VPL-1" />);
 
     expect(screen.getByText("Push failed: unauthorized")).toBeInTheDocument();
+  });
+
+  it("renders the Apps dropdown in the header actions, before Wrap up (BRDG-460)", () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter());
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
+
+    render(<StoryWriterLayout ticketKey="VPL-1" />);
+
+    const appsMenu = screen.getByTestId("apps-menu");
+    expect(screen.getByTestId("view-header-actions")).toContainElement(appsMenu);
+    const wrapUp = screen.getByText("Wrap up");
+    expect(
+      appsMenu.compareDocumentPosition(wrapUp) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByTestId("app-toolbar")).toBeInTheDocument();
+  });
+
+  it("renders the Apps dropdown for a still-draft ticket where Wrap up is absent (BRDG-460)", () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue({
+      status: "ready",
+      session: { id: "s1", localTitle: null, localDraft: "" },
+      messages: [],
+    });
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
+
+    render(<StoryWriterLayout ticketKey="DRAFT-1" draftTitle="New Story" draftType="story" />);
+
+    expect(screen.getByTestId("apps-menu")).toBeInTheDocument();
+    expect(screen.queryByText("Wrap up")).not.toBeInTheDocument();
   });
 
   it("shows draftType icon for a still-draft ticket", () => {

@@ -714,7 +714,8 @@ function ChromeMock({ variant }: { variant: ChromeVariant }) {
   const [collapsed, setCollapsed] = useState(false);
   const [pane2Active, setPane2Active] = useState<AppId>("editor");
 
-  const secondPaneApps = openApps.filter((a) => a !== "chat");
+  // Widen: TS infers Exclude<AppId,"chat">[] from the filter, breaking .includes
+  const secondPaneApps: AppId[] = openApps.filter((a) => a !== "chat");
   const activeSecond = secondPaneApps.includes(pane2Active)
     ? pane2Active
     : secondPaneApps[secondPaneApps.length - 1] ?? null;

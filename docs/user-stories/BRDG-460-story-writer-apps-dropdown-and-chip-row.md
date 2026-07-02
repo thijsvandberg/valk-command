@@ -71,7 +71,8 @@ exploration at `/dev/exploration/story-writer-chrome`:
   (project rule: never hard-delete).
 - `AppToolbar` is untouched: per-app controls, close buttons, drag-to-move between panes
   and the drag expand-slots all keep working. Focus mode still hides `AppToolbar`; the
-  Apps button stays reachable because `ViewHeader` remains visible in focus mode.
+  Apps button hides together with the view header (`FocusModeWrapper` collapses
+  `#view-header-portal`), which is parity with today where the app bar also hid.
 - Known, accepted behaviour change: dragging a *not-yet-open* app into a specific pane is
   no longer possible (that drag started from the removed bar). Opening via the dropdown
   uses `openApp()`'s existing default placement; the app can then be dragged to another
@@ -103,22 +104,49 @@ exploration at `/dev/exploration/story-writer-chrome`:
 
 ## Implementation Plan
 
-1. **AppsMenu**: new `AppsMenu.tsx` (app defs moved out of `ApplicationListBar`), mount in
-   `ViewHeader` actions in `StoryWriterLayout.tsx`, remove the bar render, move
-   `ApplicationListBar.tsx` to `deleted/`.
-2. **Chip row**: cap removal in `getVisibleChips` + row/chip restyle in
-   `StoryWriterChat.tsx`.
-3. **Docs & tests**: update `docs/architecture/story-writer.md` (pane chrome section) and
-   the tests listed below.
+1. **AppsMenu component**: new `src/components/story-writer/panes/AppsMenu.tsx`. App defs
+   copied from `ApplicationListBar.tsx` (the bar file moves to `deleted/`). Trigger: ghost
+   `Button` with `LayoutGrid` icon + "Apps" + rotating `ChevronDown`, `aria-expanded`.
+   Dropdown: `MenuList`/`MenuItem` from `src/components/shared/MenuItem.tsx` (no trailing
+   slot prop, so the checkmark renders inside `children` after a `flex-1` label span),
+   positioned `absolute right-0 top-full z-30`. Open-state via `pane.paneApps.indexOf` +
+   `pane.paneVisible`; row click toggles `openApp`/`closeApp` WITHOUT closing the menu;
+   `useOutsideClick` (handles Escape too) closes it. No `useEffect` needed. Co-located
+   `AppsMenu.test.tsx` mocking `usePaneContext`/`useWriterContext`.
+2. **Mount + remove bar**: in `StoryWriterLayout.tsx` insert `<AppsMenu />` in the
+   ViewHeader actions between the autosave indicator block and the (conditional) Wrap up
+   block, rendered unconditionally; drop the `ApplicationListBar` import and render
+   (line ~492); `AppToolbar` untouched. Move `ApplicationListBar.tsx` to `deleted/`
+   (gitignored: file stays on disk, git records the deletion). `pane.draggedApp` stays
+   live (AppToolbar label drags + PaneArea drops) — no dead code in `PaneContext`.
+3. **Layout tests**: in `StoryWriterLayout.test.tsx` remove the dead ApplicationListBar
+   mock, add an `AppsMenu` mock (the real one would crash on the thin `usePaneContext`
+   mock), assert the Apps button renders inside `view-header-actions`, precedes Wrap up in
+   DOM order, and still renders for still-draft tickets (where Wrap up is absent).
+4. **Chip row**: in `StoryWriterChat.tsx` delete `MAX_VISIBLE_CHIPS` (verified: no other
+   importers) and the `.slice(...)` in `getVisibleChips`; fix the stale cap comment on
+   `ctx-review-story`. Row container: `flex-wrap` → `overflow-x-auto` +
+   `[scrollbar-width:none]`/webkit-hidden + right fade `mask-image`; keep a small `min-h`
+   so the composer doesn't jump at zero chips. Chips: `shrink-0`, label
+   `px-2 py-1 text-caption whitespace-nowrap`, send segment `px-1.5` `size={8}`; all
+   behaviour (fill vs direct send, enableCodebase, ctx-find-related, disabled states)
+   unchanged. Update the three cap-asserting tests in `StoryWriterChat.test.ts`
+   (no-cap totals; trailing review always last; BRDG-435 Investigate test simplified) and
+   add a row-markup render test in `StoryWriterChat.render.test.tsx`.
+5. **Docs**: `docs/architecture/story-writer.md` has no chrome section yet — add one under
+   UI Components (Apps dropdown, single AppToolbar bar, scrolling chip strip) and an
+   `AppsMenu` row in the component table.
+6. **Verify**: lint + typecheck per step, `npx vitest run` on changed test files, then
+   `npm run verify` + `npm run build` + browser check via sprint board navigation.
 
 ## Acceptance Criteria
 
-- [ ] The Story Writer no longer renders the 8-app toggle bar; between the view header and the panes only the per-app toolbar remains. <!-- StoryWriterLayout.tsx: remove <ApplicationListBar />; ApplicationListBar.tsx moved to deleted/ -->
-- [ ] The view header shows an "Apps" button (left of Wrap up) that opens a dropdown listing all 8 apps with icons; open apps show a checkmark. <!-- new panes/AppsMenu.tsx, mounted via ViewHeader actions in StoryWriterLayout.tsx -->
-- [ ] Clicking a dropdown row toggles that pane open/closed via the existing pane logic; the menu stays open for multiple toggles and closes on outside click. <!-- AppsMenu.tsx using pane.openApp/closeApp + useOutsideClick -->
-- [ ] When split mode is active, the dropdown also lists the split-target entry (ticket key + scissors icon), like the old bar did. <!-- AppsMenu.tsx, writer.targetTicketKey branch mirroring ApplicationListBar.tsx:41-46 -->
-- [ ] The per-app toolbar keeps all current behaviour: app labels, app-registered controls (Diff version pickers, Editor formatting toggle), close buttons, drag-to-move. <!-- AppToolbar.tsx untouched -->
-- [ ] In focus mode the per-app toolbar still hides and the Apps button remains reachable in the view header. <!-- AppToolbar.tsx focusMode check unchanged; ViewHeader has no focusMode hiding -->
+- [x] The Story Writer no longer renders the 8-app toggle bar; between the view header and the panes only the per-app toolbar remains. <!-- StoryWriterLayout.tsx: remove <ApplicationListBar />; ApplicationListBar.tsx moved to deleted/ -->
+- [x] The view header shows an "Apps" button (left of Wrap up) that opens a dropdown listing all 8 apps with icons; open apps show a checkmark. <!-- new panes/AppsMenu.tsx, mounted via ViewHeader actions in StoryWriterLayout.tsx -->
+- [x] Clicking a dropdown row toggles that pane open/closed via the existing pane logic; the menu stays open for multiple toggles and closes on outside click. <!-- AppsMenu.tsx using pane.openApp/closeApp + useOutsideClick -->
+- [x] When split mode is active, the dropdown also lists the split-target entry (ticket key + scissors icon), like the old bar did. <!-- AppsMenu.tsx, writer.targetTicketKey branch mirroring the old ApplicationListBar -->
+- [x] The per-app toolbar keeps all current behaviour: app labels, app-registered controls (Diff version pickers, Editor formatting toggle), close buttons, drag-to-move. <!-- AppToolbar.tsx untouched -->
+- [x] Focus mode behaviour is unchanged: the per-app toolbar still hides; the Apps button hides with the view header (as the old bar did) and returns on focus-mode exit. <!-- AppToolbar.tsx focusMode check unchanged; FocusModeWrapper collapses #view-header-portal, verified during planning -->
 - [ ] The quick-prompt chips render as ONE non-wrapping row that scrolls horizontally with a hidden scrollbar and a right-edge fade. <!-- StoryWriterChat.tsx chip row container ~579 -->
 - [ ] Chips are one size smaller but keep the dual action: label fills the input, the send segment submits immediately; disabled states and enableCodebase behaviour unchanged. <!-- StoryWriterChat.tsx chip buttons ~590-620 -->
 - [ ] The 5-chip cap is gone: all configured prompts for the issue type (plus contextual chips in lead/trail order) appear in the row. <!-- getVisibleChips in StoryWriterChat.tsx ~163-188, slice removed -->
@@ -128,8 +156,8 @@ exploration at `/dev/exploration/story-writer-chrome`:
 
 - [ ] `getVisibleChips` returns all prompts (no cap) and preserves lead → API → trail ordering with >5 prompts. <!-- StoryWriterChat.test.ts (currently asserts the cap; update) -->
 - [ ] Chip row renders non-wrapping scroll container; chip label click fills input, send segment click sends immediately. <!-- StoryWriterChat.render.test.tsx -->
-- [ ] AppsMenu renders all 8 apps, checkmarks on open apps, toggles openApp/closeApp on click, includes split-target when targetTicketKey is set. <!-- new panes/AppsMenu.test.tsx -->
-- [ ] StoryWriterLayout renders the Apps button and no ApplicationListBar. <!-- StoryWriterLayout.test.tsx -->
+- [x] AppsMenu renders all 8 apps, checkmarks on open apps, toggles openApp/closeApp on click, includes split-target when targetTicketKey is set. <!-- new panes/AppsMenu.test.tsx -->
+- [x] StoryWriterLayout renders the Apps button and no ApplicationListBar. <!-- StoryWriterLayout.test.tsx -->
 
 ## Related
 
