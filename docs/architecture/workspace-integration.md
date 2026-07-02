@@ -203,8 +203,11 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   unknown classifications degrade to `ok`.
 - **Validation UI**: `src/components/sprint-board/TestDocReviewModal.tsx` — split view with the
   editable doc left and the story (regular rendered format) right. Entry points: row action
-  menu, the to-Test status-change line button (BRDG-414 stub made real), and the bulk toolbar
-  (sequential queue with Skip).
+  menu, the to-Test status-change line button (BRDG-414 stub made real), and the bulk toolbar.
+  Bulk prefetches: all generations start on open (rolling, max 3 concurrent — each is a full
+  agent task and the workspace rate tier allows 10 req/min), the first result shows as soon as
+  it lands, and the rest generate during review, so Save/Skip advances to an already-finished
+  doc ("N ready" in the queue indicator). Closing mid-queue cancels in-flight tasks.
 - **Save**: `PUT /api/tickets/[key]/test-doc` stores the Bridge copy in `ticket_metadata`
   (`test_doc*` columns) and writes exactly one `:::expand Test documentation` block at the end
   of the Jira description through the regular `upsertLocalEdit` + `pushToJira` path

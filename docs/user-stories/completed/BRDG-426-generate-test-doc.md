@@ -82,7 +82,9 @@ Jira caps descriptions at ~32.7k characters. When the description is already nea
 6. **Entry points** (all set one `testDocKeys: string[] | null` state in `SprintBoard.tsx` feeding the modal): row menu Assist section in `ticket-action-menu.tsx` (next to Generate Subtasks); `StatusChangeLine.tsx` isTest inert button → `onGenerateTestDoc` prop drilled through `BoardRow.tsx` → `TicketTable.tsx` → `SprintBoard.tsx` (like `onStatusChangeSeen`); `BulkActionBar.tsx` Assist dropdown action.
 7. **Tests**: route test (context incl. comments/status changes, 404, draft 409) mirroring `suggest-subtasks/route.test.ts`; save-route test (test_doc upsert + exactly one expand block, replace not duplicate); modal test (side-by-side render, queue advances on Save and Skip); `StatusChangeLine.test.tsx` update.
 
-Deferred (annotated, not blocking): comment freshness pre-sync before gathering; prefetching generation for the next queue item.
+Deferred (annotated, not blocking): comment freshness pre-sync before gathering.
+
+**Post-ship enhancement (2026-07-03, PO request):** bulk no longer generates one-at-a-time. All generations start on open (rolling prefetch, max 3 concurrent to respect the workspace rate tier), the first result shows as soon as it lands, and the rest generate while the PO reviews — Save/Skip advances instantly to prefetched docs ("N ready" indicator). Closing mid-queue cancels the in-flight tasks.
 
 ## Acceptance Criteria
 

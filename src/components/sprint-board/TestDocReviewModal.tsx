@@ -12,10 +12,51 @@ import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { friendlyStreamError } from "@/lib/agent-errors";
 import { parseTestDoc, type TestDocClassification } from "@/lib/parse-test-doc";
-import { tickets as ticketsApi, ApiError } from "@/lib/api-client";
+import { tickets as ticketsApi, workspaceTasks, ApiError } from "@/lib/api-client";
 import { ClipboardCheck, Loader2, RefreshCw, X } from "lucide-react";
 
-type Phase = "generating" | "review" | "saving";
+// Generations run ahead of the PO's review so the queue never waits (bulk
+// prefetch). Capped: each generation is a full agent task on the workspace,
+// and the "workspace" rate-limit tier allows 10 requests/min — three rolling
+// starts stay well under both.
+const MAX_CONCURRENT_GENERATIONS = 3;
+
+interface EntryState {
+  /** queued → generating (task streaming) → ready | error */
+  status: "queued" | "generating" | "ready" | "error";
+  taskId: string | null;
+  doc: string;
+  classification: TestDocClassification;
+  unstructured: boolean;
+  error: string | null;
+}
+
+function initialEntry(): EntryState {
+  return { status: "queued", taskId: null, doc: "", classification: "ok", unstructured: false, error: null };
+}
+
+/** Invisible per-task SSE subscriber; unmounts (closing the stream) once its entry resolves. */
+function TaskStreamWatcher({
+  taskId,
+  onProgress,
+  onResult,
+  onError,
+}: {
+  taskId: string;
+  onProgress: (message: string) => void;
+  onResult: (output: string) => void;
+  onError: (message: string) => void;
+}) {
+  useTaskStream(taskId, {
+    timeout: 0,
+    onProgress,
+    onToolCall: (tool) => onProgress(`Using ${tool.replace("mcp__", "")}...`),
+    onResult: (resultData) => onResult((resultData.output as string) ?? ""),
+    onError: (message) => onError(friendlyStreamError(message)),
+    onNetworkError: () => onError("Connection to workspace lost"),
+  });
+  return null;
+}
 
 interface TestDocReviewModalProps {
   /** Queue of ticket keys to generate + validate; a single key is the non-bulk case. */
@@ -27,154 +68,193 @@ interface TestDocReviewModalProps {
  * Split-view validation for generated stakeholder test docs (BRDG-426).
  * Left: the editable generated markdown. Right: the story rendered in the
  * regular ticket format, so the PO validates with the story actually visible.
- * Bulk mode runs the same flow as a sequential queue (Save/Skip advance).
+ *
+ * Bulk mode prefetches: all generations start immediately (rolling, capped),
+ * the first result shows as soon as it lands, and the rest generate while the
+ * PO reviews — advancing to an already-finished doc is instant.
  */
 export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   const [index, setIndex] = useState(0);
-  const [phase, setPhase] = useState<Phase>("generating");
-  const [taskId, setTaskId] = useState<string | null>(null);
-  const [progress, setProgress] = useState("Starting...");
-  const [docText, setDocText] = useState("");
-  const [classification, setClassification] = useState<TestDocClassification>("ok");
-  const [unstructured, setUnstructured] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [entries, setEntries] = useState<Record<string, EntryState>>(() =>
+    Object.fromEntries(keys.map((k) => [k, initialEntry()])),
+  );
+  const [progressByKey, setProgressByKey] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
 
   const currentKey = keys[index] ?? null;
   const isBulk = keys.length > 1;
   const isLast = index >= keys.length - 1;
+  const entry = currentKey ? entries[currentKey] : null;
 
   const { data: detail } = useTicketDetail(currentKey);
 
-  // No synchronous setState here: this runs from an effect, and the queue-reset
-  // state (phase/progress/taskId) is handled by resetForNext in event handlers.
-  // A failed POST must land in a terminal review state (spinner off, Regenerate
-  // enabled), not spin forever next to the error banner.
+  const patchEntry = useCallback((key: string, patch: Partial<EntryState>) => {
+    setEntries((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  }, []);
+
+  // POST the generation for one key. Failures land the entry in a terminal
+  // error state (spinner off, Regenerate enabled), never an endless spinner.
   const startGeneration = useCallback((key: string) => {
     ticketsApi
       .generateTestDoc(key)
       .then((data) => {
         if (!data.taskId) {
-          setError("No task ID returned from workspace");
-          setPhase("review");
+          patchEntry(key, { status: "error", error: "No task ID returned from workspace" });
           return;
         }
-        setTaskId(data.taskId);
+        patchEntry(key, { status: "generating", taskId: data.taskId });
       })
       .catch((err) => {
-        setError(err instanceof ApiError ? err.message : "Failed to start generation");
-        setPhase("review");
+        patchEntry(key, {
+          status: "error",
+          error: err instanceof ApiError ? err.message : "Failed to start generation",
+        });
       });
-  }, []);
+  }, [patchEntry]);
 
-  // Kick off generation once per queue entry; Save/Skip reset the phase in
-  // their handlers, this effect only fires the request (no sync setState).
-  const startedForRef = useRef<string | null>(null);
+  // Scheduler: keep up to MAX_CONCURRENT_GENERATIONS running ahead of the
+  // review. startedRef guards double-starts (the effect re-runs on every
+  // entries change); no synchronous setState here — starts resolve async.
+  const startedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!currentKey || startedForRef.current === currentKey) return;
-    startedForRef.current = currentKey;
-    startGeneration(currentKey);
-  }, [currentKey, startGeneration]);
+    const inFlight = keys.filter((k) => {
+      const e = entries[k];
+      return startedRef.current.has(k) && e && (e.status === "queued" || e.status === "generating");
+    }).length;
+    let slots = MAX_CONCURRENT_GENERATIONS - inFlight;
+    if (slots <= 0) return;
+    for (const key of keys) {
+      if (slots <= 0) break;
+      if (startedRef.current.has(key) || entries[key]?.status !== "queued") continue;
+      startedRef.current.add(key);
+      startGeneration(key);
+      slots -= 1;
+    }
+  }, [keys, entries, startGeneration]);
 
-  useTaskStream(taskId, {
-    timeout: 0,
-    onProgress: (message) => setProgress(message),
-    onToolCall: (tool) => setProgress(`Using ${tool.replace("mcp__", "")}...`),
-    onResult: (resultData) => {
-      const output = (resultData.output as string) ?? "";
+  const handleTaskResult = useCallback(
+    (key: string, output: string) => {
       const parsed = parseTestDoc(output);
       if (parsed) {
-        setDocText(parsed.markdown);
-        setClassification(parsed.classification);
-        setUnstructured(false);
+        patchEntry(key, {
+          status: "ready",
+          doc: parsed.markdown,
+          classification: parsed.classification,
+          unstructured: false,
+        });
       } else {
         // Degrade gracefully: let the PO salvage the raw output by hand.
-        setDocText(output.trim());
-        setClassification("ok");
-        setUnstructured(true);
+        patchEntry(key, { status: "ready", doc: output.trim(), classification: "ok", unstructured: true });
       }
-      setPhase("review");
     },
-    onError: (message) => {
-      setError(friendlyStreamError(message));
-      setPhase("review");
-    },
-    onNetworkError: () => {
-      setError("Connection to workspace lost");
-      setPhase("review");
-    },
-  });
+    [patchEntry],
+  );
 
-  const resetForNext = useCallback(() => {
-    setPhase("generating");
-    setTaskId(null);
-    setProgress("Starting...");
-    setDocText("");
-    setClassification("ok");
-    setUnstructured(false);
-    setError(null);
-    setConflictMessage(null);
-  }, []);
+  const handleTaskError = useCallback(
+    (key: string, message: string) => {
+      patchEntry(key, { status: "error", error: message });
+    },
+    [patchEntry],
+  );
+
+  // Closing mid-queue cancels the generations still in flight so the
+  // workspace stops burning tokens on docs nobody will review.
+  const handleClose = useCallback(() => {
+    for (const key of keys) {
+      const e = entries[key];
+      if (e && e.status === "generating" && e.taskId) {
+        workspaceTasks.cancel(e.taskId).catch(() => {});
+      }
+    }
+    onClose();
+  }, [entries, keys, onClose]);
 
   const advance = useCallback(() => {
     if (isLast) {
-      onClose();
+      handleClose();
       return;
     }
-    resetForNext();
+    setConflictMessage(null);
     setIndex((i) => i + 1);
-  }, [isLast, onClose, resetForNext]);
+  }, [isLast, handleClose]);
 
   const handleSave = useCallback(async () => {
-    if (!currentKey || !docText.trim()) return;
-    setPhase("saving");
-    setError(null);
+    if (!currentKey || !entry || !entry.doc.trim()) return;
+    setSaving(true);
+    patchEntry(currentKey, { error: null });
     try {
       const result = await ticketsApi.saveTestDoc(currentKey, {
-        markdown: docText.trim(),
-        classification,
+        markdown: entry.doc.trim(),
+        classification: entry.classification,
       });
       // Refresh an open detail panel; the server cache is already invalidated.
       void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
+      setSaving(false);
       if (result.conflict) {
         // Bridge copy is saved; the description merge stays as a local edit for
         // the regular conflict-resolve flow. Tell the PO instead of advancing.
         setConflictMessage(result.message ?? "Jira was updated since your edit.");
-        setPhase("review");
         return;
       }
       advance();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save test documentation");
-      setPhase("review");
+      setSaving(false);
+      patchEntry(currentKey, {
+        error: err instanceof ApiError ? err.message : "Failed to save test documentation",
+      });
     }
-  }, [advance, classification, currentKey, docText, mutate]);
+  }, [advance, currentKey, entry, mutate, patchEntry]);
 
+  // Regenerate bypasses the concurrency cap: the PO is actively waiting on
+  // this one, unlike the background prefetch.
   const handleRegenerate = useCallback(() => {
     if (!currentKey) return;
-    resetForNext();
+    setConflictMessage(null);
+    patchEntry(currentKey, initialEntry());
+    startedRef.current.add(currentKey);
     startGeneration(currentKey);
-  }, [currentKey, resetForNext, startGeneration]);
+  }, [currentKey, patchEntry, startGeneration]);
 
   const handleDocChange = useCallback(
     (value: string) => {
-      setDocText(value);
+      if (!currentKey || !entry) return;
       // A needs_input result blocks Save until the PO writes real content —
       // once they do, it IS validated documentation.
-      if (classification === "needs_input") setClassification("ok");
+      patchEntry(currentKey, {
+        doc: value,
+        classification: entry.classification === "needs_input" ? "ok" : entry.classification,
+      });
     },
-    [classification],
+    [currentKey, entry, patchEntry],
   );
 
-  if (!currentKey) return null;
+  if (!currentKey || !entry) return null;
 
-  const generating = phase === "generating";
+  const generating = entry.status === "queued" || entry.status === "generating";
+  // Prefetched docs waiting beyond the current one — tells the PO that
+  // advancing will be instant.
+  const readyAhead = keys.slice(index + 1).filter((k) => entries[k]?.status === "ready").length;
   const saveDisabled =
-    generating || phase === "saving" || !docText.trim() || classification === "needs_input";
+    generating || saving || !entry.doc.trim() || entry.classification === "needs_input";
 
   return (
-    <Modal open onClose={onClose} aria-label={`Test documentation for ${currentKey}`}>
+    <Modal open onClose={handleClose} aria-label={`Test documentation for ${currentKey}`}>
+      {/* Background prefetch streams; each unmounts when its entry resolves. */}
+      {keys.map((key) => {
+        const e = entries[key];
+        if (!e || e.status !== "generating" || !e.taskId) return null;
+        return (
+          <TaskStreamWatcher
+            key={e.taskId}
+            taskId={e.taskId}
+            onProgress={(message) => setProgressByKey((prev) => ({ ...prev, [key]: message }))}
+            onResult={(output) => handleTaskResult(key, output)}
+            onError={(message) => handleTaskError(key, message)}
+          />
+        );
+      })}
       <div className="flex h-[min(760px,88vh)] w-[min(1180px,94vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
@@ -199,6 +279,9 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                 className="rounded-md bg-overlay-subtle px-2 py-0.5 font-mono text-body-sm text-text-tertiary"
               >
                 {index + 1} / {keys.length}
+                {readyAhead > 0 && (
+                  <span className="text-text-muted"> &middot; {readyAhead} ready</span>
+                )}
               </span>
             )}
             <Button
@@ -206,7 +289,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
               size="sm"
               iconOnly
               icon={<X size={14} strokeWidth={1.5} />}
-              onClick={onClose}
+              onClick={handleClose}
               className="text-text-muted"
               aria-label="Close"
             />
@@ -216,25 +299,25 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
         {/* Body: doc left, story right */}
         <div className="grid min-h-0 flex-1 grid-cols-2">
           <div className="flex min-h-0 flex-col gap-3 border-r border-border-subtle p-4">
-            {unstructured && !generating && (
+            {entry.unstructured && !generating && (
               <InlineAlert variant="warning">
                 The workspace returned unstructured output — review it carefully before saving.
               </InlineAlert>
             )}
-            {classification === "needs_input" && !generating && (
+            {entry.classification === "needs_input" && !generating && (
               <InlineAlert variant="warning">
                 The story lacks enough context for meaningful test documentation (empty or
                 template-only description). Complete the story first, or write the checks
                 yourself below to enable saving.
               </InlineAlert>
             )}
-            {classification === "not_stakeholder_relevant" && !generating && (
+            {entry.classification === "not_stakeholder_relevant" && !generating && (
               <InlineAlert variant="info">
                 Classified as not stakeholder-testable (internal change, spike or chore).
                 Saving stores the one-line mention so the sprint delivery stays complete.
               </InlineAlert>
             )}
-            {error && <InlineAlert variant="error">{error}</InlineAlert>}
+            {entry.error && <InlineAlert variant="error">{entry.error}</InlineAlert>}
             {conflictMessage && (
               <InlineAlert variant="warning">
                 Saved in Bridge, but the Jira push hit a conflict: {conflictMessage} Resolve it
@@ -245,12 +328,12 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-text-tertiary">
                 <Loader2 size={20} strokeWidth={1.75} className="animate-spin text-[var(--color-brand-400)]" />
                 <p className="max-w-[320px] truncate text-body-sm" data-testid="test-doc-progress">
-                  {progress}
+                  {progressByKey[currentKey] ?? "Starting..."}
                 </p>
               </div>
             ) : (
               <textarea
-                value={docText}
+                value={entry.doc}
                 onChange={(e) => handleDocChange(e.target.value)}
                 spellCheck={false}
                 placeholder="Generated test documentation (markdown)..."
@@ -292,11 +375,11 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
 
         {/* Footer */}
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-5 py-3.5">
-          <Button variant="ghost" size="md" onClick={onClose}>
+          <Button variant="ghost" size="md" onClick={handleClose}>
             Cancel
           </Button>
           {isBulk && (
-            <Button variant="ghost" size="md" onClick={advance} disabled={phase === "saving"}>
+            <Button variant="ghost" size="md" onClick={advance} disabled={saving}>
               Skip
             </Button>
           )}
@@ -304,7 +387,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
             variant="secondary"
             size="md"
             onClick={handleRegenerate}
-            disabled={generating || phase === "saving"}
+            disabled={generating || saving}
             icon={<RefreshCw size={12} strokeWidth={2} />}
           >
             Regenerate
@@ -315,7 +398,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
             </Button>
           ) : (
             <Button variant="primary" size="md" onClick={handleSave} disabled={saveDisabled}>
-              {phase === "saving" ? "Saving..." : "Save"}
+              {saving ? "Saving..." : "Save"}
             </Button>
           )}
         </div>
