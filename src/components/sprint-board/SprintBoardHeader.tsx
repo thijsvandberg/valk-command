@@ -53,6 +53,8 @@ interface SprintBoardHeaderProps {
   handleSprintListSelect: (sprintId: string) => void;
   handleAddSlotWithSprint: (sprintId: string) => void;
   onFinishSprint: (early: boolean) => void;
+  /** Opens the sprint test-documentation bundle for the active sprint (BRDG-461). */
+  onSprintTestDocs?: (sprintId: string) => void;
 }
 
 export function SprintBoardHeader(props: SprintBoardHeaderProps) {
@@ -61,7 +63,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
     stats, sprintWorkDays, slotSprints, activeSlot, showToast,
     activeView, filters, analyticsVisible, setAnalyticsVisible, planningVisible, setPlanningVisible,
     setSearchModalOpen, setEditModalOpen,
-    handleSprintListSelect, handleAddSlotWithSprint, onFinishSprint,
+    handleSprintListSelect, handleAddSlotWithSprint, onFinishSprint, onSprintTestDocs,
   } = props;
 
   // The sprint's end date has effectively passed once no working days remain
@@ -286,6 +288,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
               jiraUrl={getJiraSprintUrl(activeSprint.id)}
               onCloseSprint={() => onFinishSprint(!endReached)}
               onStartSprint={() => setEditModalOpen(true)}
+              onTestDocs={onSprintTestDocs ? () => onSprintTestDocs(activeSprint!.id) : undefined}
             />
           </span>
           )

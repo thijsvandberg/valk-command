@@ -1067,6 +1067,35 @@ export const confluence = {
 };
 
 // ---------------------------------------------------------------------------
+// Sprints
+// ---------------------------------------------------------------------------
+
+// Sprint-level test documentation bundle (BRDG-461).
+export interface SprintTestDocItem {
+  key: string;
+  title: string;
+  status: string;
+  storyPoints: number | null;
+  doc: string | null;
+  needsInput?: boolean;
+}
+
+export interface SprintTestDocs {
+  sprintName: string;
+  documented: SprintTestDocItem[];
+  internal: SprintTestDocItem[];
+  missing: SprintTestDocItem[];
+  other: SprintTestDocItem[];
+}
+
+export const sprints = {
+  testDocsUrl: (sprintId: string) =>
+    `/api/sprints/${encodeURIComponent(sprintId)}/test-docs` as const,
+  testDocs: (sprintId: string, signal?: AbortSignal) =>
+    apiFetch<SprintTestDocs>(`/api/sprints/${encodeURIComponent(sprintId)}/test-docs`, { signal }),
+};
+
+// ---------------------------------------------------------------------------
 // Sprint Slots
 // ---------------------------------------------------------------------------
 

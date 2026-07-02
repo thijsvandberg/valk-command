@@ -1,5 +1,21 @@
 # Implementation Performance Log
 
+## BRDG-426 — stakeholder test-doc generation (2026-07-02, in progress with BRDG-461)
+
+DB migration + VRW skill + 2 routes + split-view modal + 3 entry points + 31 tests; full suite 7455 green, build green. One browser-e2e round (sonnet subagent) + direct-API e2e for the save path.
+
+| Phase | Notes |
+|---|---|
+| Plan (subagent) | Accurate file/function anchors; flagged the pushToJira-pushes-all-edits caveat upfront |
+| Implement | Smooth; one import path miss (parseJsonBody lives in request-parser, not api-response) |
+| Browser e2e #1 (sonnet) | Found the real blocker: VRW skill needs a SKILL_REGISTRY entry in src/skills.ts, the .md alone → "Unknown skill". Also found the spinner-never-stops-on-start-failure UX bug. ~13 min, 107 tool uses |
+| Save-path e2e (direct API) | Switched from a second browser agent to curl/python against the dev server after the PO flagged slow, opaque progress — minutes instead of tens of minutes, same coverage (generate → save → verify 1 expand block → re-save → still 1 block) |
+
+Key bottlenecks / lessons:
+- **VRW skills are registry+prompt, not prompt-only** (cost one full browser round trip; memory note `project_vrw_skill_registration` added).
+- **Browser subagents are the wrong tool for API-verifiable checks.** The UI structure needed a browser once; the persistence semantics didn't. Direct API verification was ~10x faster and visible to the PO step-by-step.
+- **Real-data edge case:** VPL-1337's 32.5k description sat just under Jira's ~32.7k description cap; appending the expand block tripped `CONTENT_LIMIT_EXCEEDED`. Bridge copy retained by design; lingering local edit documented as a known limitation in the story.
+
 ## BRDG-458 — audit and fix top-level swr mutate no-ops app-wide (2026-07-01)
 
 27 files audited (every one broken, none harmless), fixed via `useSWRConfig().mutate` in hooks/components and a new `scopedMutate` registry for the 4 non-hook cache modules; 14 false-positive test mocks converted; lint guard added and probe-verified; 3 live browser verifications by subagents (2x sonnet, 1x opus), all PASS. 7 logical commits; full suite 7365 green; build green.

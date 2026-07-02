@@ -1,0 +1,205 @@
+"use client";
+
+import { useCallback, useMemo } from "react";
+import useSWR from "swr";
+import { Modal } from "@/components/shared/Modal";
+import { Button } from "@/components/ui/Button";
+import { InlineAlert } from "@/components/shared/InlineAlert";
+import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
+import { swrFetcher, sprints, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
+import type { ShowToast } from "@/hooks/useToast";
+import { ClipboardCopy, FileCheck2, Loader2, X } from "lucide-react";
+
+interface SprintTestDocsModalProps {
+  sprintId: string;
+  onClose: () => void;
+  /** Feeds the missing keys into the BRDG-426 generate + validate queue. */
+  onGenerateMissing: (keys: string[]) => void;
+  showToast: ShowToast;
+}
+
+/**
+ * Build the copy-pasteable stakeholder document: validated blocks first (big
+ * features lead, matching the manual BT-style deliverables), internal
+ * one-liners under a Misc header. No ticket keys — the reader is the customer.
+ */
+export function buildTestDocDocument(data: SprintTestDocs): string {
+  const parts: string[] = data.documented
+    .filter((d) => d.doc)
+    .map((d) => d.doc!.trim());
+  const internal = data.internal.filter((d) => d.doc).map((d) => d.doc!.trim());
+  if (internal.length > 0) {
+    parts.push(`**Misc**\n\n${internal.join("\n\n")}`);
+  }
+  return parts.join("\n\n");
+}
+
+function KeyChip({ item }: { item: SprintTestDocItem }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 font-mono text-caption text-text-muted">
+      {item.key}
+      {item.needsInput && (
+        <span className="rounded bg-[var(--color-status-warning-subtle)] px-1 py-px text-caption font-medium text-[var(--color-status-warning)]">
+          needs input
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Sprint-level test documentation bundle (BRDG-461): every validated per-story
+ * doc in delivery order, the internal one-liners as a Misc tail, and the
+ * missing overview so gaps are visible before the sprint is delivered.
+ */
+export function SprintTestDocsModal({
+  sprintId,
+  onClose,
+  onGenerateMissing,
+  showToast,
+}: SprintTestDocsModalProps) {
+  const { data, error } = useSWR<SprintTestDocs>(sprints.testDocsUrl(sprintId), swrFetcher, {
+    revalidateOnFocus: false,
+  });
+
+  const document = useMemo(() => (data ? buildTestDocDocument(data) : ""), [data]);
+  const hasContent = document.trim().length > 0;
+
+  const handleCopy = useCallback(() => {
+    if (!hasContent) return;
+    navigator.clipboard
+      .writeText(document)
+      .then(() => showToast("Test document copied to clipboard"))
+      .catch(() => showToast("Copy failed — clipboard unavailable"));
+  }, [document, hasContent, showToast]);
+
+  const handleGenerateMissing = useCallback(() => {
+    if (!data || data.missing.length === 0) return;
+    onGenerateMissing(data.missing.map((m) => m.key));
+  }, [data, onGenerateMissing]);
+
+  return (
+    <Modal open onClose={onClose} aria-label="Sprint test documentation">
+      <div className="flex h-[min(720px,86vh)] w-[min(860px,92vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-500)]/12 ring-1 ring-[var(--color-brand-500)]/20 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_15%,transparent)]">
+              <FileCheck2 size={16} strokeWidth={1.75} className="text-[var(--color-brand-400)]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-body font-semibold leading-tight text-text-primary">
+                Test documentation
+              </p>
+              <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
+                {data?.sprintName ?? "…"}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon={<X size={14} strokeWidth={1.5} />}
+            onClick={onClose}
+            className="shrink-0 text-text-muted"
+            aria-label="Close"
+          />
+        </div>
+
+        {/* Body */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {error && <InlineAlert variant="error">Failed to load test documentation.</InlineAlert>}
+          {!data && !error && (
+            <div className="flex h-40 items-center justify-center text-text-muted">
+              <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
+            </div>
+          )}
+          {data && (
+            <div className="flex flex-col gap-4">
+              {/* Missing overview first: the gap list is what blocks delivery. */}
+              {data.missing.length > 0 && (
+                <div
+                  data-testid="test-docs-missing"
+                  className="rounded-xl border border-[var(--color-status-warning)]/25 bg-[var(--color-status-warning-subtle)] p-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-body-sm font-medium text-[var(--color-status-warning)]">
+                      {data.missing.length} finished {data.missing.length === 1 ? "story misses" : "stories miss"} test documentation
+                    </p>
+                    <Button variant="secondary" size="sm" onClick={handleGenerateMissing}>
+                      Generate missing ({data.missing.length})
+                    </Button>
+                  </div>
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {data.missing.map((m) => (
+                      <li key={m.key} className="flex items-baseline gap-2 text-body-sm text-text-secondary">
+                        <span className="font-mono text-caption text-text-muted">{m.key}</span>
+                        <span className="truncate">{m.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {data.documented.length === 0 && data.internal.length === 0 && (
+                <p className="py-8 text-center text-body-lg text-text-muted">
+                  No test documentation saved for this sprint yet.
+                </p>
+              )}
+
+              {data.documented.map((item) => (
+                <div
+                  key={item.key}
+                  data-testid="test-docs-block"
+                  className="rounded-xl border border-border-subtle bg-surface-base p-4"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <KeyChip item={item} />
+                  </div>
+                  <div className="description-content">{renderMarkdown(item.doc ?? "")}</div>
+                </div>
+              ))}
+
+              {data.internal.length > 0 && (
+                <div data-testid="test-docs-misc" className="rounded-xl border border-border-subtle bg-surface-base p-4">
+                  <p className="mb-2 text-body font-semibold text-text-primary">Misc</p>
+                  <div className="flex flex-col gap-3">
+                    {data.internal.map((item) => (
+                      <div key={item.key}>
+                        <KeyChip item={item} />
+                        <div className="description-content mt-1">{renderMarkdown(item.doc ?? "")}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {data.other.length > 0 && (
+                <p className="text-body-sm text-text-muted">
+                  Not counted as missing ({data.other.map((o) => o.key).join(", ")}): not in DONE or Test yet.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-5 py-3.5">
+          <Button variant="ghost" size="md" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleCopy}
+            disabled={!hasContent}
+            icon={<ClipboardCopy size={12} strokeWidth={2} />}
+          >
+            Copy document
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

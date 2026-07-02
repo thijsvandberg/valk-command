@@ -29,6 +29,8 @@ interface SingleSprintHeaderProps {
   onPinSprint: (id: string) => void;
   onEditSprintDetails: (id: string) => void;
   onCloseSprintFromGroup: (id: string) => void;
+  /** Opens the sprint test-documentation bundle (BRDG-461). */
+  onSprintTestDocs?: (id: string) => void;
   onSyncGroup: (target: GroupSyncTarget, onProgress: (p: GroupSyncProgress) => void) => Promise<GroupSyncResult>;
   planningVisible: boolean;
   pencilCapacityMap: Record<string, number | null>;
@@ -70,6 +72,7 @@ export const SingleSprintHeader = memo(function SingleSprintHeader({
   slotSprintsSet,
   onPinSprint,
   onEditSprintDetails,
+  onSprintTestDocs,
   onCloseSprintFromGroup,
   onSyncGroup,
   planningVisible,
@@ -176,6 +179,7 @@ export const SingleSprintHeader = memo(function SingleSprintHeader({
             sprint: activeSprint,
             onEditSprintDetails: () => onEditSprintDetails(key),
             onCloseSprint: activeSprint.state === "active" ? () => onCloseSprintFromGroup(key) : undefined,
+            onTestDocs: onSprintTestDocs ? () => onSprintTestDocs(key) : undefined,
             // Start happens inside the edit modal (date validation + Start button live there).
             onStartSprint: activeSprint.state === "future" ? () => onEditSprintDetails(key) : undefined,
             onSync: (onProgress: (p: GroupSyncProgress) => void) => onSyncGroup({ kind: "sprint", id: key, label }, onProgress),

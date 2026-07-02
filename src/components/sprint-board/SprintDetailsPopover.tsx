@@ -7,7 +7,7 @@ import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/g
 import { Popover } from "@/components/shared/Popover";
 import { MenuItem } from "@/components/shared/MenuItem";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { Sparkles, ExternalLink, CircleCheck, Play, RefreshCw, Check, Settings2, Gauge } from "lucide-react";
+import { Sparkles, ExternalLink, CircleCheck, Play, RefreshCw, Check, Settings2, Gauge, FileCheck2 } from "lucide-react";
 import Link from "next/link";
 
 interface SprintDetailsPopoverProps {
@@ -22,6 +22,8 @@ interface SprintDetailsPopoverProps {
   goalSuggestionUrl?: string | null;
   /** When provided and the sprint is active, shows a "Close sprint" action. */
   onCloseSprint?: () => void;
+  /** Opens the sprint test-documentation bundle modal (BRDG-461). Sprint kind only. */
+  onTestDocs?: () => void;
   /** When provided and the sprint is in the future, shows a "Start sprint" action. */
   onStartSprint?: () => void;
   /** When provided, shows an "Open in Jira" link to the sprint's board backlog. */
@@ -62,6 +64,7 @@ export function SprintDetailsPopover({
   onSuggestGoal,
   goalSuggestionUrl,
   onCloseSprint,
+  onTestDocs,
   onStartSprint,
   jiraUrl,
   onToggleCapacityMeter,
@@ -157,6 +160,16 @@ export function SprintDetailsPopover({
     items.push(
       <MenuItem key="settings" onClick={() => { onClose(); onEdit(); }} icon={<Settings2 size={13} strokeWidth={1.5} />}>
         <span>Sprint settings</span>
+      </MenuItem>,
+    );
+  }
+
+  // Sprint test-documentation bundle (BRDG-461): the copy-pasteable delivery
+  // document + missing overview. Sprint groups only; epics have no delivery doc.
+  if (onTestDocs && kind === "sprint" && sprint) {
+    items.push(
+      <MenuItem key="test-docs" onClick={() => { onClose(); onTestDocs(); }} icon={<FileCheck2 size={13} strokeWidth={1.5} />}>
+        <span>Test documentation</span>
       </MenuItem>,
     );
   }

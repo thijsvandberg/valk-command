@@ -179,6 +179,7 @@ export function TicketTable({
   pinnedSprintIds,
   onPinSprint,
   onEditSprint,
+  onSprintTestDocs,
   onCloseSprint,
   onSyncGroup,
   flatHeader,
@@ -284,6 +285,8 @@ export function TicketTable({
   onPinSprint?: (sprintId: string) => void;
   // When grouping by sprint, open the goal/dates editor or close (finish) a sprint group. Key is the sprint id.
   onEditSprint?: (sprintId: string) => void;
+  /** Opens the sprint test-documentation bundle for a group's sprint (BRDG-461). */
+  onSprintTestDocs?: (sprintId: string) => void;
   onCloseSprint?: (sprintId: string) => void;
   // Runs a tranched Jira sync of a whole sprint or epic group, reporting progress.
   onSyncGroup?: (target: GroupSyncTarget, onProgress: (p: GroupSyncProgress) => void) => Promise<GroupSyncResult>;
@@ -970,6 +973,7 @@ export function TicketTable({
                       sprint: groupSprint,
                       onEditSprintDetails: onEditSprint ? () => onEditSprint(group.key) : undefined,
                       onCloseSprint: onCloseSprint && groupSprint.state === "active" ? () => onCloseSprint(group.key) : undefined,
+                      onTestDocs: onSprintTestDocs ? () => onSprintTestDocs(group.key) : undefined,
                     }
                   : {})}
                 {...(groupSyncHandler && syncTarget

@@ -209,6 +209,11 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   (`test_doc*` columns) and writes exactly one `:::expand Test documentation` block at the end
   of the Jira description through the regular `upsertLocalEdit` + `pushToJira` path
   (`src/lib/test-doc.ts` strips/appends the block). Draft keys 409 in both routes.
+- **Sprint delivery** (BRDG-461): the sprint "..." menu (`SprintDetailsPopover`) opens
+  `SprintTestDocsModal`, which reads `GET /api/sprints/[id]/test-docs` — validated blocks in
+  delivery order, internal one-liners as a Misc tail, and the missing overview (DONE/TEST
+  without a doc). "Copy document" puts the stakeholder markdown on the clipboard; "Generate
+  missing" feeds the gap keys back into the BRDG-426 validation queue.
 
 ### already-built topic (BRDG-287)
 

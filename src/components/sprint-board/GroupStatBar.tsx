@@ -99,6 +99,8 @@ export interface GroupStatBarProps {
   onCloseSprint?: () => void;
   /** Starts (activates) this group's sprint. Only surfaced for future sprints. */
   onStartSprint?: () => void;
+  /** Opens the sprint test-documentation bundle modal (BRDG-461). */
+  onTestDocs?: () => void;
   /**
    * Runs a tranched sync of this group (sprint or epic) from Jira, reporting
    * progress. When provided, the "..." menu's first level exposes a Sync action.
@@ -233,6 +235,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   onEditSprintDetails,
   onCloseSprint,
   onStartSprint,
+  onTestDocs,
   onSync,
   syncKind,
   createAction,
@@ -700,6 +703,7 @@ export const GroupStatBar = memo(function GroupStatBar({
                     onEdit: onEditSprintDetails ? () => onEditSprintDetails() : undefined,
                     onCloseSprint: onCloseSprint ? () => onCloseSprint() : undefined,
                     onStartSprint: onStartSprint ? () => onStartSprint() : undefined,
+                    onTestDocs: onTestDocs ? () => onTestDocs() : undefined,
                     onToggleCapacityMeter: planningOn && onToggleCapacityMeter ? () => onToggleCapacityMeter() : undefined,
                     capacityMeterShown,
                   }
