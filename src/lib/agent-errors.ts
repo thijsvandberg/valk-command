@@ -27,6 +27,24 @@ export function friendlyAgentError(
   return fallback;
 }
 
+/**
+ * Activity-log errorDetail may hold a JSON-stringified agent error body
+ * ({code, error, httpStatus, ...}). Render the friendly message for those;
+ * plain strings pass through unchanged.
+ */
+export function friendlyErrorDetail(detail: string | null): string | null {
+  if (!detail || !detail.trim().startsWith("{")) return detail;
+  try {
+    const parsed: unknown = JSON.parse(detail);
+    if (parsed && typeof parsed === "object") {
+      return friendlyAgentError(parsed as { error?: string; code?: string }, detail);
+    }
+    return detail;
+  } catch {
+    return detail;
+  }
+}
+
 const RETRYABLE_PATTERN = /usage.?policy|content.?policy|violat/i;
 
 /**

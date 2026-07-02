@@ -6,6 +6,7 @@ import { CheckCircle2, AlertTriangle, X, RotateCw, ArrowRight } from "lucide-rea
 import { useActivityContext } from "@/contexts/ActivityContext";
 import { Button } from "@/components/ui/Button";
 import { mapPushErrorMessage } from "@/lib/push-error-message";
+import { friendlyErrorDetail } from "@/lib/agent-errors";
 
 export function ActivityToast() {
   const { toasts, dismissToast, acknowledgeError, retryEntry } = useActivityContext();
@@ -35,7 +36,7 @@ export function ActivityToast() {
           id={toast.id}
           status={toast.entry.status}
           summary={toast.entry.summary}
-          error={isPush ? mapPushErrorMessage(toast.entry.errorDetail, { short: true }) : toast.entry.errorDetail}
+          error={isPush ? mapPushErrorMessage(toast.entry.errorDetail, { short: true }) : friendlyErrorDetail(toast.entry.errorDetail)}
           link={ticketKey ? { href: `/tickets/${encodeURIComponent(ticketKey)}`, label: `Open ${ticketKey}` } : undefined}
           retryable={toast.entry.status === "failed" && ["sprint-sync", "ticket-sync", "comment-sync", "incremental-sync"].includes(toast.entry.type)}
           onRetry={() => retryEntry(toast.id)}

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { friendlyAgentError, friendlyStreamError, isRetryableStreamError } from "./agent-errors";
+import { friendlyAgentError, friendlyErrorDetail, friendlyStreamError, isRetryableStreamError } from "./agent-errors";
 
 describe("friendlyAgentError", () => {
   it("returns friendly message for known error codes", () => {
@@ -44,6 +44,36 @@ describe("friendlyAgentError", () => {
 
   it("returns fallback for empty object", () => {
     expect(friendlyAgentError({})).toBe("Something went wrong");
+  });
+});
+
+describe("friendlyErrorDetail", () => {
+  it("maps a JSON-stringified agent error body to the friendly message", () => {
+    expect(
+      friendlyErrorDetail('{"code":"UNREACHABLE","error":"Cannot reach workspace","httpStatus":502,"retryCount":2}'),
+    ).toBe("Cannot reach the workspace. Is it running?");
+  });
+
+  it("falls back to the embedded error string for unknown codes", () => {
+    expect(
+      friendlyErrorDetail('{"code":"WEIRD","error":"Something odd happened"}'),
+    ).toBe("Something odd happened");
+  });
+
+  it("passes plain strings through unchanged", () => {
+    expect(friendlyErrorDetail("Jira returned 500")).toBe("Jira returned 500");
+  });
+
+  it("passes malformed JSON through unchanged", () => {
+    expect(friendlyErrorDetail("{not json")).toBe("{not json");
+  });
+
+  it("returns the raw detail when JSON has no code/error fields", () => {
+    expect(friendlyErrorDetail('{"foo":1}')).toBe('{"foo":1}');
+  });
+
+  it("handles null", () => {
+    expect(friendlyErrorDetail(null)).toBeNull();
   });
 });
 

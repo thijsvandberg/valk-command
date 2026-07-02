@@ -100,7 +100,10 @@ export function collectNewToasts(entries: ActivityLogEntry[], knownIds: Set<stri
     if (entry.status === "running") continue;
     if (knownIds.has(entry.id)) continue;
     knownIds.add(entry.id);
-    if (entry.status === "failed") {
+    // Story writer send failures already surface inline on the failed message
+    // (BRDG-459); toasting them too would duplicate the error. They stay
+    // visible in the Activity Log page and the unacknowledged-error state.
+    if (entry.status === "failed" && entry.type !== "story-writer") {
       newToasts.push({ id: entry.id, entry });
     }
   }

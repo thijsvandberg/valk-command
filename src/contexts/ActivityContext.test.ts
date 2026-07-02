@@ -83,6 +83,35 @@ describe("collectNewToasts", () => {
     expect(toasts.map((t) => t.id)).toEqual(["bad"]);
   });
 
+  it("never toasts failed story-writer entries (surfaced inline on the message, BRDG-459)", () => {
+    const knownIds = new Set<string>();
+    const failed = entry({
+      id: "sw-1",
+      type: "story-writer",
+      status: "failed",
+      errorDetail: '{"code":"UNREACHABLE","error":"Cannot reach workspace","httpStatus":502}',
+    });
+
+    const toasts = collectNewToasts([failed], knownIds);
+
+    expect(toasts).toHaveLength(0);
+    // Marked seen, so it does not resurface as a toast on a later poll either.
+    expect(knownIds.has("sw-1")).toBe(true);
+    expect(collectNewToasts([failed], knownIds)).toHaveLength(0);
+  });
+
+  it("still toasts failed entries of other types", () => {
+    const knownIds = new Set<string>();
+    const batch = [
+      entry({ id: "sw-1", type: "story-writer", status: "failed" }),
+      entry({ id: "sync-1", type: "ticket-sync", status: "failed" }),
+    ];
+
+    const toasts = collectNewToasts(batch, knownIds);
+
+    expect(toasts.map((t) => t.id)).toEqual(["sync-1"]);
+  });
+
   it("leaves running entries unmarked so their final status is evaluated later", () => {
     const knownIds = new Set<string>();
     const running = entry({ id: "a", status: "running", completedAt: null });
