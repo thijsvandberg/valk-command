@@ -84,7 +84,10 @@ Jira caps descriptions at ~32.7k characters. When the description is already nea
 
 Deferred (annotated, not blocking): comment freshness pre-sync before gathering.
 
-**Post-ship enhancement (2026-07-03, PO request):** bulk no longer generates one-at-a-time. All generations start on open (rolling prefetch, max 3 concurrent to respect the workspace rate tier), the first result shows as soon as it lands, and the rest generate while the PO reviews — Save/Skip advances instantly to prefetched docs ("N ready" indicator). Closing mid-queue cancels the in-flight tasks.
+**Post-ship enhancements (2026-07-03, PO requests):**
+1. Bulk no longer generates one-at-a-time. All generations start on open (rolling prefetch, max 3 concurrent to respect the workspace rate tier), the first result shows as soon as it lands, and the rest generate while the PO reviews — Save/Skip advances instantly to prefetched docs ("N ready" indicator). Closing mid-queue cancels the in-flight tasks.
+2. Draft cache: every completed generation is stored immediately in `ticket_metadata.test_doc_draft*` (never read by the BRDG-461 bundle). Reopening shows the cached draft — or the accepted doc — instantly with a provenance banner and a Regenerate escape hatch; accepting clears the draft.
+3. Skill calibration after first real output (VPL-46241 came out far too heavy): doc length must match story weight (normal story ≤ 3–5 short bullets), translation strings/tables are banned from the doc (one "check per language" line instead), verbatim quotes only for strings the tester must literally compare, and checks state what to verify — never why.
 
 ## Acceptance Criteria
 
