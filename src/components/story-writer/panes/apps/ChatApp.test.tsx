@@ -31,6 +31,10 @@ vi.mock("@/components/story-writer/ExecutionLogViewer", () => ({
   ),
 }));
 
+vi.mock("@/components/story-writer/WorkspaceStatusBadge", () => ({
+  WorkspaceStatusBadge: () => <div data-testid="workspace-status-badge" />,
+}));
+
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
 import { tickets } from "@/lib/api-client";
@@ -56,7 +60,7 @@ function makeWriterCtx(overrides = {}) {
     ticketData: null,
     onSend: vi.fn().mockResolvedValue(true),
     onRetry: vi.fn().mockResolvedValue(true),
-    onClearFailed: vi.fn().mockResolvedValue(undefined),
+    onDismissFailed: vi.fn().mockResolvedValue(undefined),
     onCancel: vi.fn().mockResolvedValue(undefined),
     onAcceptDraft: vi.fn().mockResolvedValue(undefined),
     onDismissDraft: vi.fn(),
@@ -178,6 +182,21 @@ describe("ChatApp", () => {
       expect(tickets.addJiraComment).toHaveBeenCalledWith("VPL-42", { content: "posted text" });
     });
     expect(mutateTicket).toHaveBeenCalled();
+  });
+
+  it("includes the workspace status badge in the toolbar actions (BRDG-459)", () => {
+    const registerToolbar = vi.fn();
+    (useWriterContext as ReturnType<typeof vi.fn>).mockReturnValue(makeWriterCtx());
+    (usePaneContext as ReturnType<typeof vi.fn>).mockReturnValue(
+      makePaneCtx({ registerToolbar })
+    );
+
+    render(<ChatApp />);
+
+    // The badge lives in the toolbar actions node, which AppToolbar renders elsewhere.
+    const actions = registerToolbar.mock.calls[0][1].actions;
+    render(actions);
+    expect(screen.getByTestId("workspace-status-badge")).toBeInTheDocument();
   });
 
   it("does not auto-send a title-suggestion message for an untitled draft with no messages", () => {

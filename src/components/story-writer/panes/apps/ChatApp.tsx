@@ -5,6 +5,7 @@ import { ScrollText } from "lucide-react";
 import type { IssueType } from "@/types/ticket";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { ExecutionLogViewer } from "@/components/story-writer/ExecutionLogViewer";
+import { WorkspaceStatusBadge } from "@/components/story-writer/WorkspaceStatusBadge";
 import { tickets } from "@/lib/api-client";
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
@@ -115,6 +116,7 @@ export function ChatApp() {
                 .join(" · ")}
             </span>
           )}
+          <WorkspaceStatusBadge />
         </div>
       ),
     });
@@ -143,7 +145,7 @@ export function ChatApp() {
           onModelChange={writer.onModelChange}
           onSend={writer.onSend}
           onRetry={writer.onRetry}
-          onClearFailed={writer.onClearFailed}
+          onDismissFailed={writer.onDismissFailed}
           onCancel={(writer.status === "streaming" || writer.status === "sending") ? writer.onCancel : undefined}
           onFindRelated={handleFindRelated}
           onOpenRelatedPanel={handleOpenRelatedPanel}
