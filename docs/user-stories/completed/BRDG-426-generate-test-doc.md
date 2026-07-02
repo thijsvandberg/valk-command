@@ -61,6 +61,10 @@ The generation recipe below was calibrated in-session against the manually writt
    - Jira: append an `:::expand Test documentation` block at the end of the description (via the existing markdown→ADF path). Re-saving **replaces** the existing block, never duplicates it. The separate "Test Scenarios" template section stays untouched (it can hold more extensive scenarios).
    - Read `docs/architecture/optimistic-updates.md` before wiring the description write; the local-edit/pending-edits overlay and sync freshness (`jira_updated_at`) interplay applies.
 
+### Known limitation (found in e2e)
+
+Jira caps descriptions at ~32.7k characters. When the description is already near that cap, the expand-block push fails with `CONTENT_LIMIT_EXCEEDED`: the Bridge copy IS saved and the error surfaces in the modal, but the merged description lingers as a local edit the PO must discard manually (ticket description editor → discard). Rare in practice (only VPL-1337's lorem-ipsum test description hit it); revisit if it shows up on real tickets.
+
 ### Out of scope
 
 - Sprint-level bundle, copy-paste export, missing-doc overview → [[BRDG-461-sprint-test-doc-delivery]].
