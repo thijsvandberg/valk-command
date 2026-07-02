@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack, Bell, CornerDownRight, ListTree } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack, Bell, CornerDownRight, ListTree, PanelTopClose } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,15 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "story-writer-chrome",
+    title: "Story Writer — reclaiming chat space",
+    blurb:
+      "Two space-eaters in the Story Writer, live over faithful mocks. (1) The pane chrome: today TWO stacked 44px bars (the 8-app toggle list + the active-app toolbar) repeat active apps twice; directions A merged single bar with a + menu (recommended), B collapsible bars with a slim handle, C icon toggles folded into the view header, C2 a single Apps dropdown in the header, D per-pane IDE-style tab strips. (2) The quick-prompt chips: today an always-on row capped at 5 that wraps to two rows at pane width; directions 1 empty-conversation-only (recommended), 2 one scrolling row of smaller chips that keep the dual fill/send action, 3 slim label-only chips, 4 menu-only with a / shortcut. Section 3 shows the recommended combination (A + 1 + 2). Chosen: C2 (Apps dropdown in the view header, per-app toolbar stays) + 2 (one scrolling row of smaller dual-action chips, 5-cap dropped); spec'd as BRDG-460.",
+    status: "Chosen",
+    ticket: "BRDG-460",
+    icon: <PanelTopClose className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "inbox-counts",
     title: "Inbox counts & checkbox alignment",
