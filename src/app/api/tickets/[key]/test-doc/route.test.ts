@@ -191,6 +191,32 @@ describe("PUT /api/tickets/[key]/test-doc", () => {
     expect(meta?.testDocDraftGeneratedAt).toBeNull();
   });
 
+  describe("notNeeded marker (PO judgement)", () => {
+    it("stores the marker Bridge-only: no doc, no Jira write, draft cleared", async () => {
+      seedTicket("VPL-10", "Content");
+      testDb.insert(ticketMetadata).values({
+        jiraKey: "VPL-10",
+        testDocDraft: "stale draft",
+      }).run();
+
+      const response = await PUT(makeRequest("VPL-10", { notNeeded: true }), makeParams("VPL-10"));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ saved: true, notNeeded: true });
+
+      const meta = getMetadata("VPL-10");
+      expect(meta?.testDoc).toBeNull();
+      expect(meta?.testDocClassification).toBe("not_stakeholder_relevant");
+      expect(meta?.testDocDraft).toBeNull();
+      expect(mockUpsertLocalEdit).not.toHaveBeenCalled();
+      expect(mockPushToJira).not.toHaveBeenCalled();
+    });
+
+    it("404s on unknown tickets and 409s on draft keys", async () => {
+      expect((await PUT(makeRequest("VPL-999", { notNeeded: true }), makeParams("VPL-999"))).status).toBe(404);
+      expect((await PUT(makeRequest("DRAFT-abc", { notNeeded: true }), makeParams("DRAFT-abc"))).status).toBe(409);
+    });
+  });
+
   describe("GET (cached doc lookup)", () => {
     function makeGetRequest(key: string): Request {
       return new Request(`http://localhost:3100/api/tickets/${key}/test-doc`);

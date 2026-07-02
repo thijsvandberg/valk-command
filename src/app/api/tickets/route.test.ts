@@ -178,9 +178,11 @@ describe("GET /api/tickets", () => {
     seedTicket(testDb, "VPL-100");
     seedTicket(testDb, "VPL-101");
     seedTicket(testDb, "VPL-102");
+    seedTicket(testDb, "VPL-103");
     testDb.insert(ticketMetadata).values([
       { jiraKey: "VPL-100", testDoc: "accepted doc" },
       { jiraKey: "VPL-101", testDocDraft: "draft doc" },
+      { jiraKey: "VPL-103", testDocClassification: "not_stakeholder_relevant" },
     ]).run();
 
     const data = await (await GET(new Request("http://localhost:3100/api/tickets"))).json();
@@ -188,6 +190,7 @@ describe("GET /api/tickets", () => {
     expect(byKey["VPL-100"]).toBe("accepted");
     expect(byKey["VPL-101"]).toBe("draft");
     expect(byKey["VPL-102"]).toBeNull();
+    expect(byKey["VPL-103"]).toBe("not_needed");
   });
 
   it("resolves sprintDisplayName from the sprint name cache", async () => {

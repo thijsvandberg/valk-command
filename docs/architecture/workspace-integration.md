@@ -223,6 +223,16 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   delivery order, internal one-liners as a Misc tail, and the missing overview (DONE/TEST
   without a doc). "Copy document" puts the stakeholder markdown on the clipboard; "Generate
   missing" feeds the gap keys back into the BRDG-426 validation queue.
+- **PO control over inclusion**: the review modal's "No test doc needed" button stores a
+  Bridge-only marker (`test_doc_classification = not_stakeholder_relevant` with no doc, no
+  Jira write; cancels an in-flight generation). Marked tickets land in the bundle's separate
+  `notNeeded` list and are never flagged as missing again. Conversely, unfinished tickets
+  (not DONE/TEST) list under "Not finished yet" with a per-row Generate, so a story that
+  ships with the delivery before it is Done still gets its doc.
+- **Board marker**: the toggleable "Test documentation" row field (off by default,
+  `filter-bar-types` tag `testDoc`) shows the per-ticket state — accepted (green), draft
+  (amber), not-needed (muted FileX), none (faint) — derived server-side into
+  `Ticket.testDocState` on the list payload.
 
 ### already-built topic (BRDG-287)
 

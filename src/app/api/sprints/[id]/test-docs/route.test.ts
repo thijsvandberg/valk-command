@@ -76,17 +76,25 @@ describe("GET /api/sprints/[id]/test-docs", () => {
     testDb.insert(sprintNameCache).values({ sprintId: SPRINT, displayName: "BT: 139" }).run();
   });
 
-  it("buckets documented, internal, missing and other correctly", async () => {
+  it("buckets documented, internal, notNeeded, missing and other correctly", async () => {
     seedTicket("VPL-1", { doc: "**Doc 1**", classification: "ok", storyPoints: 3 });
     seedTicket("VPL-2", { doc: "Internal one-liner", classification: "not_stakeholder_relevant" });
     seedTicket("VPL-3", { status: "TEST" });
     seedTicket("VPL-4", { status: "DONE" });
     seedTicket("VPL-5", { status: "IN PROGRESS" });
+    // Explicit "no doc needed" marker: classification without a doc. Must land
+    // in notNeeded, NOT in missing, despite being DONE.
+    seedTicket("VPL-6", { status: "DONE" });
+    testDb.insert(ticketMetadata).values({
+      jiraKey: "VPL-6",
+      testDocClassification: "not_stakeholder_relevant",
+    }).run();
 
     const data = await fetchBuckets();
     expect(data.sprintName).toBe("BT: 139");
     expect(data.documented.map((d: { key: string }) => d.key)).toEqual(["VPL-1"]);
     expect(data.internal.map((d: { key: string }) => d.key)).toEqual(["VPL-2"]);
+    expect(data.notNeeded.map((d: { key: string }) => d.key)).toEqual(["VPL-6"]);
     expect(data.missing.map((d: { key: string }) => d.key).sort()).toEqual(["VPL-3", "VPL-4"]);
     expect(data.other.map((d: { key: string }) => d.key)).toEqual(["VPL-5"]);
   });

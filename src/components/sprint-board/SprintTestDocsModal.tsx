@@ -175,10 +175,42 @@ export function SprintTestDocsModal({
                 </div>
               )}
 
+              {data.notNeeded.length > 0 && (
+                <div data-testid="test-docs-not-needed" className="rounded-xl border border-border-subtle bg-surface-base p-3">
+                  <p className="text-body-sm font-medium text-text-secondary">
+                    No test documentation needed ({data.notNeeded.length})
+                  </p>
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {data.notNeeded.map((m) => (
+                      <li key={m.key} className="flex items-baseline gap-2 text-body-sm text-text-tertiary">
+                        <span className="font-mono text-caption text-text-muted">{m.key}</span>
+                        <span className="truncate">{m.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Not in DONE/Test yet, so not counted as missing — but the PO
+                  decides what ships: an unfinished story that goes along in the
+                  delivery gets its doc via the per-row Generate. */}
               {data.other.length > 0 && (
-                <p className="text-body-sm text-text-muted">
-                  Not counted as missing ({data.other.map((o) => o.key).join(", ")}): not in DONE or Test yet.
-                </p>
+                <div data-testid="test-docs-other" className="rounded-xl border border-border-subtle bg-surface-base p-3">
+                  <p className="text-body-sm font-medium text-text-secondary">
+                    Not finished yet ({data.other.length}) — generate anyway if it ships with this delivery
+                  </p>
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {data.other.map((m) => (
+                      <li key={m.key} className="flex items-center gap-2 text-body-sm text-text-secondary">
+                        <span className="font-mono text-caption text-text-muted">{m.key}</span>
+                        <span className="min-w-0 flex-1 truncate">{m.title}</span>
+                        <Button variant="ghost" size="sm" onClick={() => onGenerateMissing([m.key])}>
+                          Generate
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           )}

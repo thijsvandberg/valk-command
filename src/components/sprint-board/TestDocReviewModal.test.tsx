@@ -5,6 +5,7 @@ const mockGenerateTestDoc = vi.fn();
 const mockSaveTestDoc = vi.fn();
 const mockGetTestDoc = vi.fn();
 const mockSaveTestDocDraft = vi.fn();
+const mockMarkNotNeeded = vi.fn();
 const mockCancelTask = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   ApiError: class ApiError extends Error {},
@@ -13,6 +14,7 @@ vi.mock("@/lib/api-client", () => ({
     saveTestDoc: (...args: unknown[]) => mockSaveTestDoc(...args),
     getTestDoc: (...args: unknown[]) => mockGetTestDoc(...args),
     saveTestDocDraft: (...args: unknown[]) => mockSaveTestDocDraft(...args),
+    markTestDocNotNeeded: (...args: unknown[]) => mockMarkNotNeeded(...args),
   },
   workspaceTasks: {
     cancel: (...args: unknown[]) => mockCancelTask(...args),
@@ -89,6 +91,8 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     mockGetTestDoc.mockResolvedValue({ saved: null, draft: null });
     mockSaveTestDocDraft.mockReset();
     mockSaveTestDocDraft.mockResolvedValue({ saved: true });
+    mockMarkNotNeeded.mockReset();
+    mockMarkNotNeeded.mockResolvedValue({ saved: true, notNeeded: true });
     mockCancelTask.mockResolvedValue({ ok: true });
   });
 
@@ -277,6 +281,34 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       await waitFor(() => expect(screen.getByTestId("test-doc-editor")).toBeInTheDocument());
       await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-2"));
       expect(mockGenerateTestDoc).not.toHaveBeenCalledWith("VPL-1");
+    });
+  });
+
+  describe("No test doc needed (PO judgement)", () => {
+    it("marks the ticket while still generating, cancels the task and advances", async () => {
+      const onClose = vi.fn();
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={onClose} />);
+      // Task started but no result yet: the button must already work.
+      await waitFor(() => expect(streamsByTask[taskIdFor("VPL-1")]).toBeDefined());
+
+      fireEvent.click(screen.getByText("No test doc needed"));
+
+      await waitFor(() => expect(mockMarkNotNeeded).toHaveBeenCalledWith("VPL-1"));
+      expect(mockCancelTask).toHaveBeenCalledWith(taskIdFor("VPL-1"));
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      expect(mockSaveTestDoc).not.toHaveBeenCalled();
+    });
+
+    it("bulk: advances to the next item after marking", async () => {
+      render(<TestDocReviewModal keys={["VPL-1", "VPL-2"]} onClose={() => {}} />);
+      await emitResult("VPL-1", DOC);
+
+      fireEvent.click(screen.getByText("No test doc needed"));
+
+      await waitFor(() =>
+        expect(screen.getByTestId("test-doc-queue-position")).toHaveTextContent("2 / 2"),
+      );
+      expect(mockMarkNotNeeded).toHaveBeenCalledWith("VPL-1");
     });
   });
 

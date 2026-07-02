@@ -95,10 +95,40 @@ export async function PUT(
 
   const parsed = await parseJsonBody(request);
   if ("error" in parsed) return parsed.error;
-  const { markdown, classification: rawClassification } = parsed.data as {
+  const { markdown, classification: rawClassification, notNeeded } = parsed.data as {
     markdown?: string;
     classification?: string;
+    notNeeded?: boolean;
   };
+
+  // Explicit "no test documentation needed" marker (PO judgement): Bridge-only,
+  // no doc, no Jira write. The sprint bundle lists these separately and the
+  // missing overview skips them, so the ticket is never re-reviewed.
+  if (notNeeded === true) {
+    const exists = await db
+      .select({ jiraKey: ticket.jiraKey })
+      .from(ticket)
+      .where(eq(ticket.jiraKey, key))
+      .get();
+    if (!exists) {
+      return errorResponse("Ticket not found", 404);
+    }
+    const marker = {
+      testDoc: null,
+      testDocUpdatedAt: new Date().toISOString(),
+      testDocClassification: "not_stakeholder_relevant" as const,
+      testDocDraft: null,
+      testDocDraftClassification: null,
+      testDocDraftGeneratedAt: null,
+    };
+    await db
+      .insert(ticketMetadata)
+      .values({ jiraKey: key, ...marker })
+      .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: marker });
+    cache.invalidate(`/api/tickets/${key}`);
+    cache.invalidate(/^\/api\/tickets(\?|$)/);
+    return NextResponse.json({ saved: true, notNeeded: true });
+  }
 
   if (!markdown || typeof markdown !== "string" || !markdown.trim()) {
     return errorResponse("markdown is required", 400);

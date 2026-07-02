@@ -22,6 +22,7 @@ vi.mock("lucide-react", () => {
     Clock: stub("clock"),
     NotebookPen: stub("notebook"),
     FileCheck2: stub("file-check"),
+    FileX2: stub("file-x"),
   };
 });
 
@@ -930,6 +931,9 @@ describe("BoardRow (headerless, BRDG-239)", () => {
 
       renderRow({ ticket: makeTicket({ testDocState: "draft" }), tags: withTag });
       expect(screen.getByTestId("test-doc-state-draft")).toBeInTheDocument();
+
+      renderRow({ ticket: makeTicket({ testDocState: "not_needed" }), tags: withTag });
+      expect(screen.getByTestId("test-doc-state-not_needed").querySelector("[data-testid='icon-file-x']")).toBeTruthy();
 
       renderRow({ ticket: makeTicket({ testDocState: null }), tags: withTag });
       const none = screen.getByTestId("test-doc-state-none");

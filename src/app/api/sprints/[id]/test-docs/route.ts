@@ -22,6 +22,8 @@ export interface SprintTestDocItem {
  *   biggest stories first — the manual BT-style documents lead with the large
  *   features and end with one-liners.
  * - internal: not_stakeholder_relevant one-liners (the "Misc" tail).
+ * - notNeeded: explicitly marked "no test documentation needed" (no doc at
+ *   all) — listed separately so they are never re-reviewed as missing.
  * - missing: DONE/TEST tickets without a doc — the delivery gap list.
  * - other: remaining statuses without a doc (informational only).
  */
@@ -69,6 +71,7 @@ export async function GET(
 
   const documented: SprintTestDocItem[] = [];
   const internal: SprintTestDocItem[] = [];
+  const notNeeded: SprintTestDocItem[] = [];
   const missing: SprintTestDocItem[] = [];
   const other: SprintTestDocItem[] = [];
 
@@ -87,6 +90,8 @@ export async function GET(
         // A doc with a null classification predates the column; treat as ok.
         documented.push({ ...item, needsInput: row.classification === "needs_input" });
       }
+    } else if (row.classification === "not_stakeholder_relevant") {
+      notNeeded.push(item);
     } else if (row.status === "DONE" || row.status === "TEST") {
       missing.push(item);
     } else {
@@ -99,6 +104,7 @@ export async function GET(
     (b.storyPoints ?? -1) - (a.storyPoints ?? -1) || a.key.localeCompare(b.key);
   documented.sort(bySize);
   internal.sort(bySize);
+  notNeeded.sort(bySize);
   missing.sort(bySize);
   other.sort(bySize);
 
@@ -106,6 +112,7 @@ export async function GET(
     sprintName: nameRow?.displayName ?? `Sprint ${sprintId}`,
     documented,
     internal,
+    notNeeded,
     missing,
     other,
   });

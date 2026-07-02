@@ -262,6 +262,31 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
     }
   }, [advance, currentKey, entry, mutate, patchEntry]);
 
+  // PO judgement call: this ticket needs no test documentation at all.
+  // Bridge-only marker (no doc, no Jira write); the sprint bundle lists it
+  // separately and the missing overview skips it. Available while still
+  // generating — the title alone often suffices — so cancel any in-flight
+  // task for this key before advancing.
+  const handleNotNeeded = useCallback(async () => {
+    if (!currentKey || !entry) return;
+    setSaving(true);
+    try {
+      if (entry.status === "generating" && entry.taskId) {
+        workspaceTasks.cancel(entry.taskId).catch(() => {});
+      }
+      await ticketsApi.markTestDocNotNeeded(currentKey);
+      void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
+      void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets?"));
+      setSaving(false);
+      advance();
+    } catch (err) {
+      setSaving(false);
+      patchEntry(currentKey, {
+        error: err instanceof ApiError ? err.message : "Failed to mark as not needed",
+      });
+    }
+  }, [advance, currentKey, entry, mutate, patchEntry]);
+
   // Regenerate bypasses the concurrency cap: the PO is actively waiting on
   // this one, unlike the background prefetch. Also the escape hatch from a
   // cached draft/saved doc that turned out stale.
@@ -446,6 +471,15 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-5 py-3.5">
           <Button variant="ghost" size="md" onClick={handleClose}>
             Cancel
+          </Button>
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={handleNotNeeded}
+            disabled={saving}
+            title="Mark this ticket as needing no test documentation — it moves to a separate list in the sprint bundle and is never flagged as missing again"
+          >
+            No test doc needed
           </Button>
           {isBulk && (
             <Button variant="ghost" size="md" onClick={advance} disabled={saving}>

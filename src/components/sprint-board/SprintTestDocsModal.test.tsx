@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SprintTestDocs } from "@/lib/api-client";
 
@@ -22,6 +22,9 @@ const BASE: SprintTestDocs = {
   ],
   internal: [
     { key: "VPL-3", title: "Sync groundwork", status: "DONE", storyPoints: null, doc: "Internal: sync groundwork" },
+  ],
+  notNeeded: [
+    { key: "VPL-7", title: "DB partitions chore", status: "DONE", storyPoints: null, doc: null },
   ],
   missing: [
     { key: "VPL-4", title: "Missing one", status: "DONE", storyPoints: 5, doc: null },
@@ -108,6 +111,23 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     mockData = { ...BASE, missing: [] };
     renderModal();
     expect(screen.queryByTestId("test-docs-missing")).not.toBeInTheDocument();
+  });
+
+  it("lists not-needed tickets separately, outside the copy and the missing list", () => {
+    renderModal();
+    const section = screen.getByTestId("test-docs-not-needed");
+    expect(section).toHaveTextContent("No test documentation needed (1)");
+    expect(section).toHaveTextContent("VPL-7");
+    expect(buildTestDocDocument(BASE)).not.toContain("DB partitions chore");
+    expect(screen.getByTestId("test-docs-missing")).not.toHaveTextContent("VPL-7");
+  });
+
+  it("offers per-row Generate on unfinished tickets so the PO decides what ships", () => {
+    const props = renderModal();
+    const section = screen.getByTestId("test-docs-other");
+    expect(section).toHaveTextContent("VPL-6");
+    fireEvent.click(within(section).getByText("Generate"));
+    expect(props.onGenerateMissing).toHaveBeenCalledWith(["VPL-6"]);
   });
 
   it("shows an error state when the fetch fails", () => {

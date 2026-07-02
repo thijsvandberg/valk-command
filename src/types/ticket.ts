@@ -273,8 +273,9 @@ export interface Ticket {
   editState: TicketEditState;
   notes: string;
   // Stakeholder test documentation state (BRDG-426): accepted doc, unreviewed
-  // draft cache, or nothing. Drives the toggleable board-row marker.
-  testDocState?: "accepted" | "draft" | null;
+  // draft cache, explicit "no doc needed" marker, or nothing. Drives the
+  // toggleable board-row marker.
+  testDocState?: "accepted" | "draft" | "not_needed" | null;
   jiraRank?: number | null;
   // Primary sprint (active > future > most recently closed); drives the card label.
   sprintId?: string;

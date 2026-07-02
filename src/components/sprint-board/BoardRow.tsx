@@ -11,7 +11,7 @@ import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock, NotebookPen, FileCheck2 } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock, NotebookPen, FileCheck2, FileX2 } from "lucide-react";
 import { WarningBadge } from "@/components/sprint-board/WarningBadge";
 import { type WarningKind } from "@/components/sprint-board/warning-filter";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
@@ -798,20 +798,26 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                       ? "Test documentation saved"
                       : ticket.testDocState === "draft"
                         ? "Test doc generated — not yet reviewed/saved"
-                        : "No test documentation yet"
+                        : ticket.testDocState === "not_needed"
+                          ? "Marked: no test documentation needed"
+                          : "No test documentation yet"
                   }
                 >
-                  <FileCheck2
-                    size={14}
-                    strokeWidth={1.75}
-                    className={
-                      ticket.testDocState === "accepted"
-                        ? "text-[var(--color-status-success)]"
-                        : ticket.testDocState === "draft"
-                          ? "text-[var(--color-status-warning)]"
-                          : "text-text-muted opacity-40"
-                    }
-                  />
+                  {ticket.testDocState === "not_needed" ? (
+                    <FileX2 size={14} strokeWidth={1.75} className="text-text-muted" />
+                  ) : (
+                    <FileCheck2
+                      size={14}
+                      strokeWidth={1.75}
+                      className={
+                        ticket.testDocState === "accepted"
+                          ? "text-[var(--color-status-success)]"
+                          : ticket.testDocState === "draft"
+                            ? "text-[var(--color-status-warning)]"
+                            : "text-text-muted opacity-40"
+                      }
+                    />
+                  )}
                 </span>
               )}
               {/* Refinement badge drops first as the column narrows (BRDG-451): widest

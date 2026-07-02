@@ -339,6 +339,10 @@ export const tickets = {
     apiFetch<{ saved: boolean }>(
       `/api/tickets/${enc(ticketKey)}/test-doc-draft`, { method: "PUT", body: data, signal },
     ),
+  markTestDocNotNeeded: (ticketKey: string, signal?: AbortSignal) =>
+    apiFetch<{ saved: boolean; notNeeded: boolean }>(
+      `/api/tickets/${enc(ticketKey)}/test-doc`, { method: "PUT", body: { notNeeded: true }, signal },
+    ),
 
   // Subtask suggestions (persisted AI suggestions)
   getSubtaskSuggestions: (key: string, signal?: AbortSignal) =>
@@ -1093,6 +1097,7 @@ export interface SprintTestDocs {
   sprintName: string;
   documented: SprintTestDocItem[];
   internal: SprintTestDocItem[];
+  notNeeded: SprintTestDocItem[];
   missing: SprintTestDocItem[];
   other: SprintTestDocItem[];
 }
