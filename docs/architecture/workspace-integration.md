@@ -27,6 +27,17 @@ Browser                    valk-command (Next.js)          valk-agent
 
 The server-side stream (`captureTaskStream`) is independent of the browser connection and ensures task results are always persisted even if the user navigates away.
 
+### Local VRW Lifecycle (BRDG-459)
+
+Bridge prod (`npm run start` → `tools/scripts/start-prod.sh`) calls `tools/scripts/start-vrw.sh`, which auto-starts VRW when `<VALK_AGENT_URL>/health` does not respond:
+
+- A **healthy VRW is never touched** (a restart could kill an agent task mid-run); the script exits before any port cleanup.
+- Otherwise it frees port 3110, starts VRW detached in its **own session** (`nohup` + `setsid` via perl — npm installs its own SIGINT handler, so without a new session Ctrl+C on Bridge would kill VRW too), and polls `/health` for ~15s.
+- VRW output goes to `logs/vrw-<stamp>.log` in the Bridge repo, pruned like the prod logs (keep 15 files, max 14 days; tunables `VRW_PORT`, `VRW_PATH`, `VRW_LOG_DIR`, `VRW_LOG_KEEP`, `VRW_LOG_MAX_AGE_DAYS`).
+- Failure is **non-fatal**: a warning with the log path is printed and Bridge boots anyway. If `VALK_AGENT_URL` points at a non-localhost VRW, the script only warns (starting a local instance would be pointless).
+- There is **no crash supervision**: a VRW that dies later stays down until the next `npm run start` or a manual `npm run vrw:start`.
+- Dev (`npm run dev`) keeps the warn-only probe (`tools/scripts/check-vrw.sh`).
+
 ## Agent Proxy (`src/lib/agent-proxy.ts`)
 
 Server-side helper that constructs agent URLs and auth headers.
