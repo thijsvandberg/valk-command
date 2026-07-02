@@ -30,6 +30,29 @@ describe("SprintDetailsPopover", () => {
     expect(container.innerHTML).toBe("");
   });
 
+  describe("Test documentation action (BRDG-461)", () => {
+    it("renders for sprint kind and fires onTestDocs after closing", () => {
+      const onTestDocs = vi.fn();
+      const onClose = vi.fn();
+      render(
+        <SprintDetailsPopover sprint={makeSprint()} open={true} onClose={onClose} onTestDocs={onTestDocs} />,
+      );
+      fireEvent.click(screen.getByText("Test documentation"));
+      expect(onClose).toHaveBeenCalled();
+      expect(onTestDocs).toHaveBeenCalledTimes(1);
+    });
+
+    it("is absent for epic groups and when no handler is supplied", () => {
+      const { rerender } = render(
+        <SprintDetailsPopover kind="epic" open={true} onClose={vi.fn()} onTestDocs={vi.fn()} canSync onRunSync={vi.fn()} />,
+      );
+      expect(screen.queryByText("Test documentation")).not.toBeInTheDocument();
+
+      rerender(<SprintDetailsPopover sprint={makeSprint()} open={true} onClose={vi.fn()} onEdit={vi.fn()} />);
+      expect(screen.queryByText("Test documentation")).not.toBeInTheDocument();
+    });
+  });
+
   it("shows the settings action and never renders the sprint goal text", () => {
     render(
       <SprintDetailsPopover
