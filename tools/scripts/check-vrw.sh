@@ -2,15 +2,15 @@
 # Boot-time reachability probe for VRW (the valk-remote-workspace agent). WHY:
 # Bridge is useless for chat/tasks if VRW is down, but it must still boot so the
 # rest of the app (board, settings) works. So this warns and returns non-zero;
-# the launcher calls it with `|| true` and starts Bridge regardless. It never
-# starts, restarts, or supervises VRW — that is the user's job.
+# the dev launcher calls it with `|| true` and starts Bridge regardless. This
+# probe never starts VRW itself; the prod launcher uses start-vrw.sh instead,
+# which auto-starts a downed VRW (BRDG-459).
 #
 # Reads VALK_AGENT_URL from .env.local (fallback .env, fallback localhost:3110)
 # and probes "<url>/health", which VRW exempts from auth so no API key is needed.
 set -uo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-VRW_PATH="/Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace"
 
 # Grep the first uncommented assignment rather than sourcing the file: sourcing
 # runs arbitrary content and chokes on values with special chars. The
@@ -31,7 +31,7 @@ if curl -fsS -m 3 "$VALK_AGENT_URL/health" >/dev/null 2>&1; then
 fi
 
 echo "[check-vrw] WARNING: VRW not reachable at $VALK_AGENT_URL/health"
-echo "[check-vrw] Chat and workspace tasks will not work until you start it yourself:"
-echo "[check-vrw]   cd $VRW_PATH && npm run start"
+echo "[check-vrw] Chat and workspace tasks will not work until VRW is up. Start it with:"
+echo "[check-vrw]   npm run vrw:start"
 echo "[check-vrw] Bridge will boot anyway."
 exit 1

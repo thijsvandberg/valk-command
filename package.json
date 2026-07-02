@@ -17,6 +17,7 @@
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "vrw:start": "bash tools/scripts/start-vrw.sh",
     "vrw:dev": "npm --prefix /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace run dev",
     "vrw:build": "npm --prefix /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace run build",
     "vrw:prod": "npm --prefix /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace run build && npm --prefix /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace start"
