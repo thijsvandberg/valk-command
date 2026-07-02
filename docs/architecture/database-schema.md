@@ -131,6 +131,9 @@ PO-owned annotations per ticket. Never synced back to Jira.
 | `test_doc` | text | Stakeholder test documentation (BRDG-426): validated markdown block, also written to the Jira description as an `:::expand Test documentation` panel. Bridge copy is the source of truth for sprint-level bundling (BRDG-461). |
 | `test_doc_updated_at` | text | ISO timestamp of the last test-doc save. |
 | `test_doc_classification` | text | `ok` \| `needs_input` \| `not_stakeholder_relevant` — lets the sprint delivery view tell "missing" apart from "deliberately not documented". |
+| `test_doc_draft` | text | Draft cache: the raw generated doc, stored the moment generation completes so an unreviewed result is never lost. Cleared when the PO accepts (PUT test-doc). Never read by the BRDG-461 bundle. |
+| `test_doc_draft_classification` | text | Classification of the cached draft. |
+| `test_doc_draft_generated_at` | text | ISO timestamp of the cached generation (provenance banner in the review modal). |
 
 #### `ticket_subtask`
 

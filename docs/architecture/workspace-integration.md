@@ -208,6 +208,12 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   agent task and the workspace rate tier allows 10 req/min), the first result shows as soon as
   it lands, and the rest generate during review, so Save/Skip advances to an already-finished
   doc ("N ready" in the queue indicator). Closing mid-queue cancels in-flight tasks.
+- **Draft cache**: every completed generation is stored immediately in
+  `ticket_metadata.test_doc_draft*` (PUT `test-doc-draft`, fire-and-forget from the modal), so
+  an unreviewed doc survives closing the modal. On open the modal first checks GET `test-doc`:
+  a cached draft (or the accepted doc) shows instantly with a provenance banner and a
+  Regenerate escape hatch; only uncached keys are queued for generation. Accepting clears the
+  draft; the BRDG-461 bundle only ever reads accepted docs.
 - **Save**: `PUT /api/tickets/[key]/test-doc` stores the Bridge copy in `ticket_metadata`
   (`test_doc*` columns) and writes exactly one `:::expand Test documentation` block at the end
   of the Jira description through the regular `upsertLocalEdit` + `pushToJira` path

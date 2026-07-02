@@ -195,6 +195,13 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   // "ok" | "needs_input" | "not_stakeholder_relevant" — lets BRDG-461 tell
   // "missing" apart from "deliberately not documented".
   testDocClassification: text("test_doc_classification"),
+  // Draft cache: the raw generated doc, stored the moment generation completes
+  // so an unreviewed result is never lost (closing the modal, a crash, a later
+  // revisit). Consumed (cleared) when the PO accepts via the test-doc save;
+  // NEVER read by the BRDG-461 bundle — only accepted docs are deliverable.
+  testDocDraft: text("test_doc_draft"),
+  testDocDraftClassification: text("test_doc_draft_classification"),
+  testDocDraftGeneratedAt: text("test_doc_draft_generated_at"),
 });
 
 // Backlog Deprecation Review (BRDG-284): persisted Tier-2 deep-dive queue.

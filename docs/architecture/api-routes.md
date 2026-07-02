@@ -151,7 +151,9 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets/[key]/subtask-suggestions` | DELETE | Remove single suggestion (`{ id }`) or all for ticket |
 | `/api/tickets/[key]/suggest-subtasks` | POST | Gather ticket context + existing subtasks and invoke the workspace `suggest-subtasks` skill. Returns `{ taskId }` for streaming |
 | `/api/tickets/[key]/generate-test-doc` | POST | Gather description + all comments + recent status changes and invoke the workspace `generate-test-doc` skill (BRDG-426). Returns `{ taskId, streamUrl }`; 409 on draft keys |
-| `/api/tickets/[key]/test-doc` | PUT | Save validated stakeholder test documentation: Bridge copy in `ticket_metadata` + one `:::expand Test documentation` block in the Jira description via the local-edit/pushToJira path (BRDG-426). 409 on draft keys |
+| `/api/tickets/[key]/test-doc` | GET | Return the accepted test doc and the unreviewed draft cache, so the review modal shows an existing result instead of regenerating |
+| `/api/tickets/[key]/test-doc` | PUT | Save validated stakeholder test documentation: Bridge copy in `ticket_metadata` + one `:::expand Test documentation` block in the Jira description via the local-edit/pushToJira path (BRDG-426); clears the draft cache. 409 on draft keys |
+| `/api/tickets/[key]/test-doc-draft` | PUT | Cache a freshly generated (not yet reviewed) test doc Bridge-locally, so closing the modal or revisiting never costs a regeneration. 409 on draft keys |
 | `/api/sprints/[id]/test-docs` | GET | Sprint test-doc bundle (BRDG-461): buckets every real ticket in the sprint into documented / internal (Misc) / missing (DONE-TEST without doc) / other, big stories first |
 | `/api/tickets/[key]/subtasks` | GET | List the ticket's subtasks |
 | `/api/tickets/[key]/subtasks` | POST | Create a subtask in Jira under the ticket |

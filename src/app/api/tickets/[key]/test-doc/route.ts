@@ -17,6 +17,55 @@ import { originFromRequest } from "@/lib/ticket-events";
 import { getActingUser } from "@/lib/acting-user";
 
 /**
+ * GET /api/tickets/[key]/test-doc
+ *
+ * Returns the accepted doc and the unreviewed draft cache (if any), so the
+ * review modal can show an existing result instead of regenerating.
+ */
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ key: string }> },
+) {
+  const limited = await applyRateLimit("read");
+  if (limited) return limited;
+
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
+  if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
+
+  const meta = await db
+    .select({
+      testDoc: ticketMetadata.testDoc,
+      testDocUpdatedAt: ticketMetadata.testDocUpdatedAt,
+      testDocClassification: ticketMetadata.testDocClassification,
+      testDocDraft: ticketMetadata.testDocDraft,
+      testDocDraftClassification: ticketMetadata.testDocDraftClassification,
+      testDocDraftGeneratedAt: ticketMetadata.testDocDraftGeneratedAt,
+    })
+    .from(ticketMetadata)
+    .where(eq(ticketMetadata.jiraKey, key))
+    .get();
+
+  return NextResponse.json({
+    saved: meta?.testDoc
+      ? {
+          markdown: meta.testDoc,
+          classification: meta.testDocClassification ?? "ok",
+          updatedAt: meta.testDocUpdatedAt,
+        }
+      : null,
+    draft: meta?.testDocDraft
+      ? {
+          markdown: meta.testDocDraft,
+          classification: meta.testDocDraftClassification ?? "ok",
+          generatedAt: meta.testDocDraftGeneratedAt,
+        }
+      : null,
+  });
+}
+
+/**
  * PUT /api/tickets/[key]/test-doc
  *
  * Saves the validated stakeholder test documentation (BRDG-426):
@@ -71,17 +120,21 @@ export async function PUT(
   const doc = markdown.trim();
   const now = new Date().toISOString();
 
+  // Accepting consumes the draft cache: the reviewed doc supersedes it.
+  const accepted = {
+    testDoc: doc,
+    testDocUpdatedAt: now,
+    testDocClassification: classification,
+    testDocDraft: null,
+    testDocDraftClassification: null,
+    testDocDraftGeneratedAt: null,
+  };
   await db
     .insert(ticketMetadata)
-    .values({
-      jiraKey: key,
-      testDoc: doc,
-      testDocUpdatedAt: now,
-      testDocClassification: classification,
-    })
+    .values({ jiraKey: key, ...accepted })
     .onConflictDoUpdate({
       target: ticketMetadata.jiraKey,
-      set: { testDoc: doc, testDocUpdatedAt: now, testDocClassification: classification },
+      set: accepted,
     });
 
   // Merge into the effective description: an unpushed local edit is the PO's

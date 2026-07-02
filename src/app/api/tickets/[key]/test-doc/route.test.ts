@@ -27,7 +27,7 @@ vi.mock("@/lib/acting-user", () => ({
   getActingUser: vi.fn().mockResolvedValue(null),
 }));
 
-import { PUT } from "./route";
+import { GET, PUT } from "./route";
 import { ticket, ticketMetadata, ticketLocalEdit } from "@/db/schema";
 import { appendTestDocBlock } from "@/lib/test-doc";
 import { eq } from "drizzle-orm";
@@ -172,5 +172,60 @@ describe("PUT /api/tickets/[key]/test-doc", () => {
       makeParams("VPL-10"),
     );
     expect(getMetadata("VPL-10")?.testDocClassification).toBe("needs_input");
+  });
+
+  it("accepting clears the draft cache", async () => {
+    seedTicket("VPL-10", "Content");
+    testDb.insert(ticketMetadata).values({
+      jiraKey: "VPL-10",
+      testDocDraft: "draft doc",
+      testDocDraftClassification: "ok",
+      testDocDraftGeneratedAt: "2026-07-02T10:00:00.000Z",
+    }).run();
+
+    await PUT(makeRequest("VPL-10", { markdown: DOC }), makeParams("VPL-10"));
+
+    const meta = getMetadata("VPL-10");
+    expect(meta?.testDoc).toBe(DOC);
+    expect(meta?.testDocDraft).toBeNull();
+    expect(meta?.testDocDraftGeneratedAt).toBeNull();
+  });
+
+  describe("GET (cached doc lookup)", () => {
+    function makeGetRequest(key: string): Request {
+      return new Request(`http://localhost:3100/api/tickets/${key}/test-doc`);
+    }
+
+    it("returns null saved and draft when nothing is stored", async () => {
+      seedTicket("VPL-10");
+      const response = await GET(makeGetRequest("VPL-10"), makeParams("VPL-10"));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ saved: null, draft: null });
+    });
+
+    it("returns both the accepted doc and the draft cache", async () => {
+      seedTicket("VPL-10");
+      testDb.insert(ticketMetadata).values({
+        jiraKey: "VPL-10",
+        testDoc: "accepted doc",
+        testDocUpdatedAt: "2026-07-01T09:00:00.000Z",
+        testDocClassification: "ok",
+        testDocDraft: "draft doc",
+        testDocDraftClassification: "needs_input",
+        testDocDraftGeneratedAt: "2026-07-02T10:00:00.000Z",
+      }).run();
+
+      const data = await (await GET(makeGetRequest("VPL-10"), makeParams("VPL-10"))).json();
+      expect(data.saved).toEqual({
+        markdown: "accepted doc",
+        classification: "ok",
+        updatedAt: "2026-07-01T09:00:00.000Z",
+      });
+      expect(data.draft).toEqual({
+        markdown: "draft doc",
+        classification: "needs_input",
+        generatedAt: "2026-07-02T10:00:00.000Z",
+      });
+    });
   });
 });

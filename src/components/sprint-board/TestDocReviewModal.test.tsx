@@ -3,12 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGenerateTestDoc = vi.fn();
 const mockSaveTestDoc = vi.fn();
+const mockGetTestDoc = vi.fn();
+const mockSaveTestDocDraft = vi.fn();
 const mockCancelTask = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   ApiError: class ApiError extends Error {},
   tickets: {
     generateTestDoc: (...args: unknown[]) => mockGenerateTestDoc(...args),
     saveTestDoc: (...args: unknown[]) => mockSaveTestDoc(...args),
+    getTestDoc: (...args: unknown[]) => mockGetTestDoc(...args),
+    saveTestDocDraft: (...args: unknown[]) => mockSaveTestDocDraft(...args),
   },
   workspaceTasks: {
     cancel: (...args: unknown[]) => mockCancelTask(...args),
@@ -81,6 +85,10 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       Promise.resolve({ taskId: taskIdFor(key), streamUrl: "/stream" }),
     );
     mockSaveTestDoc.mockResolvedValue({ saved: true, pushed: true });
+    mockGetTestDoc.mockReset();
+    mockGetTestDoc.mockResolvedValue({ saved: null, draft: null });
+    mockSaveTestDocDraft.mockReset();
+    mockSaveTestDocDraft.mockResolvedValue({ saved: true });
     mockCancelTask.mockResolvedValue({ ok: true });
   });
 
@@ -190,6 +198,85 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       await waitFor(() => expect(screen.getByText(/stream failed/)).toBeInTheDocument());
       expect(screen.queryByTestId("test-doc-progress")).not.toBeInTheDocument();
       expect(screen.getByText("Regenerate").closest("button")).not.toBeDisabled();
+    });
+  });
+
+  describe("draft cache (generated docs persist unaccepted)", () => {
+    it("caches a fresh generation as a draft immediately", async () => {
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await emitResult("VPL-1", DOC);
+
+      await waitFor(() =>
+        expect(mockSaveTestDocDraft).toHaveBeenCalledWith("VPL-1", {
+          markdown: DOC,
+          classification: "ok",
+        }),
+      );
+    });
+
+    it("shows a cached draft instantly without regenerating, with a provenance notice", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        saved: null,
+        draft: { markdown: "**Cached**\n\n- From last time", classification: "ok", generatedAt: "2026-07-02T10:00:00.000Z" },
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+
+      await waitFor(() =>
+        expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe(
+          "**Cached**\n\n- From last time",
+        ),
+      );
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
+      expect(screen.getByText(/generated earlier/)).toBeInTheDocument();
+    });
+
+    it("shows the accepted doc when no draft exists, offering regenerate", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        saved: { markdown: "**Accepted**\n\n- Saved doc", classification: "ok", updatedAt: "2026-07-01T09:00:00.000Z" },
+        draft: null,
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+
+      await waitFor(() =>
+        expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe(
+          "**Accepted**\n\n- Saved doc",
+        ),
+      );
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
+      expect(screen.getByText(/saved test documentation/)).toBeInTheDocument();
+      expect(screen.getByText("Regenerate").closest("button")).not.toBeDisabled();
+    });
+
+    it("Regenerate from a cached doc triggers a fresh generation", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        saved: null,
+        draft: { markdown: "**Cached**", classification: "ok", generatedAt: null },
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await waitFor(() => expect(screen.getByTestId("test-doc-editor")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText("Regenerate"));
+
+      await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1"));
+      await emitResult("VPL-1", "**Fresh**\n\n- New");
+      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe(
+        "**Fresh**\n\n- New",
+      );
+    });
+
+    it("bulk: cached keys skip generation, uncached keys still generate", async () => {
+      mockGetTestDoc.mockImplementation((key: string) =>
+        Promise.resolve(
+          key === "VPL-1"
+            ? { saved: null, draft: { markdown: "**Cached one**", classification: "ok", generatedAt: null } }
+            : { saved: null, draft: null },
+        ),
+      );
+      render(<TestDocReviewModal keys={["VPL-1", "VPL-2"]} onClose={() => {}} />);
+
+      await waitFor(() => expect(screen.getByTestId("test-doc-editor")).toBeInTheDocument());
+      await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-2"));
+      expect(mockGenerateTestDoc).not.toHaveBeenCalledWith("VPL-1");
     });
   });
 

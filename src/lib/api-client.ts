@@ -326,9 +326,18 @@ export const tickets = {
     apiFetch<{ taskId: string; streamUrl: string }>(
       `/api/tickets/${enc(ticketKey)}/generate-test-doc`, { method: "POST", signal },
     ),
+  getTestDoc: (ticketKey: string, signal?: AbortSignal) =>
+    apiFetch<{
+      saved: { markdown: string; classification: string; updatedAt: string | null } | null;
+      draft: { markdown: string; classification: string; generatedAt: string | null } | null;
+    }>(`/api/tickets/${enc(ticketKey)}/test-doc`, { signal }),
   saveTestDoc: (ticketKey: string, data: { markdown: string; classification?: string }, signal?: AbortSignal) =>
     apiFetch<{ saved: boolean; pushed?: boolean; conflict?: boolean; message?: string }>(
       `/api/tickets/${enc(ticketKey)}/test-doc`, { method: "PUT", body: data, signal },
+    ),
+  saveTestDocDraft: (ticketKey: string, data: { markdown: string; classification?: string }, signal?: AbortSignal) =>
+    apiFetch<{ saved: boolean }>(
+      `/api/tickets/${enc(ticketKey)}/test-doc-draft`, { method: "PUT", body: data, signal },
     ),
 
   // Subtask suggestions (persisted AI suggestions)

@@ -22,17 +22,30 @@ import { ClipboardCheck, Loader2, RefreshCw, X } from "lucide-react";
 const MAX_CONCURRENT_GENERATIONS = 3;
 
 interface EntryState {
-  /** queued → generating (task streaming) → ready | error */
-  status: "queued" | "generating" | "ready" | "error";
+  /** checking (cache lookup) → queued → generating (task streaming) → ready | error */
+  status: "checking" | "queued" | "generating" | "ready" | "error";
   taskId: string | null;
   doc: string;
   classification: TestDocClassification;
   unstructured: boolean;
   error: string | null;
+  /** Where the shown doc came from: a fresh generation, the draft cache, or an accepted save. */
+  source: "fresh" | "draft" | "saved" | null;
+  /** ISO timestamp of the cached draft / accepted save, for the provenance banner. */
+  cachedAt: string | null;
 }
 
-function initialEntry(): EntryState {
-  return { status: "queued", taskId: null, doc: "", classification: "ok", unstructured: false, error: null };
+function makeEntry(status: EntryState["status"]): EntryState {
+  return {
+    status,
+    taskId: null,
+    doc: "",
+    classification: "ok",
+    unstructured: false,
+    error: null,
+    source: null,
+    cachedAt: null,
+  };
 }
 
 /** Invisible per-task SSE subscriber; unmounts (closing the stream) once its entry resolves. */
@@ -76,7 +89,7 @@ interface TestDocReviewModalProps {
 export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   const [index, setIndex] = useState(0);
   const [entries, setEntries] = useState<Record<string, EntryState>>(() =>
-    Object.fromEntries(keys.map((k) => [k, initialEntry()])),
+    Object.fromEntries(keys.map((k) => [k, makeEntry("checking")])),
   );
   const [progressByKey, setProgressByKey] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -114,6 +127,37 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
       });
   }, [patchEntry]);
 
+  // Cache lookup, once per key on mount: a previously generated draft (or an
+  // accepted save) shows immediately instead of costing a regeneration; only
+  // keys without any cached doc are queued for generation.
+  const checkedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const key of keys) {
+      if (checkedRef.current.has(key)) continue;
+      checkedRef.current.add(key);
+      ticketsApi
+        .getTestDoc(key)
+        .then((data) => {
+          const cached = data.draft ?? data.saved;
+          if (cached) {
+            patchEntry(key, {
+              status: "ready",
+              doc: cached.markdown,
+              classification: (cached.classification as TestDocClassification) ?? "ok",
+              source: data.draft ? "draft" : "saved",
+              cachedAt: data.draft ? data.draft.generatedAt : data.saved?.updatedAt ?? null,
+            });
+          } else {
+            patchEntry(key, { status: "queued" });
+          }
+        })
+        .catch(() => {
+          // Cache miss on error: fall through to a fresh generation.
+          patchEntry(key, { status: "queued" });
+        });
+    }
+  }, [keys, patchEntry]);
+
   // Scheduler: keep up to MAX_CONCURRENT_GENERATIONS running ahead of the
   // review. startedRef guards double-starts (the effect re-runs on every
   // entries change); no synchronous setState here — starts resolve async.
@@ -137,16 +181,21 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   const handleTaskResult = useCallback(
     (key: string, output: string) => {
       const parsed = parseTestDoc(output);
-      if (parsed) {
-        patchEntry(key, {
-          status: "ready",
-          doc: parsed.markdown,
-          classification: parsed.classification,
-          unstructured: false,
-        });
-      } else {
-        // Degrade gracefully: let the PO salvage the raw output by hand.
-        patchEntry(key, { status: "ready", doc: output.trim(), classification: "ok", unstructured: true });
+      // Degrade gracefully on unstructured output: let the PO salvage it by hand.
+      const doc = parsed ? parsed.markdown : output.trim();
+      const classification = parsed ? parsed.classification : "ok";
+      patchEntry(key, {
+        status: "ready",
+        doc,
+        classification,
+        unstructured: !parsed,
+        source: "fresh",
+        cachedAt: null,
+      });
+      // Cache the raw generation immediately (fire-and-forget): closing the
+      // modal or revisiting later must never cost a regeneration.
+      if (doc) {
+        ticketsApi.saveTestDocDraft(key, { markdown: doc, classification }).catch(() => {});
       }
     },
     [patchEntry],
@@ -208,11 +257,12 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   }, [advance, currentKey, entry, mutate, patchEntry]);
 
   // Regenerate bypasses the concurrency cap: the PO is actively waiting on
-  // this one, unlike the background prefetch.
+  // this one, unlike the background prefetch. Also the escape hatch from a
+  // cached draft/saved doc that turned out stale.
   const handleRegenerate = useCallback(() => {
     if (!currentKey) return;
     setConflictMessage(null);
-    patchEntry(currentKey, initialEntry());
+    patchEntry(currentKey, makeEntry("queued"));
     startedRef.current.add(currentKey);
     startGeneration(currentKey);
   }, [currentKey, patchEntry, startGeneration]);
@@ -232,7 +282,8 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
 
   if (!currentKey || !entry) return null;
 
-  const generating = entry.status === "queued" || entry.status === "generating";
+  const generating =
+    entry.status === "checking" || entry.status === "queued" || entry.status === "generating";
   // Prefetched docs waiting beyond the current one — tells the PO that
   // advancing will be instant.
   const readyAhead = keys.slice(index + 1).filter((k) => entries[k]?.status === "ready").length;
@@ -315,6 +366,18 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
               <InlineAlert variant="info">
                 Classified as not stakeholder-testable (internal change, spike or chore).
                 Saving stores the one-line mention so the sprint delivery stays complete.
+              </InlineAlert>
+            )}
+            {entry.source === "draft" && !generating && (
+              <InlineAlert variant="info">
+                Showing the doc generated earlier{entry.cachedAt ? ` (${new Date(entry.cachedAt).toLocaleString()})` : ""} — not
+                saved yet. Review and save it, or Regenerate for a fresh version.
+              </InlineAlert>
+            )}
+            {entry.source === "saved" && !generating && (
+              <InlineAlert variant="info">
+                Showing the saved test documentation{entry.cachedAt ? ` (${new Date(entry.cachedAt).toLocaleString()})` : ""}.
+                Saving pushes it to Jira again; Regenerate builds a fresh version.
               </InlineAlert>
             )}
             {entry.error && <InlineAlert variant="error">{entry.error}</InlineAlert>}
