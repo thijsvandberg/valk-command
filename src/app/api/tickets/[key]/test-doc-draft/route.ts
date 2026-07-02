@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { cache } from "@/lib/cache";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { isDraftKey } from "@/lib/draft-key";
 import { TEST_DOC_CLASSIFICATIONS, type TestDocClassification } from "@/lib/parse-test-doc";
@@ -65,6 +66,10 @@ export async function PUT(
     .insert(ticketMetadata)
     .values({ jiraKey: key, ...draft })
     .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: draft });
+
+  // The board-row test-doc marker derives from this state; drop the cached
+  // list responses so the next revalidation reflects the new draft.
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
 
   return NextResponse.json({ saved: true });
 }

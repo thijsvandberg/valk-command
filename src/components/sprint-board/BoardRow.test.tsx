@@ -21,6 +21,7 @@ vi.mock("lucide-react", () => {
     Scissors: stub("scissors"),
     Clock: stub("clock"),
     NotebookPen: stub("notebook"),
+    FileCheck2: stub("file-check"),
   };
 });
 
@@ -917,6 +918,29 @@ describe("BoardRow (headerless, BRDG-239)", () => {
 
       const { container: last } = renderRow({ isLastInCard: true });
       expect(contentDiv(last).className).toContain("rounded-b-[11px]");
+    });
+  });
+
+  describe("test-doc marker (BRDG-426)", () => {
+    const withTag = new Set<InlineTagId>([...ALL_TAGS, "testDoc"]);
+
+    it("renders the three states with distinct tones when the tag is on", () => {
+      renderRow({ ticket: makeTicket({ testDocState: "accepted" }), tags: withTag });
+      expect(screen.getByTestId("test-doc-state-accepted")).toBeInTheDocument();
+
+      renderRow({ ticket: makeTicket({ testDocState: "draft" }), tags: withTag });
+      expect(screen.getByTestId("test-doc-state-draft")).toBeInTheDocument();
+
+      renderRow({ ticket: makeTicket({ testDocState: null }), tags: withTag });
+      const none = screen.getByTestId("test-doc-state-none");
+      expect(none).toBeInTheDocument();
+      expect(none.querySelector("[data-testid='icon-file-check']")?.getAttribute("class")).toContain("opacity-40");
+    });
+
+    it("renders nothing when the tag is toggled off (the default)", () => {
+      renderRow({ ticket: makeTicket({ testDocState: "accepted" }) });
+      expect(screen.queryByTestId("test-doc-state-accepted")).toBeNull();
+      expect(screen.queryByTestId("test-doc-state-none")).toBeNull();
     });
   });
 });

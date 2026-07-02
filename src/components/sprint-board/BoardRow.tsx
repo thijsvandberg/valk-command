@@ -11,7 +11,7 @@ import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock, NotebookPen } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock, NotebookPen, FileCheck2 } from "lucide-react";
 import { WarningBadge } from "@/components/sprint-board/WarningBadge";
 import { type WarningKind } from "@/components/sprint-board/warning-filter";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
@@ -31,7 +31,7 @@ import { useLiveTicketChange } from "@/hooks/useLiveTicketChange";
 import { normalizeEpicStatus } from "@/lib/epic-filters";
 import { rowSurfaceClasses } from "./row-surface";
 
-const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "businessValue", "epic", "assignee", "creator"]);
+const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "testDoc", "storyPoints", "businessValue", "epic", "assignee", "creator"]);
 
 export interface BoardRowBaseProps {
   ticket: Ticket;
@@ -783,6 +783,35 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               {tags.has("notes") && ticket.notes && (
                 <span className="shrink-0" title={ticket.notes}>
                   <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
+                </span>
+              )}
+              {/* Test-documentation state (BRDG-426): opt-in signal for the sprint
+                  delivery check. When toggled on, EVERY row shows one of three states
+                  — the whole point is spotting the gaps, so "nothing yet" renders as
+                  a faint icon rather than nothing at all. */}
+              {tags.has("testDoc") && (
+                <span
+                  className="shrink-0"
+                  data-testid={`test-doc-state-${ticket.testDocState ?? "none"}`}
+                  title={
+                    ticket.testDocState === "accepted"
+                      ? "Test documentation saved"
+                      : ticket.testDocState === "draft"
+                        ? "Test doc generated — not yet reviewed/saved"
+                        : "No test documentation yet"
+                  }
+                >
+                  <FileCheck2
+                    size={14}
+                    strokeWidth={1.75}
+                    className={
+                      ticket.testDocState === "accepted"
+                        ? "text-[var(--color-status-success)]"
+                        : ticket.testDocState === "draft"
+                          ? "text-[var(--color-status-warning)]"
+                          : "text-text-muted opacity-40"
+                    }
+                  />
                 </span>
               )}
               {/* Refinement badge drops first as the column narrows (BRDG-451): widest

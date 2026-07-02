@@ -193,12 +193,16 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
         cachedAt: null,
       });
       // Cache the raw generation immediately (fire-and-forget): closing the
-      // modal or revisiting later must never cost a regeneration.
+      // modal or revisiting later must never cost a regeneration. Refresh the
+      // board lists after: the row's test-doc marker derives from this state.
       if (doc) {
-        ticketsApi.saveTestDocDraft(key, { markdown: doc, classification }).catch(() => {});
+        ticketsApi
+          .saveTestDocDraft(key, { markdown: doc, classification })
+          .then(() => mutate((k) => typeof k === "string" && k.startsWith("/api/tickets?")))
+          .catch(() => {});
       }
     },
-    [patchEntry],
+    [mutate, patchEntry],
   );
 
   const handleTaskError = useCallback(
@@ -238,8 +242,10 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
         markdown: entry.doc.trim(),
         classification: entry.classification,
       });
-      // Refresh an open detail panel; the server cache is already invalidated.
+      // Refresh an open detail panel and the board lists (the row's test-doc
+      // marker flips to accepted); the server cache is already invalidated.
       void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
+      void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets?"));
       setSaving(false);
       if (result.conflict) {
         // Bridge copy is saved; the description merge stays as a local edit for

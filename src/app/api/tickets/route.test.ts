@@ -174,6 +174,22 @@ describe("GET /api/tickets", () => {
     expect(data[0].qualityScore).toBe(85);
   });
 
+  it("derives testDocState from the metadata doc/draft columns (BRDG-426)", async () => {
+    seedTicket(testDb, "VPL-100");
+    seedTicket(testDb, "VPL-101");
+    seedTicket(testDb, "VPL-102");
+    testDb.insert(ticketMetadata).values([
+      { jiraKey: "VPL-100", testDoc: "accepted doc" },
+      { jiraKey: "VPL-101", testDocDraft: "draft doc" },
+    ]).run();
+
+    const data = await (await GET(new Request("http://localhost:3100/api/tickets"))).json();
+    const byKey = Object.fromEntries(data.map((t: { key: string; testDocState: string | null }) => [t.key, t.testDocState]));
+    expect(byKey["VPL-100"]).toBe("accepted");
+    expect(byKey["VPL-101"]).toBe("draft");
+    expect(byKey["VPL-102"]).toBeNull();
+  });
+
   it("resolves sprintDisplayName from the sprint name cache", async () => {
     seedTicket(testDb, "VPL-100", "4238");
     seedTicket(testDb, "VPL-101", "9999"); // no cache entry

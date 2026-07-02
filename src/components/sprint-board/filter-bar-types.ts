@@ -102,6 +102,7 @@ export type InlineTagId =
   | "notes"
   | "poReadiness"
   | "editState"
+  | "testDoc"
   | "storyPoints"
   | "businessValue"
   | "epic"
@@ -118,6 +119,7 @@ export const ROW_FIELDS: { id: InlineTagId; label: string; group: "signal" | "ba
   { id: "notes", label: "Notes", group: "signal" },
   { id: "poReadiness", label: "PO readiness", group: "signal" },
   { id: "editState", label: "Edit state", group: "signal" },
+  { id: "testDoc", label: "Test documentation", group: "signal" },
   { id: "storyPoints", label: "Story points (SP)", group: "badge" },
   { id: "businessValue", label: "Business value (BV)", group: "badge" },
   { id: "epic", label: "Epic", group: "badge" },
@@ -125,9 +127,10 @@ export const ROW_FIELDS: { id: InlineTagId; label: string; group: "signal" | "ba
   { id: "creator", label: "Reporter", group: "badge" },
 ];
 
-// The board shows every row field by default except Reporter, which is an opt-in
-// signal surfaced primarily in the inbox (where it is on by default below).
-export const DEFAULT_VISIBLE_TAGS: InlineTagId[] = ROW_FIELDS.map((f) => f.id).filter((id) => id !== "creator");
+// The board shows every row field by default except Reporter (an opt-in signal
+// surfaced primarily in the inbox) and Test documentation (a sprint-delivery
+// check the PO only needs occasionally, BRDG-426).
+export const DEFAULT_VISIBLE_TAGS: InlineTagId[] = ROW_FIELDS.map((f) => f.id).filter((id) => id !== "creator" && id !== "testDoc");
 
 // Badge fields added after the initial headerless board (BRDG-299). They were
 // always shown before, so an existing persisted set that predates them must keep
