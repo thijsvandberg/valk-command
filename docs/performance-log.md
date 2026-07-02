@@ -707,3 +707,18 @@ Key bottlenecks / lessons:
 - **Adding an export to `@/lib/jira-client` silently breaks every full-stub mock of it.** The new `extractLastSprintChangeAuthor` was `undefined` in `sync-incremental/route.test.ts` and the shared `src/test/mocks/jira-client.ts` factory, so the real `upsertIssue` threw and those route tests returned an error shape (`data.count` undefined). Cost one verify cycle. Lesson: when adding a jira-client export consumed by `upsert-issue`, update the shared factory + any module-level `vi.mock("@/lib/jira-client", ...)` that lists the extract fns.
 - **Full-suite flakiness under memory pressure, again.** A first `npm run verify` reported `TicketHistory.test.tsx` + sync jsdom `EventListener` errors that did NOT reproduce in a clean single-process `vitest run` (final: 638/639 files green). Same "ONE test process at a time" hazard as BRDG-413. Run one clean full suite before chasing a phantom.
 - **Pre-existing `menu-button-guard` red on `NavPanel.tsx: active:scale-95`**, from parallel uncommitted work (also noted in commit 7e19d5ec). Confirmed external via `git status` (NavPanel not in my changeset); left untouched per scope + parallel-tree hygiene.
+
+## BRDG-459 — auto-start VRW with prod server, persisted VRW logs (2026-07-02)
+
+Shell-only story: new `tools/scripts/start-vrw.sh` (idempotent, detached, pruned `logs/vrw-*.log`), wired into `start-prod.sh`, `npm run vrw:start`, docs. All acceptance criteria verified live (both script branches, failure path, pruning, SIGINT survival). 4 commits; full test suite green (7400/7400); no app code touched.
+
+| Phase | Notes |
+|---|---|
+| Plan (subagent) | High-value: pre-flagged the exact pitfall that materialized (SIGINT reaching the nohup'd child) including the working fallback (`perl POSIX::setsid`), plus the curl `-m 1` poll-budget and header `>`/`>>` truncation details |
+| Implement | Clean; one live-test failure led to the planned setsid fallback |
+| Verify | Manual shell verification instead of vitest (BRDG-443 precedent); prune/failure tested against a temp `VRW_LOG_DIR` to avoid polluting real logs |
+
+Key bottlenecks / lessons:
+- **`nohup ... &` alone does not survive Ctrl+C on macOS/bash: npm installs its own SIGINT handler**, overriding the inherited ignore-disposition, so group-wide SIGINT killed VRW. Fix: start the child in its own session (`nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' -- npm ...`). Verified empirically before and after.
+- **Parallel work broke typecheck on `dev` mid-run:** commit `d4cbfe5d` (BRDG-460 exploration sandbox) has a TS error in `src/app/dev/exploration/story-writer-chrome/page.tsx`, so `npm run verify` failed on tsc. Triaged with two throwaway-worktree typechecks: clean at my feat commit, red at dev HEAD. Left untouched (active parallel work, out of scope); tests were run directly instead.
+- **`npm run build` deliberately skipped:** zero app code changed, and the PO's live prod server serves from this checkout's shared `.next` — a rebuild under a running `next start` risks taking prod down for no verification value.
