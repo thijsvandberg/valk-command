@@ -169,7 +169,7 @@ AI-assisted story editing sessions. See [story-writer.md](story-writer.md) for a
 | `/api/tickets/[key]/story-writer` | PATCH | Update session (drafts, titles, status) |
 | `/api/tickets/[key]/story-writer` | DELETE | Close/discard session |
 | `/api/tickets/[key]/story-writer/messages` | POST | Send message (invokes workspace skill) |
-| `/api/tickets/[key]/story-writer/messages` | DELETE | Delete the session's failed messages (`?failed=true` required) |
+| `/api/tickets/[key]/story-writer/messages` | DELETE | Delete a single pending/failed message (`?id=<messageId>` required) |
 | `/api/tickets/[key]/story-writer/apply-draft` | POST | Extract and persist AI drafts from task output |
 | `/api/tickets/[key]/story-writer/apply-draft` | DELETE | Dismiss a specific AI draft |
 | `/api/tickets/[key]/story-writer/apply-related` | GET | List related story candidates |

@@ -45,13 +45,16 @@ Ticket Detail -> "Write Story" -> Story Writer Session
 
 **Follow-up messages:** Resumes the existing workspace conversation. If the workspace returns 410 (session lost), the route recovers by reconstructing context and re-sending as a new first message.
 
-**Message reliability (BRDG-084):**
+**Message reliability (BRDG-084, BRDG-459):**
 - Messages are inserted with `status: "pending"`, updated to `"sent"` on agent success or `"failed"` on agent failure.
-- Failed messages show an inline retry button; retry reuses the existing DB row via `retryMessageId`.
+- Failed messages show an inline bubble with the friendly reason (`friendlyAgentError`), a retry button, and a per-message dismiss (×); retry reuses the existing DB row via `retryMessageId`.
+- Agent error responses include the persisted `messageId` so the client reconciles its optimistic temp id with the DB row (retry and dismiss then target the real row).
 - Server-side dedup: a `contentHash` (SHA-256 of conversationId + normalized content) is checked against recent messages (30s window). Returns 409 on duplicate.
 - Client-side dedup: blocks identical content within 10s of the last message.
-- `DELETE /api/tickets/[key]/story-writer/messages?failed=true` clears orphaned (pending/failed) messages.
+- `DELETE /api/tickets/[key]/story-writer/messages?id=<messageId>` deletes a single pending/failed message (sent messages are never deletable this way).
 - Session discard automatically cleans up orphaned messages.
+
+**Error surfaces (BRDG-459):** the failed-message bubble is the single surface for send failures. The `streamError` banner is reserved for errors with no message to attach to (stream timeout, task failure, draft-save failure, duplicate warning). Failed `story-writer` activity-log entries never toast (they stay in the Activity Log page). The chat toolbar shows a problem-only workspace badge (`WorkspaceStatusBadge`): hidden while healthy, red dot + "Workspace offline" with hover detail when unreachable; a failed send triggers an immediate health re-check via `triggerWorkspaceHealthCheck`.
 
 ### Draft Extraction
 
