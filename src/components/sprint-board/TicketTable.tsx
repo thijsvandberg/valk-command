@@ -191,6 +191,7 @@ export function TicketTable({
   statusChangeMap,
   onStatusChangeSeen,
   onStatusChangeMoveToBottom,
+  onStatusChangeGenerateTestDoc,
   showFinishedDivider = false,
   flatCreateTarget,
   flatComposerOpen = false,
@@ -302,6 +303,8 @@ export function TicketTable({
   statusChangeMap?: Map<string, StatusChangeItem>;
   onStatusChangeSeen?: (item: StatusChangeItem) => void;
   onStatusChangeMoveToBottom?: (item: StatusChangeItem) => void;
+  /** To-Test line action: opens the test-doc generate + validate flow (BRDG-426). */
+  onStatusChangeGenerateTestDoc?: (ticketKey: string) => void;
   /** BRDG-414: render the permanent "Finished work" divider in the flat list (active-sprint view). */
   showFinishedDivider?: boolean;
   /** Target for the ungrouped list's composer. When set, the header "+" can open the inline composer. */
@@ -508,6 +511,7 @@ export function TicketTable({
     statusChange: statusChangeMap?.get(ticket.key) ?? null,
     onStatusChangeSeen,
     onStatusChangeMoveToBottom,
+    onStatusChangeGenerateTestDoc,
     onSelectTicket,
     onRowContextMenu,
     onCheckboxClick: handleCheckboxClick,
@@ -536,7 +540,7 @@ export function TicketTable({
     onRemoveFromRefinement,
     onViewRefinement,
     showStoryWriterLink: freshlyCreatedKeys?.has(ticket.key) ?? false,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, onSubtasksAdded, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement, freshlyCreatedKeys, statusChangeMap, onStatusChangeSeen, onStatusChangeMoveToBottom]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, onSubtasksAdded, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement, freshlyCreatedKeys, statusChangeMap, onStatusChangeSeen, onStatusChangeMoveToBottom, onStatusChangeGenerateTestDoc]);
 
   // Placeholder rows (BRDG-304) render inside a table tbody as a single-cell row,
   // mirroring BoardRow's <tr><td> shape so they sit in the same column flow.

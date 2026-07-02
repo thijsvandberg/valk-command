@@ -166,6 +166,8 @@ export interface BoardRowBaseProps {
   statusChangeAtBottom?: boolean;
   onStatusChangeSeen?: (item: StatusChangeItem) => void;
   onStatusChangeMoveToBottom?: (item: StatusChangeItem) => void;
+  /** To-Test line action: opens the test-doc generate + validate flow (BRDG-426). */
+  onStatusChangeGenerateTestDoc?: (ticketKey: string) => void;
   /** Drop the leading selection-checkbox gutter (views without bulk selection, e.g. the
    *  Story Writer landing). Off by default so the board keeps its checkbox. */
   hideCheckbox?: boolean;
@@ -297,6 +299,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     statusChangeAtBottom,
     onStatusChangeSeen,
     onStatusChangeMoveToBottom,
+    onStatusChangeGenerateTestDoc,
     hideCheckbox = false,
     hideAssigneeUntilHover = false,
     isNewSinceLastViewed,
@@ -1067,6 +1070,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               onSeen={() => onStatusChangeSeen(statusChange)}
               onMoveToBottom={() => onStatusChangeMoveToBottom(statusChange)}
               onCloseSubtasks={onCloseSubtasks}
+              onGenerateTestDoc={
+                onStatusChangeGenerateTestDoc
+                  ? () => onStatusChangeGenerateTestDoc(statusChange.ticketKey)
+                  : undefined
+              }
             />
           )}
         </div>

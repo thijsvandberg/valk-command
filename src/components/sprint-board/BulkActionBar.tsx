@@ -143,6 +143,7 @@ export function BulkActionBar({
   // Assist group actions
   onReviewStory,
   onGenerateSubtasks,
+  onGenerateTestDocs,
   onExportForStakeholders,
   isExporting,
   isGeneratingSubtasks,
@@ -192,6 +193,8 @@ export function BulkActionBar({
   // Assist group
   onReviewStory?: () => void;
   onGenerateSubtasks?: () => void;
+  /** Opens the test-doc generate + validate queue for the selection (BRDG-426). */
+  onGenerateTestDocs?: () => void;
   onExportForStakeholders?: () => void;
   isExporting?: boolean;
   isGeneratingSubtasks?: boolean;
@@ -216,7 +219,7 @@ export function BulkActionBar({
 }) {
   const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel;
   const hasMove = (onQuickMove && quickMoves && quickMoves.length > 0) || (onMoveSprint && sprints);
-  const hasAssist = onReviewStory || onGenerateSubtasks || onExportForStakeholders;
+  const hasAssist = onReviewStory || onGenerateSubtasks || onGenerateTestDocs || onExportForStakeholders;
   const hasGroup = hasUpdate || hasMove || onSetFlagged || hasAssist;
   const hasListOps = onRefine || onCopyToClipboard || onRefreshFromJira;
 
@@ -340,6 +343,9 @@ export function BulkActionBar({
                 <MenuItem disabled={isGeneratingSubtasks} onClick={() => { onGenerateSubtasks(); close(); }}>
                   {isGeneratingSubtasks ? "Generating..." : "Generate Subtasks"}
                 </MenuItem>
+              )}
+              {onGenerateTestDocs && (
+                <MenuItem onClick={() => { onGenerateTestDocs(); close(); }}>Generate test docs</MenuItem>
               )}
               {onExportForStakeholders && (
                 <MenuItem disabled={isExporting} onClick={() => { onExportForStakeholders(); close(); }}>

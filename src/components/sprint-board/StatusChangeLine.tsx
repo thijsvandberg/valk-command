@@ -74,6 +74,7 @@ export function StatusChangeLine({
   onSeen,
   onMoveToBottom,
   onCloseSubtasks,
+  onGenerateTestDoc,
 }: {
   change: StatusChangeItem;
   deploy?: LastDeployedInfo;
@@ -82,6 +83,8 @@ export function StatusChangeLine({
   onSeen: () => void;
   onMoveToBottom: () => void;
   onCloseSubtasks?: (key: string) => Promise<void>;
+  /** To-Test action: opens the stakeholder test-doc generate + validate flow (BRDG-426). */
+  onGenerateTestDoc?: () => void;
 }) {
   const isFinished = change.toStatus === "DONE" || change.toStatus === "DEPRECATED";
   const isTest = change.toStatus === "TEST";
@@ -223,10 +226,14 @@ export function StatusChangeLine({
               </button>
             </Tooltip>
           )}
-          {isTest && (
-            <Tooltip content="Generate a test prompt from the story, comments and changes (coming soon)">
-              <button type="button" className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}>
-                Generate test prompt
+          {isTest && onGenerateTestDoc && (
+            <Tooltip content="Generate stakeholder test documentation from the story and comments, then validate it next to the story">
+              <button
+                type="button"
+                onClick={onGenerateTestDoc}
+                className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
+              >
+                Generate test doc
               </button>
             </Tooltip>
           )}

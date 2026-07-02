@@ -49,6 +49,7 @@ export function TicketActionMenuContent({
   flagState,
   onReviewStory,
   onGenerateSubtasks,
+  onGenerateTestDoc,
   onRefine,
   refinements,
   onAddToRefinement,
@@ -88,6 +89,8 @@ export function TicketActionMenuContent({
   flagState?: FlagState;
   onReviewStory?: () => void;
   onGenerateSubtasks?: () => void;
+  /** Opens the stakeholder test-doc generate + validate flow (BRDG-426). */
+  onGenerateTestDoc?: () => void;
   /** "New refinement…": opens the create-session modal. */
   onRefine?: () => void;
   /** Scheduled refinement sessions; when present, "Add to refinement" becomes a list
@@ -116,7 +119,7 @@ export function TicketActionMenuContent({
   }, [quickMoves, currentSprintIds]);
   const hasMove = hasQuickMoves || (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
   const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel;
-  const hasAssist = onReviewStory || onGenerateSubtasks;
+  const hasAssist = onReviewStory || onGenerateSubtasks || onGenerateTestDoc;
   const showFlag = Boolean(onSetFlagged);
   const showFlagItem = flagState !== "flagged"; // show "Flag" unless every target is already flagged
   const showUnflagItem = flagState !== "unflagged"; // show "Remove flag" unless every target is unflagged
@@ -219,6 +222,7 @@ export function TicketActionMenuContent({
     <>
       {onReviewStory && <MenuItem onClick={() => { onReviewStory(); close(); }}>Review Story</MenuItem>}
       {onGenerateSubtasks && <MenuItem onClick={() => { onGenerateSubtasks(); close(); }}>Generate Subtasks</MenuItem>}
+      {onGenerateTestDoc && <MenuItem onClick={() => { onGenerateTestDoc(); close(); }}>Generate test doc</MenuItem>}
     </>
   );
 

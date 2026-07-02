@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { StatusChangeLine } from "./StatusChangeLine";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
@@ -47,6 +47,34 @@ describe("StatusChangeLine (BRDG-414)", () => {
   it("renders the from -> to transition as one uniform sentence", () => {
     render(<StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} />);
     expect(screen.getByText(/Updated from In Progress to Test/)).toBeInTheDocument();
+  });
+
+  describe("Generate test doc action (BRDG-426)", () => {
+    it("renders on a to-Test change and fires the callback", () => {
+      const onGenerate = vi.fn();
+      render(
+        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} />,
+      );
+      fireEvent.click(screen.getByText("Generate test doc"));
+      expect(onGenerate).toHaveBeenCalledTimes(1);
+    });
+
+    it("is absent when no handler is supplied (non-board hosts)", () => {
+      render(<StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} />);
+      expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
+    });
+
+    it("is absent on non-Test transitions", () => {
+      render(
+        <StatusChangeLine
+          change={makeChange({ toStatus: "IN PROGRESS" })}
+          onSeen={noop}
+          onMoveToBottom={noop}
+          onGenerateTestDoc={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
+    });
   });
 
   it("renders a sprint-add-only line led by 'Added to sprint' with the mover's name (BRDG-439)", () => {
@@ -203,7 +231,7 @@ describe("StatusChangeLine (BRDG-414)", () => {
       // No status transition copy and no status-only affordances.
       expect(screen.queryByText(/Updated from/)).not.toBeInTheDocument();
       expect(screen.queryByText("Move to bottom")).not.toBeInTheDocument();
-      expect(screen.queryByText("Generate test prompt")).not.toBeInTheDocument();
+      expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
       // Dismiss check is still offered.
       expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
     });
