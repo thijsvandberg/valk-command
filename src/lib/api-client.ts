@@ -321,6 +321,16 @@ export const tickets = {
       `/api/tickets/${enc(ticketKey)}/suggest-subtasks`, { method: "POST", signal },
     ),
 
+  // Stakeholder test documentation (BRDG-426)
+  generateTestDoc: (ticketKey: string, signal?: AbortSignal) =>
+    apiFetch<{ taskId: string; streamUrl: string }>(
+      `/api/tickets/${enc(ticketKey)}/generate-test-doc`, { method: "POST", signal },
+    ),
+  saveTestDoc: (ticketKey: string, data: { markdown: string; classification?: string }, signal?: AbortSignal) =>
+    apiFetch<{ saved: boolean; pushed?: boolean; conflict?: boolean; message?: string }>(
+      `/api/tickets/${enc(ticketKey)}/test-doc`, { method: "PUT", body: data, signal },
+    ),
+
   // Subtask suggestions (persisted AI suggestions)
   getSubtaskSuggestions: (key: string, signal?: AbortSignal) =>
     apiFetch<{ suggestions: SubtaskSuggestionResponse[] }>(

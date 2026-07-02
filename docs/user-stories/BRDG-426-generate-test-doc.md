@@ -83,19 +83,19 @@ Deferred (annotated, not blocking): comment freshness pre-sync before gathering;
 ## Acceptance Criteria
 
 - [x] A `generate-test-doc` workspace skill produces a test-doc block per the calibrated recipe, including the `needs_input` and `not_stakeholder_relevant` classifications. <!-- VRW .claude/skills/generate-test-doc.md (committed in VRW repo) + src/lib/parse-test-doc.ts -->
-- [ ] `POST /api/tickets/[key]/generate-test-doc` gathers description + all comments + recent status changes and dispatches the skill via the workspace-task pattern. <!-- mirror suggest-subtasks; agentFetch; { taskId, streamUrl } -->
+- [x] `POST /api/tickets/[key]/generate-test-doc` gathers description + all comments + recent status changes and dispatches the skill via the workspace-task pattern. <!-- mirror suggest-subtasks; agentFetch; { taskId, streamUrl } -->
 - [ ] The row action menu offers "Generate test doc" for a single ticket. <!-- useRowActions + ticket-action-menu -->
 - [ ] The to-Test status-change line button triggers generation (inert BRDG-414 stub replaced). <!-- StatusChangeLine.tsx isTest action -->
 - [ ] The bulk toolbar offers "Generate test docs" for the multiselect and processes tickets as a queue. <!-- BulkActionBar.tsx -->
 - [ ] Validation happens in a split view: editable doc left, the story in regular rendered format right; Save / Regenerate / Cancel, plus Skip + queue position in bulk. <!-- new split-view modal -->
-- [ ] Saving stores the doc in Bridge and writes/replaces a `:::expand Test documentation` block at the end of the Jira description; the block never duplicates on re-save. <!-- ticket_metadata test_doc; markdown-to-adf expand -->
+- [x] Saving stores the doc in Bridge and writes/replaces a `:::expand Test documentation` block at the end of the Jira description; the block never duplicates on re-save. <!-- PUT /api/tickets/[key]/test-doc; src/lib/test-doc.ts; upsertLocalEdit + pushToJira -->
 - [ ] `needs_input` and `not_stakeholder_relevant` results are surfaced clearly instead of showing a fabricated doc. <!-- split view notice states -->
-- [ ] Draft tickets (DRAFT-xxx) never trigger a Jira write. <!-- @/lib/draft-key guard in the route -->
+- [x] Draft tickets (DRAFT-xxx) never trigger a Jira write. <!-- 409 guards in both routes (generate + test-doc) -->
 
 ## Tests
 
-- [ ] Route gathers the expected ticket context (description, comments, status changes) and dispatches the skill; 404 on missing ticket; guard on draft keys. <!-- src/app/api/tickets/[key]/generate-test-doc/route.test.ts -->
-- [ ] Saving writes `test_doc` to ticket_metadata and produces a description with exactly one Test documentation expand block, replacing any existing one. <!-- save route/lib test -->
+- [x] Route gathers the expected ticket context (description, comments, status changes) and dispatches the skill; 404 on missing ticket; guard on draft keys. <!-- src/app/api/tickets/[key]/generate-test-doc/route.test.ts -->
+- [x] Saving writes `test_doc` to ticket_metadata and produces a description with exactly one Test documentation expand block, replacing any existing one. <!-- test-doc/route.test.ts + src/lib/test-doc.test.ts -->
 - [ ] Split view renders doc + story side by side; bulk queue advances on save and skip. <!-- component tests -->
 - [ ] StatusChangeLine to-Test action triggers generation instead of the inert stub. <!-- StatusChangeLine.test update -->
 
