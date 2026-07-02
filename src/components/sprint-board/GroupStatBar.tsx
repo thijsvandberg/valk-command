@@ -296,8 +296,9 @@ export const GroupStatBar = memo(function GroupStatBar({
   // status pills — otherwise an empty sprint still reads as having items.
   const liveTickets = tickets.filter((t) => !t.removedFromJiraAt);
   const totalPoints = liveTickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
-  // Effective points for the fullness meter: real SP wins, else the guestimation,
-  // so the meter reflects both refined and penciled work (BRDG-303).
+  // Effective points (real SP wins, else the guestimation) feed the fullness meter
+  // (BRDG-303) and the header's penciled SP+guestimate badge, so both reflect
+  // refined and penciled work.
   const usedEffective = liveTickets.reduce((sum, t) => sum + effectivePoints(t.storyPoints, t.guestimation), 0);
   const bvTickets = liveTickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
   const bvTotal = bvTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
@@ -499,6 +500,19 @@ export const GroupStatBar = memo(function GroupStatBar({
                   ? metricTooltip("Story points", totalPoints, spAvg, "per estimated ticket", getSpColor(totalPoints).solid)
                   : undefined
             }
+          />
+        </span>
+      )}
+      {/* SP + guestimate: only when a guestimate-only ticket lifts the effective total
+          above committed SP, mirroring the bulk bar's penciled badge. Gated with the SP
+          total so the pair drops together on narrow headers. */}
+      {showMetrics && usedEffective > totalPoints && (
+        <span className="hidden @md:inline-flex">
+          <MetricBadge
+            metric="sp"
+            value={usedEffective}
+            penciled
+            tooltipContent="Story Points + guestimate for unestimated tickets"
           />
         </span>
       )}

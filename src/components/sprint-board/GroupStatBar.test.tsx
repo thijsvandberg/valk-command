@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { GroupStatBar } from "./GroupStatBar";
 import type { Ticket, Sprint } from "@/types/ticket";
@@ -66,6 +66,42 @@ describe("GroupStatBar", () => {
     render(<GroupStatBar tickets={TICKETS} />);
     // 3 + 5 + 2 = 10, shown via the SP MetricBadge
     expect(screen.getByLabelText("Story Points: 10")).toBeTruthy();
+  });
+
+  // The penciled SP+guestimate badge mirrors the bulk bar: it only appears when a
+  // guestimate-only ticket lifts the effective total above the committed SP total.
+  describe("SP + guestimate badge", () => {
+    it("renders the penciled effective total when guestimates lift it above SP", () => {
+      const tickets = [
+        makeTicket({ key: "VPL-1", storyPoints: 3 }),
+        makeTicket({ key: "VPL-2", storyPoints: null, guestimation: 5 }),
+      ];
+      render(<GroupStatBar tickets={tickets} />);
+      expect(screen.getByLabelText("Story Points: 3")).toBeTruthy();
+      const penciled = screen.getByLabelText("Story Points: 8");
+      expect(penciled.className).toContain("border-dashed");
+    });
+
+    it("renders it even when no ticket has committed SP", () => {
+      const tickets = [makeTicket({ key: "VPL-1", storyPoints: null, guestimation: 5 })];
+      render(<GroupStatBar tickets={tickets} />);
+      expect(screen.getByLabelText("Story Points: 5").className).toContain("border-dashed");
+    });
+
+    it("does not render it when every ticket has committed SP", () => {
+      // A guestimate on an SP-carrying ticket is superseded (effectivePoints: SP wins),
+      // so the effective total equals the SP total and the extra badge would be noise.
+      const tickets = [makeTicket({ key: "VPL-1", storyPoints: 3, guestimation: 8 })];
+      render(<GroupStatBar tickets={tickets} />);
+      expect(screen.getByLabelText("Story Points: 3")).toBeTruthy();
+      expect(screen.queryByLabelText("Story Points: 8")).toBeNull();
+    });
+
+    it("hides it when showMetrics is false", () => {
+      const tickets = [makeTicket({ key: "VPL-1", storyPoints: null, guestimation: 5 })];
+      render(<GroupStatBar tickets={tickets} showMetrics={false} />);
+      expect(screen.queryByLabelText("Story Points: 5")).toBeNull();
+    });
   });
 
   // BRDG-453: on a very narrow header the summary chips drop in a fixed order so the
@@ -809,7 +845,8 @@ describe("GroupStatBar", () => {
           onPencilCapacityChange={() => {}}
         />,
       );
-      expect(screen.getByText("21")).toBeInTheDocument();
+      // Scoped to the meter: the header's penciled SP+guestimate badge shows 21 too.
+      expect(within(screen.getByLabelText("Sprint fullness")).getByText("21")).toBeInTheDocument();
     });
 
     it("uses usedPointsOverride for the meter when provided (epic view = whole sprint)", () => {
