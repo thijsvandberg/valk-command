@@ -188,6 +188,28 @@ sprints, related tickets, codebase, product docs), and emits a single parseable
   [database-schema.md](database-schema.md#ticket_metadata) for the `revival_score` / `revival_rationale`
   columns.
 
+### Stakeholder test documentation: `generate-test-doc` skill (BRDG-426)
+
+The sprint board can generate the per-story test documentation that goes to the customer at
+sprint end. The VRW skill (`.claude/skills/generate-test-doc.md`) takes the ticket context
+(title, type, full description, ALL Jira comments, recent status changes) and emits one
+parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
+"not_stakeholder_relevant", markdown }`.
+
+- **Route**: `POST /api/tickets/[key]/generate-test-doc` gathers the context (comments are a
+  primary input: preconditions and test data usually live there) and dispatches via
+  `agentFetch`, returning `{ taskId, streamUrl }` for SSE streaming.
+- **Parser**: `src/lib/parse-test-doc.ts` — never throws; null on absent/malformed block;
+  unknown classifications degrade to `ok`.
+- **Validation UI**: `src/components/sprint-board/TestDocReviewModal.tsx` — split view with the
+  editable doc left and the story (regular rendered format) right. Entry points: row action
+  menu, the to-Test status-change line button (BRDG-414 stub made real), and the bulk toolbar
+  (sequential queue with Skip).
+- **Save**: `PUT /api/tickets/[key]/test-doc` stores the Bridge copy in `ticket_metadata`
+  (`test_doc*` columns) and writes exactly one `:::expand Test documentation` block at the end
+  of the Jira description through the regular `upsertLocalEdit` + `pushToJira` path
+  (`src/lib/test-doc.ts` strips/appends the block). Draft keys 409 in both routes.
+
 ### already-built topic (BRDG-287)
 
 The `codebase-research` skill is the most expensive call in the scorer pipeline. Two independent controls limit its use:

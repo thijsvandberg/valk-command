@@ -150,6 +150,8 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets/[key]/subtask-suggestions` | PUT | Parse and persist suggestions (replaces existing). Body: `{ suggestions: string[] }` or `{ output: string }` |
 | `/api/tickets/[key]/subtask-suggestions` | DELETE | Remove single suggestion (`{ id }`) or all for ticket |
 | `/api/tickets/[key]/suggest-subtasks` | POST | Gather ticket context + existing subtasks and invoke the workspace `suggest-subtasks` skill. Returns `{ taskId }` for streaming |
+| `/api/tickets/[key]/generate-test-doc` | POST | Gather description + all comments + recent status changes and invoke the workspace `generate-test-doc` skill (BRDG-426). Returns `{ taskId, streamUrl }`; 409 on draft keys |
+| `/api/tickets/[key]/test-doc` | PUT | Save validated stakeholder test documentation: Bridge copy in `ticket_metadata` + one `:::expand Test documentation` block in the Jira description via the local-edit/pushToJira path (BRDG-426). 409 on draft keys |
 | `/api/tickets/[key]/subtasks` | GET | List the ticket's subtasks |
 | `/api/tickets/[key]/subtasks` | POST | Create a subtask in Jira under the ticket |
 | `/api/tickets/[key]/subtasks/rank` | POST | Re-rank subtasks relative to one another via Jira Agile rank |
