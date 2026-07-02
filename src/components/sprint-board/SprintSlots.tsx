@@ -485,8 +485,24 @@ export function SprintSlots({
     }
   }
 
+  // Below this pane width (e.g. the detail sidebar narrows the list column) the
+  // right-side view tools yield their space to the sprint pills. Tools carrying
+  // active state stay visible regardless, so an applied filter/search/saved view
+  // is never invisible and unclearable.
+  const narrowGate = "hidden @[46rem]/tabbar:flex";
+  const searchActive = (searchQuery ?? "").trim().length > 0;
+  const controlsGate = activeFilterCount > 0 || searchActive ? "flex" : narrowGate;
+  const savedGate = activeViewId ? "flex" : narrowGate;
+  // When no tool can appear below the gate, the space right of the scroller is
+  // dead (empty cluster pl-2 + bar px-4), so the fade may run flush to the bar
+  // edge instead of stopping 24px short of it.
+  const toolsMayShow = savedGate === "flex" || controlsGate === "flex";
+  const rightFadePosition = toolsMayShow
+    ? "right-0 w-6"
+    : "right-0 w-6 @max-[46rem]/tabbar:-right-6 @max-[46rem]/tabbar:w-12";
+
   return (
-    <BarContainer>
+    <BarContainer className="relative z-20 @container/tabbar">
       <div className={`${BOARD_CONTENT_MAX} flex h-full items-center`}>
       {/* All tab -- fixed leading, filled pill, brand-tinted bg */}
       <button
@@ -520,13 +536,13 @@ export function SprintSlots({
           scroller shrink and scroll instead of stretching the bar. A left margin keeps
           breathing room from the Backlogs dropdown now the divider is gone. */}
       <div className={`relative flex min-w-0 h-full items-stretch ${pillSlotSprints.length > 0 ? "ml-4" : ""}`}>
-        {/* Left fade */}
+        {/* Left fade -- surface-chrome matches the bar background (not surface-base) */}
         {canScrollLeft && (
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-surface-base to-transparent" />
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-surface-chrome to-transparent" />
         )}
         {/* Right fade */}
         {canScrollRight && (
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-l from-surface-base to-transparent" />
+          <div className={`pointer-events-none absolute top-0 bottom-0 z-10 ${rightFadePosition} bg-gradient-to-l from-surface-chrome to-transparent`} />
         )}
       <div ref={scrollRef} className="flex min-w-0 h-full items-stretch gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <DndContext
@@ -606,15 +622,20 @@ export function SprintSlots({
       {/* Right side: view tools, pushed to the far edge. Saved views live here too,
           as a viewing tool rather than a sprint-zone neighbour (BRDG-319). */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
-        <SavedViewsMenu savedViews={savedViews} activeViewId={activeViewId} onViewClick={onViewClick} onSaveCurrentView={onSaveCurrentView} />
+        <div className={`${savedGate} items-center`}>
+          <SavedViewsMenu savedViews={savedViews} activeViewId={activeViewId} onViewClick={onViewClick} onSaveCurrentView={onSaveCurrentView} />
+        </div>
 
         {/* Group by -- only visible in the All view */}
         {allActive && groupBy !== undefined && onGroupByChange && (
-          <GroupByDropdown value={groupBy} onChange={onGroupByChange} />
+          <div className={`${narrowGate} items-center`}>
+            <GroupByDropdown value={groupBy} onChange={onGroupByChange} />
+          </div>
         )}
 
         {/* Collapse / expand all groups -- only when grouping is active and groups exist */}
         {allActive && groupCount > 0 && onToggleCollapseAll && (
+          <div className={`${narrowGate} items-center`}>
           <Button
             variant="ghost"
             size="md"
@@ -629,21 +650,24 @@ export function SprintSlots({
             }
             className="border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
           />
+          </div>
         )}
 
         {/* Unified controls: search · sort · filter (BRDG-344). The standalone
             field-toggle, sort and filter-bar buttons fold into this one cluster. */}
         {filterProps && sortField && sortDir && onSortChange && onSearchChange && (
-          <UnifiedControlsCluster
-            searchQuery={searchQuery ?? ""}
-            onSearchChange={onSearchChange}
-            searchCount={searchCount}
-            sortField={sortField}
-            sortDir={sortDir}
-            onSortChange={onSortChange}
-            activeFilterCount={activeFilterCount}
-            filterProps={filterProps}
-          />
+          <div className={`${controlsGate} items-center`}>
+            <UnifiedControlsCluster
+              searchQuery={searchQuery ?? ""}
+              onSearchChange={onSearchChange}
+              searchCount={searchCount}
+              sortField={sortField}
+              sortDir={sortDir}
+              onSortChange={onSortChange}
+              activeFilterCount={activeFilterCount}
+              filterProps={filterProps}
+            />
+          </div>
         )}
       </div>
       </div>

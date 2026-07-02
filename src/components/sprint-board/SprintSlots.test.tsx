@@ -49,6 +49,37 @@ function makeFilterProps() {
   };
 }
 
+// JSDOM cannot evaluate CSS container queries, so the narrow-pane behavior is
+// asserted through the gate classes on each tool's wrapper (BRDG: see SprintSlots).
+const NARROW_GATE = "hidden @[46rem]/tabbar:flex";
+
+const WITH_CONTROLS = {
+  sortField: "rank" as const,
+  sortDir: "asc" as const,
+  onSortChange: vi.fn(),
+  searchQuery: "",
+  onSearchChange: vi.fn(),
+  filterProps: makeFilterProps(),
+};
+
+/** JSDOM has no layout, so overflow is faked to make the scroll fades render. */
+function forceScrollOverflow() {
+  const scroller = document.body.querySelector('[class*="overflow-x-auto"]') as HTMLElement;
+  Object.defineProperty(scroller, "clientWidth", { value: 100, configurable: true });
+  Object.defineProperty(scroller, "scrollWidth", { value: 300, configurable: true });
+  Object.defineProperty(scroller, "scrollLeft", { value: 10, configurable: true });
+  fireEvent.scroll(scroller);
+}
+
+/** Climbs from a tool's trigger to its direct-child wrapper inside the right-side cluster. */
+function toolWrapper(el: HTMLElement): HTMLElement {
+  let node: HTMLElement = el;
+  while (node.parentElement && !node.parentElement.className.includes("ml-auto")) {
+    node = node.parentElement;
+  }
+  return node;
+}
+
 function renderBar(overrides: Partial<Parameters<typeof SprintSlots>[0]> = {}) {
   const props = {
     slotSprints: ["139", "140"],
@@ -197,6 +228,67 @@ describe("SprintSlots views bar (BRDG-319)", () => {
       filterProps: makeFilterProps(),
     });
     expect(screen.getByLabelText("Filters")).toBeTruthy();
+  });
+
+  it("hides the view tools behind a container-width gate so a narrow pane frees space for pills", () => {
+    renderBar(WITH_CONTROLS);
+    const bar = Array.from(document.body.querySelectorAll("div")).find((d) =>
+      d.className.includes("@container/tabbar"),
+    );
+    expect(bar).toBeTruthy();
+    expect(toolWrapper(screen.getByTitle("Saved filters")).className).toContain(NARROW_GATE);
+    expect(toolWrapper(screen.getByLabelText("Filters")).className).toContain(NARROW_GATE);
+  });
+
+  it("keeps the controls cluster visible in narrow panes while filters are active", () => {
+    renderBar({ ...WITH_CONTROLS, activeFilterCount: 2 });
+    const wrapper = toolWrapper(screen.getByLabelText("Filters"));
+    expect(wrapper.className).not.toContain("hidden");
+    // Saved has no active view, so it still yields to the pills.
+    expect(toolWrapper(screen.getByTitle("Saved filters")).className).toContain(NARROW_GATE);
+  });
+
+  it("keeps the controls cluster visible in narrow panes while a search query is active", () => {
+    renderBar({ ...WITH_CONTROLS, searchQuery: "dlq" });
+    expect(toolWrapper(screen.getByLabelText("Filters")).className).not.toContain("hidden");
+  });
+
+  it("keeps the Saved menu visible in narrow panes while a saved view is active", () => {
+    renderBar({ ...WITH_CONTROLS, activeViewId: OVERALL_PRESET.id });
+    expect(toolWrapper(screen.getByTitle("Saved filters")).className).not.toContain("hidden");
+  });
+
+  it("always gates group-by and collapse-all in narrow panes, even with filters active", () => {
+    renderBar({
+      ...WITH_CONTROLS,
+      allActive: true,
+      activeSprintId: null,
+      groupBy: "none" as const,
+      onGroupByChange: vi.fn(),
+      groupCount: 2,
+      onToggleCollapseAll: vi.fn(),
+      activeFilterCount: 3,
+    });
+    expect(toolWrapper(screen.getByTitle("Group by")).className).toContain(NARROW_GATE);
+    expect(toolWrapper(screen.getByTitle("Collapse all groups")).className).toContain(NARROW_GATE);
+  });
+
+  it("colors both scroll fades with the bar background and lets the right fade run flush to the bar edge when the tools are gated", () => {
+    renderBar(WITH_CONTROLS);
+    forceScrollOverflow();
+    const rightFade = document.body.querySelector('[class*="bg-gradient-to-l"]') as HTMLElement;
+    const leftFade = document.body.querySelector('[class*="bg-gradient-to-r"]') as HTMLElement;
+    expect(rightFade.className).toContain("from-surface-chrome");
+    expect(leftFade.className).toContain("from-surface-chrome");
+    expect(rightFade.className).toContain("@max-[46rem]/tabbar:-right-6");
+    expect(rightFade.className).toContain("@max-[46rem]/tabbar:w-12");
+  });
+
+  it("keeps the right fade inside the scroller when active filters pin the controls cluster in narrow panes", () => {
+    renderBar({ ...WITH_CONTROLS, activeFilterCount: 1 });
+    forceScrollOverflow();
+    const rightFade = document.body.querySelector('[class*="bg-gradient-to-l"]') as HTMLElement;
+    expect(rightFade.className).not.toContain("@max-[46rem]");
   });
 
   it("closes the Backlogs dropdown on Escape and on outside click", () => {
