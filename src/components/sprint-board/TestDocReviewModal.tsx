@@ -504,7 +504,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
       <div
         data-autofocus
         tabIndex={-1}
-        className="flex h-[min(760px,88vh)] w-[min(1180px,94vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl outline-none"
+        className="flex h-[min(1040px,90vh)] w-[min(1680px,95vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl outline-none"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
