@@ -16,7 +16,10 @@ export function TestDocStoryPane({ detail }: { detail: (Ticket & TicketDetail) |
     <div className="min-h-0 flex-1 overflow-y-auto pr-1" data-testid="test-doc-story-pane">
       {detail ? (
         <>
-          <h3 className="mb-3 text-h4 font-semibold text-text-primary">{detail.title}</h3>
+          <p className="mb-2 text-caption font-semibold uppercase tracking-wider text-text-muted">
+            Story
+          </p>
+          <h3 className="mb-3 text-h4 font-semibold leading-snug text-text-primary">{detail.title}</h3>
           <div className="description-content text-body-lg leading-prose text-text-secondary">
             {detail.description?.trim()
               ? // The doc under review IS the expand block; repeating it

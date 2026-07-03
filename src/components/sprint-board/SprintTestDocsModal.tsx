@@ -88,6 +88,13 @@ function TicketListRow({ item, trailing }: { item: SprintTestDocItem; trailing?:
   );
 }
 
+/** One eyebrow style for every bundle section so the groups share a rhythm. */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-caption font-semibold uppercase tracking-wider text-text-muted">{children}</p>
+  );
+}
+
 /** In-Bridge key link behind a block title; the COPY uses Jira links instead. */
 function BridgeKeyLink({ item }: { item: SprintTestDocItem }) {
   return (
@@ -201,33 +208,40 @@ export function SprintTestDocsModal({
                 />
               )}
 
-              {data.documented.map((item) => {
-                const { title, body } = splitDocTitle(item.doc ?? "");
-                return (
-                  <div
-                    key={item.key}
-                    data-testid="test-docs-block"
-                    className="rounded-xl border border-border-subtle bg-surface-base p-4"
-                  >
-                    <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="font-semibold text-text-primary">{title ?? item.title}</span>
-                      <BridgeKeyLink item={item} />
-                      <CaptionButton
-                        onClick={() => onEditItem(item.key)}
-                        className="ml-auto"
-                        title="Open this doc in the review modal; you return here when done"
+              {data.documented.length > 0 && (
+                <section className="flex flex-col gap-2.5">
+                  <SectionLabel>Documented ({data.documented.length})</SectionLabel>
+                  {data.documented.map((item) => {
+                    const { title, body } = splitDocTitle(item.doc ?? "");
+                    return (
+                      <div
+                        key={item.key}
+                        data-testid="test-docs-block"
+                        className="rounded-xl border border-border-default bg-surface-base p-4 shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-600)_8%,transparent)]"
                       >
-                        Edit
-                      </CaptionButton>
-                    </div>
-                    <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
-                  </div>
-                );
-              })}
+                        <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border-subtle pb-2">
+                          <span className="text-body-lg font-semibold text-text-primary">{title ?? item.title}</span>
+                          <BridgeKeyLink item={item} />
+                          <CaptionButton
+                            onClick={() => onEditItem(item.key)}
+                            className="ml-auto"
+                            title="Open this doc in the review modal; you return here when done"
+                          >
+                            Edit
+                          </CaptionButton>
+                        </div>
+                        <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
+                      </div>
+                    );
+                  })}
+                </section>
+              )}
 
               {data.internal.length > 0 && (
-                <div data-testid="test-docs-misc" className="rounded-xl border border-border-subtle bg-surface-base p-4">
-                  <p className="mb-2 text-body font-semibold text-text-primary">Misc</p>
+                <div data-testid="test-docs-misc" className="rounded-xl border border-border-default bg-surface-base p-4 shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-600)_8%,transparent)]">
+                  <div className="mb-2.5 border-b border-border-subtle pb-2">
+                    <SectionLabel>Misc ({data.internal.length})</SectionLabel>
+                  </div>
                   <div className="flex flex-col gap-3">
                     {data.internal.map((item) => {
                       const { title, body } = splitDocTitle(item.doc ?? "");
@@ -253,11 +267,9 @@ export function SprintTestDocsModal({
               )}
 
               {data.notNeeded.length > 0 && (
-                <div data-testid="test-docs-not-needed" className="rounded-xl border border-border-subtle bg-surface-base p-3">
-                  <p className="text-body-sm font-medium text-text-secondary">
-                    No test documentation needed ({data.notNeeded.length})
-                  </p>
-                  <ul className="mt-2 flex flex-col gap-1">
+                <div data-testid="test-docs-not-needed" className="rounded-xl border border-border-subtle bg-surface-base/60 p-3.5">
+                  <SectionLabel>No test documentation needed ({data.notNeeded.length})</SectionLabel>
+                  <ul className="mt-2.5 flex flex-col gap-1">
                     {data.notNeeded.map((m) => (
                       <TicketListRow key={m.key} item={m} />
                     ))}
@@ -269,11 +281,12 @@ export function SprintTestDocsModal({
                   decides what ships: an unfinished story that goes along in the
                   delivery gets its doc via the per-row Generate. */}
               {data.other.length > 0 && (
-                <div data-testid="test-docs-other" className="rounded-xl border border-border-subtle bg-surface-base p-3">
-                  <p className="text-body-sm font-medium text-text-secondary">
-                    Not finished yet ({data.other.length}) — generate anyway if it ships with this delivery
+                <div data-testid="test-docs-other" className="rounded-xl border border-border-subtle bg-surface-base/60 p-3.5">
+                  <SectionLabel>Not finished yet ({data.other.length})</SectionLabel>
+                  <p className="mt-1 text-body-sm text-text-muted">
+                    Generate anyway if it ships with this delivery.
                   </p>
-                  <ul className="mt-2 flex flex-col gap-1">
+                  <ul className="mt-2.5 flex flex-col gap-1">
                     {data.other.map((m) => (
                       <TicketListRow
                         key={m.key}

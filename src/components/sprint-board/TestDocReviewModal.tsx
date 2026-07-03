@@ -180,7 +180,10 @@ export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle 
             onPointerDown={handleSplitDrag}
             className="w-1 shrink-0 cursor-col-resize bg-border-subtle transition-colors duration-150 hover:bg-[var(--color-brand-500)]/40"
           />
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col p-4">
+          {/* The story is pinned reference, so it sits on a recessed plane (base
+              vs the elevated work surface on the left) — reads as "validate the
+              doc against the story" in both themes. */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col border-l border-border-subtle bg-surface-base p-5">
             <TestDocStoryPane detail={detail} />
           </div>
         </div>

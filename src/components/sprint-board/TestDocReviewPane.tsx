@@ -49,7 +49,7 @@ export function TestDocReviewPane({
   onPreviewClick,
 }: TestDocReviewPaneProps) {
   return (
-    <div className="flex min-h-0 flex-col gap-3 p-4" style={{ width: `${splitPct}%` }}>
+    <div className="flex min-h-0 flex-col gap-3 p-5" style={{ width: `${splitPct}%` }}>
       {entry.unstructured && !generating && (
         <InlineAlert variant="warning">
           The workspace returned unstructured output — review it carefully before saving.
