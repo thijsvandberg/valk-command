@@ -245,4 +245,25 @@ describe("TicketTable grouped virtualization (BRDG-452)", () => {
     const droppableIds = useDroppableMock.mock.calls.map((c) => c[0].id);
     expect(droppableIds).toContain("group-zone:2");
   });
+
+  it("registers every expanded group header as a drop target, collapsed ones as zones (BRDG-452)", () => {
+    const a = makeGroupTickets("A", 120);
+    const b = makeGroupTickets("B", 10);
+    const groups = [
+      { key: "1", label: "Sprint 1", tickets: a, sortOrder: 0 },
+      { key: "2", label: "Sprint 2", tickets: b, sortOrder: 1 },
+    ];
+    render(
+      <TicketTable
+        {...baseProps([...a, ...b])}
+        groups={groups}
+        collapsedGroups={new Set(["2"])}
+      />,
+    );
+    const droppableIds = useDroppableMock.mock.calls.map((c) => c[0].id);
+    expect(droppableIds).toContain("group-header:1");
+    // A collapsed group keeps the whole-card zone target instead of a header target.
+    expect(droppableIds).toContain("group-zone:2");
+    expect(droppableIds).not.toContain("group-header:2");
+  });
 });

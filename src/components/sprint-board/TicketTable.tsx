@@ -122,6 +122,21 @@ function CollapsedGroupDroppable({ groupKey, children }: { groupKey: string; chi
   );
 }
 
+// Expanded group headers accept cross-sprint drops (BRDG-452): on a large board the
+// natural long-distance gesture is dropping on the target sprint's header, not on a
+// specific row. Registered under a distinct id (an empty expanded group already owns
+// `group-zone:<key>`) but with the same droppable data, so the move handler is shared.
+function HeaderDropTarget({ groupKey, children }: {
+  groupKey: string;
+  children: (setRef: (el: HTMLElement | null) => void, isOver: boolean) => ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `group-header:${groupKey}`,
+    data: { type: "group-zone", sprintId: groupKey },
+  });
+  return <>{children(setNodeRef, isOver)}</>;
+}
+
 const VIRTUALIZE_THRESHOLD = 40;
 // Line-less py-3 rows measure ~44px; the virtualizer still measures real heights, this is
 // only the pre-measurement estimate (BRDG-239 "B+C").
@@ -999,10 +1014,12 @@ export function TicketTable({
           </button>
         ) : undefined;
 
-        const card = (
+        const renderCard = (headerDropRef?: (el: HTMLElement | null) => void, headerRing = false) => (
           <GroupCard
             key={group.key}
             isCollapsed={isCollapsed}
+            headerRef={headerDropRef}
+            headerRing={headerRing}
             onToggleCollapse={() => onToggleCollapse?.(group.key)}
             header={
               <GroupStatBar
@@ -1118,13 +1135,21 @@ export function TicketTable({
           </GroupCard>
         );
 
-        return externalDnd && isCollapsed ? (
-          <CollapsedGroupDroppable key={group.key} groupKey={group.key}>
-            {card}
-          </CollapsedGroupDroppable>
-        ) : (
-          card
-        );
+        if (externalDnd && isCollapsed) {
+          return (
+            <CollapsedGroupDroppable key={group.key} groupKey={group.key}>
+              {renderCard()}
+            </CollapsedGroupDroppable>
+          );
+        }
+        if (externalDnd) {
+          return (
+            <HeaderDropTarget key={group.key} groupKey={group.key}>
+              {(setRef, isOver) => renderCard(setRef, isOver)}
+            </HeaderDropTarget>
+          );
+        }
+        return renderCard();
       })}
     </div>
   ) : null;

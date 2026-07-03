@@ -132,13 +132,16 @@ export const snapToPointer: Modifier = ({ activatorEvent, draggingNodeRect, tran
   return transform;
 };
 
-// sprint-slot and group-zone droppables only activate when the pointer is physically inside
-// them (pointerWithin). They are excluded from closestCenter so they don't activate just
-// because they are geometrically close to the cursor.
+// sprint-slot, group-zone and group-header droppables only activate when the pointer is
+// physically inside them (pointerWithin). They are excluded from closestCenter so they
+// don't activate just because they are geometrically close to the cursor.
+const isPointerZoneId = (id: unknown) => {
+  const s = String(id);
+  return s.startsWith("sprint-slot:") || s.startsWith("group-zone:") || s.startsWith("group-header:");
+};
+
 export const boardCollisionDetection: CollisionDetection = (args) => {
-  const pointerContainers = args.droppableContainers.filter((c) =>
-    String(c.id).startsWith("sprint-slot:") || String(c.id).startsWith("group-zone:")
-  );
+  const pointerContainers = args.droppableContainers.filter((c) => isPointerZoneId(c.id));
   if (pointerContainers.length > 0) {
     const pointerHits = pointerWithin({
       ...args,
@@ -146,8 +149,6 @@ export const boardCollisionDetection: CollisionDetection = (args) => {
     });
     if (pointerHits.length > 0) return pointerHits;
   }
-  const ticketContainers = args.droppableContainers.filter(
-    (c) => !String(c.id).startsWith("sprint-slot:") && !String(c.id).startsWith("group-zone:")
-  );
+  const ticketContainers = args.droppableContainers.filter((c) => !isPointerZoneId(c.id));
   return closestCenter({ ...args, droppableContainers: ticketContainers });
 };

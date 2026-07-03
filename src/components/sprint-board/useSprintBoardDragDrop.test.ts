@@ -209,6 +209,58 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
   });
 });
 
+describe("useSprintBoardDragDrop - expanded group-header drop (BRDG-452)", () => {
+  beforeEach(() => {
+    moveSprint.mockReset().mockResolvedValue({});
+  });
+
+  function headerDropEvent(activeKey: string, activeSprintId: string, targetSprintId: string): DragEndEvent {
+    return {
+      active: { id: activeKey, data: { current: { sprintId: activeSprintId } } },
+      over: { id: `group-header:${targetSprintId}`, data: { current: { type: "group-zone", sprintId: targetSprintId } } },
+    } as unknown as DragEndEvent;
+  }
+
+  it("moves the dragged ticket to the sprint whose header it was dropped on", async () => {
+    const deps = makeDeps({ isAllView: true, groupBy: "sprint" as const });
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(headerDropEvent("VPL-1", "todo", "140"));
+    });
+
+    // Regular sprint header -> whole batch to the bottom (BRDG-370), like the group zone.
+    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140", topKeys: [] }));
+  });
+
+  it("ignores a drop on the header of the ticket's own sprint", async () => {
+    const deps = makeDeps({ isAllView: true, groupBy: "sprint" as const });
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(headerDropEvent("VPL-1", "todo", "todo"));
+    });
+
+    expect(moveSprint).not.toHaveBeenCalled();
+  });
+
+  it("suppresses the row insert line while hovering a header target", () => {
+    const deps = makeDeps({ isAllView: true, groupBy: "sprint" as const });
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    act(() => {
+      result.current.handleBoardDragOver({
+        active: { id: "VPL-1", data: { current: { sprintId: "todo" } } },
+        over: { id: "group-header:140", data: { current: { type: "group-zone", sprintId: "140" } } },
+      } as unknown as Parameters<typeof result.current.handleBoardDragOver>[0]);
+    });
+
+    expect(result.current.boardOverId).toBeNull();
+    // The ghost chip still knows the target sprint.
+    expect(result.current.boardDragTargetSprintId).toBe("140");
+  });
+});
+
 describe("useSprintBoardDragDrop - jiraRankDndEnabled (no longer size-gated, BRDG-347)", () => {
   it("is enabled for a single-sprint rank view regardless of list size", () => {
     const many = Array.from({ length: 200 }, (_, i) => makeTicket(`VPL-${i}`, "todo"));
