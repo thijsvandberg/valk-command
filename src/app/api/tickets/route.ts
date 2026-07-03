@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { deriveTestDocState } from "@/lib/test-doc";
 import { db } from "@/db";
 import { ticket, ticketMetadata, ticketLocalEdit, storyVersion, ticketSubtask, sprintNameCache, ticketSprint } from "@/db/schema";
 import { eq, inArray, asc, isNull, sql, and, notInArray } from "drizzle-orm";
@@ -147,13 +148,7 @@ async function getTickets(request: Request) {
       businessValue: meta?.businessValue ?? null,
       editState,
       notes: meta?.poNotes ?? "",
-      testDocState: meta?.testDoc
-        ? "accepted" as const
-        : meta?.testDocDraft
-          ? "draft" as const
-          : meta?.testDocClassification === "not_stakeholder_relevant"
-            ? "not_needed" as const
-            : null,
+      testDocState: deriveTestDocState(meta),
       jiraRank: t.jiraRank ?? null,
       sprintId: t.sprintName || undefined,
       sprintIds: t.sprintIds ? (JSON.parse(t.sprintIds) as string[]) : undefined,
