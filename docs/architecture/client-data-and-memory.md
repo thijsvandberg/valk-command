@@ -120,9 +120,17 @@ therefore resolve the scroll element into STATE via a passive effect (refs are
 attached by then, and the state change guarantees the re-render tanstack needs) and
 pass `initialOffset: () => el?.scrollTop ?? 0` so a late attach does not scroll the
 shared container to 0 (`_willUpdate` ends with `_scrollToOffset(getScrollOffset())`).
-Per-group `scrollMargin`s additionally self-heal on scroll (rAF-throttled re-measure)
-because layout shifts between a group's mount and later settles do not fire any
-observed resize. The Inbox and the Refinement queue still render all rows; virtualizing
+Each group's `scrollMargin` (its offset in the shared scroller) is re-measured after
+EVERY render, not just on resize: a ResizeObserver fires only on SIZE changes and never
+on a REPOSITION, but a pinned sprint hoisting to the top, a group reorder, or a sibling
+above changing height all move a group's offset with no size change and often no prop
+change on the keyed instance. A stale offset parks the group's window off-screen and it
+renders as an empty box until a scroll re-measures it (the "empty group boxes on load"
+bug). The re-measure is a guarded setState (no-op unless the offset moved) and the
+sibling groups' rect reads coalesce into one layout pass. The flat path's table offset
+does the same for the analytics-panel-toggle reposition. Rule of thumb: never rely on a
+ResizeObserver alone to keep a scroll-offset measurement fresh. The Inbox and the
+Refinement queue still render all rows; virtualizing
 them was reviewed and not pursued (memory is bounded by the cap, so it is a perf
 nice-to-have).
 
