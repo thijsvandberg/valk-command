@@ -497,9 +497,21 @@ export function TicketTable({
     if (resolvedScrollEl) ro.observe(resolvedScrollEl);
     return () => ro.disconnect();
   }, [scrollContainerRef, resolvedScrollEl]);
+  // Re-measure the table offset after EVERY render: content above it (the analytics panel)
+  // can open/close and REPOSITION the table without resizing it or the scroller, which a
+  // ResizeObserver (size-only) misses — the same stale-offset class of bug the grouped
+  // path hit with the pinned-sprint hoist (BRDG-452). Guarded setState = no-op unless it
+  // moved; a single offsetTop read per render.
+  // Intentional every-render re-measure; the guarded setState is a no-op unless the offset
+  // moved, so there is no update loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (!scrollContainerRef) return;
+    const el = tableContainerRef.current;
+    if (el) setTableOffsetTop((prev) => (prev === el.offsetTop ? prev : el.offsetTop));
+  });
   const tableScrollMargin = scrollContainerRef ? tableOffsetTop : 0;
 
-  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: enableVirtualization ? tickets.length : 0,
     getScrollElement: () => resolvedScrollEl,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Ticket } from "@/types/ticket";
 import type { TicketGroup } from "@/components/sprint-board/useGroupBy";
@@ -84,32 +84,42 @@ export function VirtualizedGroupRows({
   }, [scrollContainerRef]);
 
   // BRDG-416 pattern: the virtualizer's scrollMargin is this group's row-body offset
-  // within the shared scroll container. Render-time reads see 0 on first paint, so measure
-  // in a layout effect and re-measure when the scroller or the group stack changes size.
-  // Rect deltas (not offsetTop) because a tbody's offsetParent is its table, not the
-  // scroll container. The group stack is resolved via closest(GROUPS_ROOT_ATTR) — the DOM
-  // ancestor is committed even while ref props are not attached yet.
+  // within the shared scroll container. Rect deltas (not offsetTop) because a tbody's
+  // offsetParent is its table, not the scroll container.
   const [scrollMargin, setScrollMargin] = useState(0);
+  const measure = useCallback(() => {
+    const el = bodyRef.current;
+    if (!el || !scrollEl) return;
+    const next = Math.max(0, Math.round(
+      el.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop,
+    ));
+    setScrollMargin((prev) => (prev === next ? prev : next));
+  }, [scrollEl]);
+
+  // Re-measure after EVERY render. A group can be REPOSITIONED without its props, its
+  // size, or the observed elements' sizes changing at all: the pinned-sprint hoist moves
+  // a group from its sorted slot (offset ~9000px) to the top (offset ~58px) once the
+  // pinned state loads, and React keeps the same keyed instance, so neither an effect dep
+  // nor a ResizeObserver (which watches SIZE, not position) fires. A stale scrollMargin
+  // then parks the group's window off-screen and it renders spacer-only — the "empty group
+  // box until you scroll" bug (BRDG-452). The guarded setState makes this a no-op unless
+  // the offset actually moved, and browsers coalesce the sibling groups' rect reads within
+  // one commit into a single layout pass, so the steady-state cost is negligible.
+  useLayoutEffect(() => { measure(); });
+
   const itemCount = items.length;
   useLayoutEffect(() => {
     const el = bodyRef.current;
     if (!el || !scrollEl) return;
-    const measure = () => {
-      const next = Math.max(0, Math.round(
-        el.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop,
-      ));
-      setScrollMargin((prev) => (prev === next ? prev : next));
-    };
     measure();
+    // Catches offset changes with no accompanying re-render: the scroller resizing, or the
+    // group stack growing as estimated row heights resolve to measured ones.
     const ro = new ResizeObserver(measure);
     ro.observe(scrollEl);
     const groupsRoot = el.closest(`[${GROUPS_ROOT_ATTR}]`);
     if (groupsRoot) ro.observe(groupsRoot);
-    // Self-heal on scroll (rAF-throttled): a group's offset must be right exactly when the
-    // user scrolls it into view; layout can shift between a group's mount and later
-    // settles (estimate -> measured heights above it, group reorders) without any observed
-    // resize. Two rect reads per group per frame; the guarded setState only renders on a
-    // real change.
+    // Self-heal on scroll (rAF-throttled) so the offset is right exactly when the group
+    // scrolls into view, even if a settle happened while it was off-screen.
     let raf = 0;
     const onScroll = () => {
       if (raf) return;
@@ -123,7 +133,7 @@ export function VirtualizedGroupRows({
     };
     // itemCount: a per-group filter or data refresh changes this group's (and the ones
     // below it) offsets without any scroll or observed resize.
-  }, [scrollEl, itemCount]);
+  }, [scrollEl, itemCount, measure]);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
