@@ -1,16 +1,13 @@
 "use client";
 
-import { Minus, IterationCw } from "lucide-react";
-import { BasePicker } from "@/components/shared/BasePicker";
+// Inline single-select sprint picker: a BasePicker trigger/popover shell around
+// the shared SprintListBody (BRDG-362), so its list is the same surface as the
+// sprint list modal and the move flyout.
 
-interface Sprint {
-  id: string | number;
-  name: string;
-  state: string;
-  startDate?: string | null;
-  endDate?: string | null;
-  hidden?: boolean;
-}
+import { IterationCw } from "lucide-react";
+import { BasePicker } from "@/components/shared/BasePicker";
+import { SprintListBody } from "@/components/shared/SprintListBody";
+import type { SprintListEntry } from "@/lib/sprint-list";
 
 export function SprintPicker({
   value,
@@ -22,7 +19,7 @@ export function SprintPicker({
   textClass = "text-body-lg",
 }: {
   value: string | null;
-  sprints: Sprint[];
+  sprints: SprintListEntry[];
   onChange: (sprintId: string | null) => void;
   align?: "left" | "right";
   variant?: "default" | "badge";
@@ -46,20 +43,14 @@ function SprintPickerInner({
   textClass,
 }: {
   value: string | null;
-  sprints: Sprint[];
+  sprints: SprintListEntry[];
   onChange: (sprintId: string | null) => void;
   variant: "default" | "badge";
   textClass: string;
 }) {
-  const { query, handleClose } = BasePicker.useContext();
+  const { handleClose } = BasePicker.useContext();
 
-  const availableSprints = sprints.filter((s) => !s.hidden && (s.state === "active" || s.state === "future"));
   const currentSprint = sprints.find((s) => String(s.id) === value);
-
-  const filtered = query.trim()
-    ? availableSprints.filter((s) => s.name.toLowerCase().includes(query.toLowerCase()))
-    : availableSprints;
-
   const isBadge = variant === "badge";
 
   return (
@@ -77,43 +68,16 @@ function SprintPickerInner({
       </BasePicker.Trigger>
 
       <BasePicker.Popover width="w-[240px]">
-        <BasePicker.Search placeholder="Search sprints..." />
-        <BasePicker.List maxHeight="max-h-[220px]">
-          {!query.trim() && (
-            <BasePicker.Item
-              selected={!value}
-              onSelect={() => { onChange(null); handleClose(); }}
-            >
-              <span className="flex w-4 items-center justify-center shrink-0 text-text-muted">
-                <Minus size={11} strokeWidth={1.5} />
-              </span>
-              <span className={!value ? "text-text-primary font-medium" : "text-text-secondary"}>No sprint</span>
-            </BasePicker.Item>
-          )}
-
-          {filtered.length === 0 && <BasePicker.Empty>No sprints found</BasePicker.Empty>}
-
-          {filtered.map((s) => {
-            const isSelected = String(s.id) === value;
-            return (
-              <BasePicker.Item
-                key={s.id}
-                selected={isSelected}
-                onSelect={() => { onChange(String(s.id)); handleClose(); }}
-              >
-                <span className="flex w-4 items-center justify-center shrink-0 text-text-muted">
-                  <IterationCw size={11} strokeWidth={1.5} />
-                </span>
-                <span className={`flex-1 text-left ${isSelected ? "text-text-primary font-medium" : "text-text-secondary"}`}>
-                  {s.name}
-                </span>
-                {s.state === "active" && (
-                  <span className="rounded bg-[var(--color-brand-500)]/10 px-1.5 py-0.5 text-caption text-[var(--color-brand-400)]">active</span>
-                )}
-              </BasePicker.Item>
-            );
-          })}
-        </BasePicker.List>
+        <SprintListBody
+          sprints={sprints}
+          variant="select"
+          selectedId={value}
+          allowNone
+          onSelectNone={() => onChange(null)}
+          onSelect={(sprintId) => onChange(sprintId)}
+          onClose={handleClose}
+          listMaxHeightClass="max-h-[220px]"
+        />
       </BasePicker.Popover>
     </>
   );

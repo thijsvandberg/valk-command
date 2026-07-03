@@ -1,10 +1,14 @@
 # BRDG-362: Rebuild the sprint list / select modal
 
-**Status:** Draft (needs refinement)
+**Status:** Implemented (awaiting PO verification)
 **Priority:** Medium
 **Type:** Feature / Refactor
 
-> This story is a **starting point** and still needs to be worked out with the PO. The "Requested improvements" section captures the known direction; the "Open Questions / To work out" section is deliberately broad ("nog veel meer").
+> Refined 2026-07-03 with the PO; plan and approved decisions in
+> [docs/plans/2026-07-03-brdg-362-sprint-list-unification.md](../plans/2026-07-03-brdg-362-sprint-list-unification.md).
+> Implemented as one shared `SprintListBody` (manage / select / move variants) on a
+> pure `src/lib/sprint-list.ts` core, with `SprintListModal`, `SprintPicker`,
+> `SprintSelector` and the move-to-sprint flyout (`SprintSubPanel`) as thin shells.
 
 ## Description
 
@@ -45,17 +49,24 @@ The rebuild should make the modal a proper **sprint command surface**: see every
 - **Sprint actions in-modal:** start/close/create/edit-goal — should these live here too?
 - **The "much more":** PO to enumerate the remaining wishes (grouping, per-team grouping, quick stats, keyboard nav, recent/favourite sprints, etc.).
 
-## Acceptance Criteria (sketch — to be finalised in refinement)
+## Acceptance Criteria
 
-- [ ] The modal shows all sprint states in one scannable view ("see everything").
-- [ ] Moving ticket(s) into a sprint from the modal offers a **top / bottom** placement choice and uses `move-sprint` `position`.
-- [ ] Clicking a sprint row **opens that sprint** on the board, without colliding with the pin / visibility actions.
-- [ ] (Remaining criteria to be added once the full scope is agreed.)
+- [x] The modal shows all sprint states in one scannable view ("see everything"): pinned, active & future, backlog, closed (all synced, was capped at 5) and hidden, with counts per section.
+- [x] Moving ticket(s) into a sprint offers a **top / bottom** placement choice (hover buttons per row in the move flyout; plain click keeps the BRDG-370 default) and uses `move-sprint` `position`. Reaches the board context menu, bulk bar, inbox and epic children through the shared menu panel.
+- [x] Clicking a sprint row **opens that sprint** on the board, without colliding with the pin / visibility actions (icon clicks stop propagation; verified by tests).
+- [x] One reusable component: `SprintListBody` (`src/components/shared/SprintListBody.tsx`) renders the modal (manage), the single-select pickers (select) and the move flyout (move); grouping/sorting/formatting logic lives once in `src/lib/sprint-list.ts`.
 
-## Tests (to be defined with scope)
+## Tests
 
-- [ ] Row click opens the sprint; pin / eye actions do not trigger an open.
-- [ ] Move action sends the correct `position` (top/bottom) to `/api/jira/move-sprint`.
+- [x] Row click opens the sprint; pin / eye / stakeholder actions do not trigger an open (`SprintListBody.test.tsx`).
+- [x] Move action sends the correct `position` (top/bottom) and suppresses the default `topKeys` placement rule (`useRowActions.test.ts`, `ticket-action-menu.test.tsx`).
+- [x] Pure sprint-list logic unit-tested (`src/lib/sprint-list.test.ts`): sections, sorting, team filter, search, move destinations.
+- [x] Converged pickers keep their contracts (`SprintPicker.test.tsx`, `SprintSelector.test.tsx`, `BulkActionBar.test.tsx`).
+
+## Scope notes (decided 2026-07-03)
+
+- `SprintSelectDropdown` (story writer launcher) stays as-is: it is a generic labeled-options dropdown (default/pinned sections fed by the launcher), not a sprint list. Candidate follow-up if it should visually converge too.
+- Sprint lifecycle actions in the modal (start / close / create / edit goal) and the epic-writer `SprintPlacementMenu` are out of scope; candidate follow-up stories.
 
 ## Related
 

@@ -1,13 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SprintPicker } from "./SprintPicker";
-
-vi.mock("lucide-react", () => ({
-  Minus: (props: Record<string, unknown>) => <span data-testid="minus-icon" {...props} />,
-  IterationCw: (props: Record<string, unknown>) => <span data-testid="iteration-icon" {...props} />,
-  Check: (props: Record<string, unknown>) => <span data-testid="check-icon" {...props} />,
-  Search: (props: Record<string, unknown>) => <span data-testid="search-icon" {...props} />,
-}));
 
 const SPRINTS = [
   { id: 1, name: "Sprint 10", state: "active", startDate: "2026-01-01", endDate: "2026-01-14" },
@@ -15,6 +8,10 @@ const SPRINTS = [
   { id: 3, name: "Sprint 9", state: "closed", startDate: "2025-12-15", endDate: "2025-12-28" },
   { id: 4, name: "Hidden Sprint", state: "active", startDate: null, endDate: null, hidden: true },
 ];
+
+beforeEach(() => {
+  localStorage.clear();
+});
 
 describe("SprintPicker", () => {
   it("renders trigger with selected sprint name", () => {
@@ -67,10 +64,10 @@ describe("SprintPicker", () => {
     expect(screen.queryByText("Sprint 10")).not.toBeInTheDocument();
   });
 
-  it("shows active badge for active sprints", () => {
+  it("shows the Active state badge for active sprints", () => {
     render(<SprintPicker value={null} sprints={SPRINTS} onChange={vi.fn()} />);
     fireEvent.click(screen.getByText("None"));
-    expect(screen.getByText("active")).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
   it("renders badge variant with 'Sprint' label when no value", () => {
