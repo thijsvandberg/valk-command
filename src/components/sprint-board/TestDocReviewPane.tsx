@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
+import { CaptionButton } from "@/components/sprint-board/CaptionButton";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import type { EntryState } from "@/components/sprint-board/useTestDocReview";
 
@@ -96,38 +97,26 @@ export function TestDocReviewPane({
           {entry.versions.length > 1 && (
             <span className="flex items-center gap-1.5" data-testid="test-doc-versions">
               {entry.versions.map((v, i) => (
-                <button
+                <CaptionButton
                   key={`${i}-${v.label}`}
-                  type="button"
+                  variant="chip"
+                  active={i === entry.activeVersion}
                   onClick={() => onSwitchVersion(i)}
-                  className={`cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-                    i === entry.activeVersion
-                      ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] ring-1 ring-[var(--color-brand-500)]/30"
-                      : "bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary"
-                  }`}
                 >
                   {v.label}
-                </button>
+                </CaptionButton>
               ))}
             </span>
           )}
           <span className="ml-auto flex items-center gap-1.5">
             {entry.versions.length > 1 && (
-              <button
-                type="button"
-                onClick={onToggleCompare}
-                className="cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-              >
+              <CaptionButton onClick={onToggleCompare}>
                 {compare ? "Close compare" : "Compare"}
-              </button>
+              </CaptionButton>
             )}
-            <button
-              type="button"
-              onClick={onToggleEdit}
-              className="cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-            >
+            <CaptionButton onClick={onToggleEdit}>
               {editing ? "Preview" : "Edit"}
-            </button>
+            </CaptionButton>
           </span>
         </div>
       )}
@@ -163,7 +152,7 @@ export function TestDocReviewPane({
                   <button
                     type="button"
                     onClick={() => onSwitchVersion(i)}
-                    className="cursor-pointer text-caption font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                    className="cursor-pointer text-caption font-medium text-[var(--color-brand-400)] transition-colors duration-150 hover:text-[var(--color-brand-300)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     Use this one
                   </button>

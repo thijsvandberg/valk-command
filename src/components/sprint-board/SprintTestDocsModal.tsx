@@ -6,6 +6,10 @@ import { Modal } from "@/components/shared/Modal";
 import { ModalHeader } from "@/components/shared/ModalHeader";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
+import { Tag } from "@/components/shared/Tag";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { LoadingState } from "@/components/shared/LoadingState";
+import { CaptionButton } from "@/components/sprint-board/CaptionButton";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import Link from "next/link";
 import { swrFetcher, sprints, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
@@ -14,7 +18,7 @@ import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import type { IssueType, JiraStatus } from "@/types/ticket";
 import type { ShowToast } from "@/hooks/useToast";
-import { ClipboardCopy, FileCheck2, Loader2 } from "lucide-react";
+import { ClipboardCopy, FileCheck2 } from "lucide-react";
 
 interface SprintTestDocsModalProps {
   sprintId: string;
@@ -95,11 +99,7 @@ function BridgeKeyLink({ item }: { item: SprintTestDocItem }) {
       >
         {item.key}
       </Link>
-      {item.needsInput && (
-        <span className="rounded bg-[var(--color-status-warning-subtle)] px-1 py-px text-caption font-medium text-[var(--color-status-warning)]">
-          needs input
-        </span>
-      )}
+      {item.needsInput && <Tag color="amber">needs input</Tag>}
     </span>
   );
 }
@@ -154,9 +154,7 @@ export function SprintTestDocsModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {error && <InlineAlert variant="error">Failed to load test documentation.</InlineAlert>}
           {!data && !error && (
-            <div className="flex h-40 items-center justify-center text-text-muted">
-              <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
-            </div>
+            <LoadingState variant="spinner" label="Loading test documentation…" className="h-40" />
           )}
           {data && (
             <div className="flex flex-col gap-4">
@@ -182,9 +180,7 @@ export function SprintTestDocsModal({
                         trailing={
                           m.hasDraft ? (
                             <>
-                              <span className="shrink-0 rounded bg-[var(--color-status-warning-subtle)] px-1.5 py-px text-caption font-medium text-[var(--color-status-warning)]">
-                                draft ready
-                              </span>
+                              <Tag color="amber" className="shrink-0">draft ready</Tag>
                               <Button variant="ghost" size="sm" onClick={() => onEditItem(m.key)}>
                                 Review
                               </Button>
@@ -198,9 +194,11 @@ export function SprintTestDocsModal({
               )}
 
               {data.documented.length === 0 && data.internal.length === 0 && (
-                <p className="py-8 text-center text-body-lg text-text-muted">
-                  No test documentation saved for this sprint yet.
-                </p>
+                <EmptyState
+                  className="py-8"
+                  icon={<FileCheck2 size={20} strokeWidth={1.75} className="text-text-muted" />}
+                  title="No test documentation saved for this sprint yet."
+                />
               )}
 
               {data.documented.map((item) => {
@@ -214,14 +212,13 @@ export function SprintTestDocsModal({
                     <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                       <span className="font-semibold text-text-primary">{title ?? item.title}</span>
                       <BridgeKeyLink item={item} />
-                      <button
-                        type="button"
+                      <CaptionButton
                         onClick={() => onEditItem(item.key)}
-                        className="ml-auto cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                        className="ml-auto"
                         title="Open this doc in the review modal; you return here when done"
                       >
                         Edit
-                      </button>
+                      </CaptionButton>
                     </div>
                     <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
                   </div>
@@ -239,14 +236,13 @@ export function SprintTestDocsModal({
                           <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                             <span className="font-semibold text-text-primary">{title ?? item.title}</span>
                             <BridgeKeyLink item={item} />
-                            <button
-                              type="button"
+                            <CaptionButton
                               onClick={() => onEditItem(item.key)}
-                              className="ml-auto cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                              className="ml-auto"
                               title="Open this doc in the review modal; you return here when done"
                             >
                               Edit
-                            </button>
+                            </CaptionButton>
                           </div>
                           <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
                         </div>
