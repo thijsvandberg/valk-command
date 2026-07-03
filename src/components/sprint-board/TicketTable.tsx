@@ -34,6 +34,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { VirtualizedGroupRows, isGroupedVirtualizationActive, type GroupRowItem } from "@/components/sprint-board/VirtualizedGroupRows";
 import { BoardRow, SortableBoardRow } from "@/components/sprint-board/BoardRow";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import type { RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
@@ -59,9 +60,13 @@ const CARD_CLASS = GROUP_CARD_CLASS;
 // BRDG-414: a permanent boundary between active work and confirmed-done work in a sprint
 // group. Nothing auto-moves below it; the PO files a finished ticket here by hand (the
 // "Move to bottom" action), which is the confirmation it's truly done.
-function FinishedWorkDividerRow() {
+function FinishedWorkDividerRow({ ref, "data-index": dataIndex }: {
+  /** Composed with the group virtualizer's measureElement when windowed (BRDG-452). */
+  ref?: React.Ref<HTMLTableRowElement>;
+  "data-index"?: number;
+} = {}) {
   return (
-    <tr aria-hidden>
+    <tr aria-hidden ref={ref} data-index={dataIndex}>
       <td colSpan={TOTAL_COLSPAN} className="p-0">
         <div className="flex items-center gap-2 px-3 pt-5 pb-2.5">
           <span className="h-px flex-1 bg-border-subtle" />
@@ -769,8 +774,13 @@ export function TicketTable({
   );
 
   // Grouped layout: one <tbody> per group with a header row and ticket rows.
-  // Virtualization is disabled when groups are active since multiple tbodies are incompatible with virtual row indices.
   const isGrouped = groups && groups.length > 0;
+
+  // BRDG-452: past a total row count, every expanded group windows its rows through a
+  // per-group virtualizer (VirtualizedGroupRows) so only near-viewport rows mount.
+  const groupedVirtualizationActive = isGrouped
+    ? isGroupedVirtualizationActive(groups, collapsedGroups)
+    : false;
 
   // Sprint ids that are currently running, surfaced as a live dot on the group header.
   const activeSprintIds = new Set((sprints ?? []).filter((s) => s.state === "active").map((s) => s.id));
@@ -866,7 +876,55 @@ export function TicketTable({
           ? trailingDoneDepStart(visibleGroupTickets.map((t) => ({ jiraStatus: t.jiraStatus })))
           : -1;
 
-        const ticketRows = !isCollapsed && visibleGroupTickets.map((ticket, groupIdx) => {
+        // BRDG-452: on a large board this group's rows render through a virtual window;
+        // the plain mapping below is skipped entirely (it would mount every row).
+        const rowsVirtualized = groupedVirtualizationActive && !isCollapsed;
+
+        const groupItems: GroupRowItem[] = [];
+        if (rowsVirtualized) {
+          visibleGroupTickets.forEach((ticket, groupIdx) => {
+            if (dividerIdx > 0 && groupIdx === dividerIdx) groupItems.push({ kind: "divider" });
+            groupItems.push({ kind: "row", ticket, groupIdx });
+          });
+        }
+
+        const renderGroupItem = (item: GroupRowItem, index: number, measureRef: (el: HTMLElement | null) => void) => {
+          if (item.kind === "divider") {
+            return <FinishedWorkDividerRow key="__fw-divider__" ref={measureRef} data-index={index} />;
+          }
+          const { ticket, groupIdx } = item;
+          const flatIdx = flatIdxByKey.get(ticket.key) ?? -1;
+          let insertLine: "above" | "below" | undefined;
+          if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
+            insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
+          }
+          const warnings = showGroupWarningLabels
+            ? ticketWarnings(ticket, groupIsActiveSprint)
+            : undefined;
+          const isLastInCard = groupIdx === visibleGroupTickets.length - 1 && !hasPlaceholders;
+          return externalDnd ? (
+            <SortableBoardRow
+              key={ticket.key}
+              measureRef={measureRef}
+              data-index={index}
+              {...makeRowProps(ticket, flatIdx)}
+              insertLine={insertLine}
+              isLastInCard={isLastInCard}
+              warnings={warnings}
+            />
+          ) : (
+            <BoardRow
+              key={ticket.key}
+              ref={measureRef}
+              data-index={index}
+              {...makeRowProps(ticket, flatIdx)}
+              isLastInCard={isLastInCard}
+              warnings={warnings}
+            />
+          );
+        };
+
+        const ticketRows = !isCollapsed && !rowsVirtualized && visibleGroupTickets.map((ticket, groupIdx) => {
           const flatIdx = flatIdxByKey.get(ticket.key) ?? -1;
           let insertLine: "above" | "below" | undefined;
           if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
@@ -1019,12 +1077,33 @@ export function TicketTable({
                 className="border-b border-border-subtle"
               />
             )}
-            <table className="w-full table-fixed border-collapse text-body-lg">
-              <tbody>
-                {groupRows}
-                {!isCollapsed && hasPlaceholders && renderPlaceholderRows(groupPlaceholders)}
-              </tbody>
-            </table>
+            {rowsVirtualized ? (
+              // Windowed rows live in their own tbody (spacer rows + visible window);
+              // the zone/placeholder rows keep a separate tbody so the window's index
+              // math only ever covers ticket rows and the divider.
+              <table className="w-full table-fixed border-collapse text-body-lg">
+                {groupItems.length > 0 && (externalDnd ? (
+                  <SortableContext items={groupTicketIds} strategy={() => null}>
+                    <VirtualizedGroupRows items={groupItems} scrollContainerRef={effectiveScrollRef} contentRef={tableContainerRef} renderItem={renderGroupItem} />
+                  </SortableContext>
+                ) : (
+                  <VirtualizedGroupRows items={groupItems} scrollContainerRef={effectiveScrollRef} contentRef={tableContainerRef} renderItem={renderGroupItem} />
+                ))}
+                {(hasPlaceholders || (externalDnd && group.tickets.length === 0)) && (
+                  <tbody>
+                    {externalDnd && group.tickets.length === 0 && <DroppableGroupZone groupKey={group.key} />}
+                    {hasPlaceholders && renderPlaceholderRows(groupPlaceholders)}
+                  </tbody>
+                )}
+              </table>
+            ) : (
+              <table className="w-full table-fixed border-collapse text-body-lg">
+                <tbody>
+                  {groupRows}
+                  {!isCollapsed && hasPlaceholders && renderPlaceholderRows(groupPlaceholders)}
+                </tbody>
+              </table>
+            )}
             {isComposerOpen && canCreateInGroup && onCreateTicket && !isBacklogGroup && (
               <ChildIssueComposer
                 variant="bar"
