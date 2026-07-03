@@ -106,33 +106,39 @@ capture window is intentional (client toast vs server persist), not dead code.
 
 ## Phase 2 checklist — code refactor, NO visual change
 
-- [ ] **B. Shared `ModalHeader`** — new `src/components/shared/ModalHeader.tsx`
-  reproducing the h-9/rounded-xl/border-b variant byte-for-byte; adopt in
-  `TestDocReviewModal`, `SprintTestDocsModal`, `AddSubtasksModal`. Leave
-  `StoryWriterLauncherModal` (different size) out. Co-located test. Update the 3
-  modals' tests only if a header testid/label moves (it should not).
-- [ ] **C. Shared `deriveTestDocState`** — one helper (in `lib/test-doc.ts`)
-  returning the marker state from a metadata-ish row; call it from
-  `api/tickets/route.ts` and `ticket-detail-builder.ts`. Unit test the helper.
-- [ ] **A1. Extract the review state machine into `useTestDocReview` hook** —
-  entries/index/progress/scheduler + all handlers
-  (start/result/error/save/notNeeded/regenerate/switchVersion/docChange/advance/
-  close) move to `src/components/sprint-board/useTestDocReview.ts`. The component
-  consumes the hook. No behaviour change; existing modal tests must pass
-  unchanged.
-- [ ] **A2. Extract the left doc pane into `TestDocReviewPane.tsx`** — alerts +
-  toolbar + chips + compare + editor + preview. Keep every `data-testid`
-  identical so `TestDocReviewModal.test.tsx` passes unchanged.
-- [ ] **A3. Extract `usePersistedSplit` hook** — the pane-split drag +
-  localStorage persistence (`bridge:test-doc-split`). Small, self-contained.
-- [ ] **D. Route helpers** — `draftKeyGuard(key, message)` and
-  `ticketExists(key)` (or equivalent) to dedup the 3 write routes' guard/404
-  without changing any status code, message, or the generate route's
-  no-validatePathParam behaviour. Extend existing route tests if a path moves.
-- [ ] **G. Remove dead `extractTestDocBlock`** + its test.
-- [ ] **H. Add `test-doc-prefetch.test.ts`** (prime/get TTL expiry/invalidate).
-- [ ] Sweep stale comments left by the iterations across the surface.
-- [ ] Full DoD green (lint/typecheck/vitest/build) + E2E walk.
+- [x] **B. Shared `ModalHeader`** — `src/components/shared/ModalHeader.tsx`
+  reproduces the h-9/rounded-xl/border-b variant; adopted in
+  `TestDocReviewModal`, `SprintTestDocsModal`, `AddSubtasksModal` (+ co-located
+  test). `StoryWriterLauncherModal` left as-is (different h-8/rounded-lg variant).
+- [x] **C. Shared `deriveTestDocState`** in `lib/test-doc.ts`, called from
+  `api/tickets/route.ts` and `ticket-detail-builder.ts`. Unit tested.
+- [x] **A1. `useTestDocReview` hook** — entries/index/progress/scheduler + all
+  handlers moved to `src/components/sprint-board/useTestDocReview.ts`; the
+  component consumes it. Modal tests pass unchanged (29/29).
+- [x] **A2. `TestDocReviewPane.tsx`** — alerts + toolbar + chips + compare +
+  editor + preview extracted; every `data-testid` preserved.
+- [x] **A3. `usePersistedSplit` hook** — pane-split drag + localStorage
+  persistence; co-located test.
+- [x] **D. Route helper** — `guardTestDocDraftKey(key, verb)` in
+  `lib/test-doc-routes.ts` dedups the 3 write routes' 409 guard (same status +
+  message template). `ticketExists` helper SKIPPED on purpose: that 404 check is
+  the codebase-wide `db.select(...).get()` idiom (extracting a test-doc-only copy
+  would fragment it), one of the 3 sites needs the row's `description` anyway, and
+  the generate route deliberately skips `validatePathParam`.
+- [x] **G. Removed dead `extractTestDocBlock`** + its test.
+- [x] **H. Added `test-doc-prefetch.test.ts`** (prime/get/TTL/invalidate/failure).
+- [x] Swept for stale comments/TODOs — none found in the surface.
+- [x] Full DoD green: lint, typecheck (after build regenerated `.next-build`),
+  `vitest run` 7600/7600, `npm run build`.
+- [x] E2E walk (Chrome, dev :3101, sprint BT: 140): all four marker states render
+  (accepted/draft/none/not_needed → `deriveTestDocState`); marker click opens the
+  review modal in VIEW mode without generating; Edit toggle switches to the raw
+  editor; Display "Test documentation" field toggles markers off/on; sprint "..."
+  → Test documentation opens the bundle (new `ModalHeader`, missing overview,
+  documented blocks); per-block Edit opens the review modal with "Back to sprint
+  doc" and returns to the refreshed bundle. Zero console errors throughout.
+
+`TestDocReviewModal.tsx`: 781 → 234 lines (hook 467, pane 203, split 52).
 
 ## Phase 3 checklist — design/UX, visual change allowed
 
@@ -159,7 +165,14 @@ capture window is intentional (client toast vs server persist), not dead code.
 
 ## Blocked / deferred
 
-_(none yet)_
+- **Pre-existing baseline failure, NOT mine, NOT in scope:**
+  `src/app/routes.test.tsx` › "manifest covers all page.tsx files" fails because
+  `src/app/virtual-repro/page.tsx` (a throwaway public repro page left over from
+  the recent BRDG-452 prod-virtualizer debugging) is neither under `/dev/` nor in
+  the route manifest. Present at clean `dev` HEAD before any change here. It is
+  unrelated parallel work; the hard rules forbid touching it. Phase gating for
+  this refactor is therefore "no NEW failures + the whole test-doc surface green"
+  (7582/7583 at baseline). Flag for the PO to clean up `virtual-repro/`.
 
 ## Results
 
