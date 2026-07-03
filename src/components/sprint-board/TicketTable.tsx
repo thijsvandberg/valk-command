@@ -363,6 +363,11 @@ export function TicketTable({
     return map;
   }, [tickets, readinessMap]);
 
+  // Row props (focus, range-check anchors) are keyed on the FLAT index. The grouped
+  // render used tickets.findIndex per row, which is O(n^2) across a 2800-row All view;
+  // one map keeps it O(n) (BRDG-452).
+  const flatIdxByKey = useMemo(() => new Map(tickets.map((t, i) => [t.key, i])), [tickets]);
+
   // Hoisted pipeline/follow hooks: fetched once instead of per-row
   const { data: followedKeys } = useFollowedTickets();
   const { follow: followTicket, unfollow: unfollowTicket } = useFollowTicket();
@@ -862,7 +867,7 @@ export function TicketTable({
           : -1;
 
         const ticketRows = !isCollapsed && visibleGroupTickets.map((ticket, groupIdx) => {
-          const flatIdx = tickets.findIndex((t) => t.key === ticket.key);
+          const flatIdx = flatIdxByKey.get(ticket.key) ?? -1;
           let insertLine: "above" | "below" | undefined;
           if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
             insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
