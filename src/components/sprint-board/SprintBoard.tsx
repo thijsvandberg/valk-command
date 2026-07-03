@@ -1280,7 +1280,13 @@ export default function SprintBoard() {
         <TestDocReviewModal
           keys={testDocQueue.keys}
           autoGenerate={testDocQueue.autoGenerate}
-          onClose={() => setTestDocQueue(null)}
+          onClose={() => {
+            // A queue opened FROM the sprint bundle returns there (refreshed on
+            // remount), so edit round-trips land back in the full document.
+            const returnTo = testDocQueue.returnToSprintId;
+            setTestDocQueue(null);
+            if (returnTo) setTestDocsSprintId(returnTo);
+          }}
         />
       )}
 
@@ -1290,8 +1296,14 @@ export default function SprintBoard() {
           onClose={() => setTestDocsSprintId(null)}
           showToast={showToast}
           onGenerateMissing={(keys) => {
+            const sprintId = testDocsSprintId;
             setTestDocsSprintId(null);
-            openTestDocQueue(keys);
+            openTestDocQueue(keys, { returnToSprintId: sprintId ?? undefined });
+          }}
+          onEditItem={(key) => {
+            const sprintId = testDocsSprintId;
+            setTestDocsSprintId(null);
+            openTestDocQueue([key], { autoGenerate: false, returnToSprintId: sprintId ?? undefined });
           }}
         />
       )}

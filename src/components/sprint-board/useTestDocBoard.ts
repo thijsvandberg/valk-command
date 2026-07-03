@@ -40,7 +40,7 @@ export function useTestDocBoard({
   // is the row/status-line case, multiple the bulk queue. autoGenerate is false
   // for the "view" entry points (marker, status line): opening the modal must
   // not silently start an agent task.
-  const [testDocQueue, setTestDocQueue] = useState<{ keys: string[]; autoGenerate: boolean } | null>(null);
+  const [testDocQueue, setTestDocQueue] = useState<{ keys: string[]; autoGenerate: boolean; returnToSprintId?: string } | null>(null);
   // Sprint bundle modal (BRDG-461): the sprint whose delivery document is open.
   const [testDocsSprintId, setTestDocsSprintId] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
@@ -122,7 +122,7 @@ export function useTestDocBoard({
 
   // Deprecated work never needs delivery documentation: every entry point into
   // the generate/validate queue silently drops those keys.
-  const openTestDocQueue = useCallback((keys: string[], opts?: { autoGenerate?: boolean }) => {
+  const openTestDocQueue = useCallback((keys: string[], opts?: { autoGenerate?: boolean; returnToSprintId?: string }) => {
     const eligible = keys.filter((k) => {
       const t = allTickets.find((x) => x.key === k);
       return !t || t.jiraStatus !== "DEPRECATED";
@@ -131,7 +131,7 @@ export function useTestDocBoard({
       showToast("Deprecated tickets don't get test documentation");
       return;
     }
-    setTestDocQueue({ keys: eligible, autoGenerate: opts?.autoGenerate ?? true });
+    setTestDocQueue({ keys: eligible, autoGenerate: opts?.autoGenerate ?? true, returnToSprintId: opts?.returnToSprintId });
   }, [allTickets, showToast]);
 
   const handleSprintTestDocs = useCallback((sprintId: string) => {

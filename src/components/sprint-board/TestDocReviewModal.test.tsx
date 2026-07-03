@@ -249,6 +249,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
 
     it("shows a cached draft instantly without regenerating, with a provenance notice", async () => {
       mockGetTestDoc.mockResolvedValue({
+        storyUpdatedAt: null,
         saved: null,
         draft: { markdown: "**Cached**\n\n- From last time", classification: "ok", generatedAt: "2026-07-02T10:00:00.000Z" },
       });
@@ -258,11 +259,13 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("From last time"),
       );
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
-      expect(screen.getByText(/generated earlier/)).toBeInTheDocument();
+      // An unsaved doc must be unmissable.
+      expect(screen.getByText(/not saved yet/)).toBeInTheDocument();
     });
 
     it("shows the accepted doc when no draft exists, offering regenerate", async () => {
       mockGetTestDoc.mockResolvedValue({
+        storyUpdatedAt: null,
         saved: { markdown: "**Accepted**\n\n- Saved doc", classification: "ok", updatedAt: "2026-07-01T09:00:00.000Z" },
         draft: null,
       });
@@ -272,8 +275,35 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
       );
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
-      expect(screen.getByText(/saved test documentation/)).toBeInTheDocument();
+      // Saved docs get a quiet timestamp, not a banner.
+      expect(screen.getByTestId("test-doc-saved-at")).toHaveTextContent(/^Saved /);
+      expect(screen.queryByText(/not saved yet/)).not.toBeInTheDocument();
       expect(screen.getByText("Regenerate").closest("button")).not.toBeDisabled();
+    });
+
+    it("warns when the story content changed after the doc was made", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        // Story edited a day after the save: well past the 10-minute echo margin.
+        storyUpdatedAt: "2026-07-02T09:00:00.000Z",
+        saved: { markdown: "**Accepted**", classification: "ok", updatedAt: "2026-07-01T09:00:00.000Z" },
+        draft: null,
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+
+      await waitFor(() => expect(screen.getByText(/AFTER this doc was made/)).toBeInTheDocument());
+    });
+
+    it("does not warn when the story change is only the doc save echo", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        // Version written 30s after the save = the push echo, not a real edit.
+        storyUpdatedAt: "2026-07-01T09:00:30.000Z",
+        saved: { markdown: "**Accepted**", classification: "ok", updatedAt: "2026-07-01T09:00:00.000Z" },
+        draft: null,
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+
+      await waitFor(() => expect(screen.getByTestId("test-doc-preview")).toBeInTheDocument());
+      expect(screen.queryByText(/AFTER this doc was made/)).not.toBeInTheDocument();
     });
 
     it("Regenerate from a cached doc triggers a fresh generation", async () => {

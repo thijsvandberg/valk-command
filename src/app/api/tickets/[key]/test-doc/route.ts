@@ -3,8 +3,8 @@ import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
-import { ticket, ticketLocalEdit, ticketMetadata } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { ticket, ticketLocalEdit, ticketMetadata, storyVersion } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { isDraftKey } from "@/lib/draft-key";
@@ -47,7 +47,25 @@ export async function GET(
     .where(eq(ticketMetadata.jiraKey, key))
     .get();
 
+  // Latest story CONTENT change (story versions are only written on content
+  // changes, unlike Jira's updated timestamp which bumps on any field): lets
+  // the review modal warn when the story changed after the doc was made.
+  const latestVersion = await db
+    .select({ createdAt: storyVersion.createdAt })
+    .from(storyVersion)
+    .where(eq(storyVersion.jiraKey, key))
+    .orderBy(desc(storyVersion.createdAt))
+    .limit(1)
+    .get();
+  // SQLite UTC format ("YYYY-MM-DD HH:MM:SS", no zone) -> real UTC instant.
+  const storyUpdatedAt = latestVersion
+    ? latestVersion.createdAt.includes("T")
+      ? latestVersion.createdAt
+      : `${latestVersion.createdAt.replace(" ", "T")}Z`
+    : null;
+
   return NextResponse.json({
+    storyUpdatedAt,
     saved: meta?.testDoc
       ? {
           markdown: meta.testDoc,

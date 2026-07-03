@@ -328,6 +328,7 @@ export const tickets = {
     ),
   getTestDoc: (ticketKey: string, signal?: AbortSignal) =>
     apiFetch<{
+      storyUpdatedAt: string | null;
       saved: { markdown: string; classification: string; updatedAt: string | null } | null;
       draft: { markdown: string; classification: string; generatedAt: string | null } | null;
     }>(`/api/tickets/${enc(ticketKey)}/test-doc`, { signal }),

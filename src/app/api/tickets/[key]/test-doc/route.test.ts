@@ -226,7 +226,7 @@ describe("PUT /api/tickets/[key]/test-doc", () => {
       seedTicket("VPL-10");
       const response = await GET(makeGetRequest("VPL-10"), makeParams("VPL-10"));
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ saved: null, draft: null });
+      expect(await response.json()).toEqual({ storyUpdatedAt: null, saved: null, draft: null });
     });
 
     it("returns both the accepted doc and the draft cache", async () => {

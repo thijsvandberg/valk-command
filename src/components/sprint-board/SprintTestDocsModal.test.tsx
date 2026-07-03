@@ -38,6 +38,7 @@ function renderModal(overrides: Partial<Parameters<typeof SprintTestDocsModal>[0
     sprintId: "6361",
     onClose: vi.fn(),
     onGenerateMissing: vi.fn(),
+    onEditItem: vi.fn(),
     showToast: vi.fn(),
     ...overrides,
   };
@@ -124,6 +125,16 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(section).toHaveTextContent("VPL-7");
     expect(buildTestDocDocument(BASE)).not.toContain("DB partitions chore");
     expect(screen.getByTestId("test-docs-missing")).not.toHaveTextContent("VPL-7");
+  });
+
+  it("per-block Edit jumps into the single-story review", () => {
+    const props = renderModal();
+    const blocks = screen.getAllByTestId("test-docs-block");
+    fireEvent.click(within(blocks[0]).getByText("Edit"));
+    expect(props.onEditItem).toHaveBeenCalledWith("VPL-2");
+
+    fireEvent.click(within(screen.getByTestId("test-docs-misc")).getByText("Edit"));
+    expect(props.onEditItem).toHaveBeenCalledWith("VPL-3");
   });
 
   it("offers per-row Generate on unfinished tickets so the PO decides what ships", () => {

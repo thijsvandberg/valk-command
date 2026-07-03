@@ -44,8 +44,10 @@ interface EntryState {
   error: string | null;
   /** Where the shown doc came from: a fresh generation, the draft cache, or an accepted save. */
   source: "fresh" | "draft" | "saved" | null;
-  /** ISO timestamp of the cached draft / accepted save, for the provenance banner. */
+  /** ISO timestamp of the cached draft / accepted save, for the provenance line. */
   cachedAt: string | null;
+  /** Latest story CONTENT change; a doc older than this gets a staleness warning. */
+  storyUpdatedAt: string | null;
   versions: DocVersion[];
   activeVersion: number;
 }
@@ -60,6 +62,7 @@ function makeEntry(status: EntryState["status"]): EntryState {
     error: null,
     source: null,
     cachedAt: null,
+    storyUpdatedAt: null,
     versions: [],
     activeVersion: 0,
   };
@@ -233,6 +236,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
               classification: coerceClassification(cached.classification),
               source: data.draft ? "draft" : "saved",
               cachedAt: data.draft ? data.draft.generatedAt : data.saved?.updatedAt ?? null,
+              storyUpdatedAt: data.storyUpdatedAt ?? null,
               versions,
               activeVersion: versions.length - 1,
             });
@@ -476,6 +480,12 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
 
   const generating =
     entry.status === "checking" || entry.status === "queued" || entry.status === "generating";
+  const STALE_MARGIN_MS = 10 * 60 * 1000;
+  const docIsStale = Boolean(
+    entry.cachedAt &&
+    entry.storyUpdatedAt &&
+    new Date(entry.storyUpdatedAt).getTime() - new Date(entry.cachedAt).getTime() > STALE_MARGIN_MS,
+  );
   // Prefetched docs waiting beyond the current one — tells the PO that
   // advancing will be instant.
   const readyAhead = keys.slice(index + 1).filter((k) => entries[k]?.status === "ready").length;
@@ -569,16 +579,19 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
                 Saving stores the one-line mention so the sprint delivery stays complete.
               </InlineAlert>
             )}
-            {entry.source === "draft" && !generating && (
-              <InlineAlert variant="info">
-                Showing the doc generated earlier{entry.cachedAt ? ` (${new Date(entry.cachedAt).toLocaleString()})` : ""} — not
-                saved yet. Review and save it, or Regenerate for a fresh version.
+            {/* A doc that exists but is NOT saved must be unmissable; a saved
+                doc only gets a quiet provenance line (below, in the toolbar
+                row) — the old explanatory banner said nothing (PO feedback). */}
+            {(entry.source === "draft" || entry.source === "fresh") && !generating && entry.doc.trim() && (
+              <InlineAlert variant="warning">
+                Generated{entry.cachedAt ? ` ${new Date(entry.cachedAt).toLocaleString()}` : ""} — <strong>not saved yet</strong>.
+                Save it to count for the sprint delivery.
               </InlineAlert>
             )}
-            {entry.source === "saved" && !generating && (
-              <InlineAlert variant="info">
-                Showing the saved test documentation{entry.cachedAt ? ` (${new Date(entry.cachedAt).toLocaleString()})` : ""}.
-                Saving pushes it to Jira again; Regenerate builds a fresh version.
+            {!generating && docIsStale && (
+              <InlineAlert variant="warning">
+                The story content was updated{entry.storyUpdatedAt ? ` ${new Date(entry.storyUpdatedAt).toLocaleString()}` : ""} —
+                AFTER this doc was made. Check whether it still covers the story, or Regenerate.
               </InlineAlert>
             )}
             {entry.error && <InlineAlert variant="error">{entry.error}</InlineAlert>}
@@ -593,6 +606,11 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
                 the rest) plus the rendered/edit toggle. */}
             {entry.status === "ready" && (
               <div className="flex shrink-0 items-center gap-1.5" data-testid="test-doc-toolbar">
+                {entry.source === "saved" && entry.cachedAt && (
+                  <span className="text-caption text-text-muted" data-testid="test-doc-saved-at">
+                    Saved {new Date(entry.cachedAt).toLocaleString()}
+                  </span>
+                )}
                 {entry.versions.length > 1 && (
                   <span className="flex items-center gap-1.5" data-testid="test-doc-versions">
                     {entry.versions.map((v, i) => (

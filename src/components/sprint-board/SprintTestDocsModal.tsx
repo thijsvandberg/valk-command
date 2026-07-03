@@ -17,6 +17,9 @@ interface SprintTestDocsModalProps {
   onClose: () => void;
   /** Feeds the missing keys into the BRDG-426 generate + validate queue. */
   onGenerateMissing: (keys: string[]) => void;
+  /** Opens the single-story review modal for one doc; the host returns to this
+   *  bundle (refreshed) when that modal closes. */
+  onEditItem: (key: string) => void;
   showToast: ShowToast;
 }
 
@@ -83,6 +86,7 @@ export function SprintTestDocsModal({
   sprintId,
   onClose,
   onGenerateMissing,
+  onEditItem,
   showToast,
 }: SprintTestDocsModalProps) {
   const { data, error } = useSWR<SprintTestDocs>(sprints.testDocsUrl(sprintId), swrFetcher, {
@@ -186,6 +190,14 @@ export function SprintTestDocsModal({
                     <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                       <span className="font-semibold text-text-primary">{title ?? item.title}</span>
                       <BridgeKeyLink item={item} />
+                      <button
+                        type="button"
+                        onClick={() => onEditItem(item.key)}
+                        className="ml-auto cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                        title="Open this doc in the review modal; you return here when done"
+                      >
+                        Edit
+                      </button>
                     </div>
                     <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
                   </div>
@@ -198,7 +210,17 @@ export function SprintTestDocsModal({
                   <div className="flex flex-col gap-3">
                     {data.internal.map((item) => (
                       <div key={item.key}>
-                        <BridgeKeyLink item={item} />
+                        <div className="flex items-baseline gap-2">
+                          <BridgeKeyLink item={item} />
+                          <button
+                            type="button"
+                            onClick={() => onEditItem(item.key)}
+                            className="ml-auto cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                            title="Open this doc in the review modal; you return here when done"
+                          >
+                            Edit
+                          </button>
+                        </div>
                         <div className="description-content mt-1">{renderMarkdown(item.doc ?? "")}</div>
                       </div>
                     ))}
