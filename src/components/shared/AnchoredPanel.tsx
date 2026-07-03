@@ -30,8 +30,10 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 export type AnchoredPlacement =
   | "bottom-start"
   | "bottom-end"
+  | "bottom"
   | "top-start"
-  | "top-end";
+  | "top-end"
+  | "top";
 
 export interface AnchoredPoint {
   x: number;

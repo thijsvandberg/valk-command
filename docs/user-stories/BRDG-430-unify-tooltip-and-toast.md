@@ -1,6 +1,6 @@
 # BRDG-430: Unify the tooltip and toast implementations
 
-**Status:** Not Started
+**Status:** Done (2026-07-03, branch ui-wave-427-431)
 **Priority:** Low
 **Type:** Consistency — transient-feedback overlays (follow-up of BRDG-422)
 
@@ -35,14 +35,39 @@ Toasts:
 
 ## Acceptance Criteria
 
-- [ ] One tooltip implementation app-wide (on `z-tooltip`).
-- [ ] One toast implementation/stack app-wide (on `z-notification`); `ExportToasts` and
+- [x] One tooltip implementation app-wide (on `z-tooltip`).
+- [x] One toast implementation/stack app-wide (on `z-notification`); `ExportToasts` and
       `sprintMoveToast` route through it.
 
 ## Tests
 
-- [ ] Render/behaviour tests for the unified tooltip + toast.
-- [ ] Existing toast/tooltip tests stay green.
+- [x] Render/behaviour tests for the unified tooltip + toast.
+- [x] Existing toast/tooltip tests stay green.
+
+## Implementation notes (2026-07-03)
+
+- **Tooltip:** `shared/Tooltip` is the single text tooltip; its bespoke
+  clamp/flip math was replaced by the shared `useAnchoredPosition` engine
+  (BRDG-429) with new centered `top`/`bottom` placements. Same look, same
+  delay/focus behaviour, `z-tooltip` token.
+- **Toast:** new `ToastCard` in `ui/Toast.tsx` owns the one toast body (variant
+  border tints, /95 blurred surface, icon + content + actions + dismiss cross,
+  fadeInUp entrance). `Toast`, the sync `ActivityToast` stack items and
+  `ExportToasts` all render through it. `sprintMoveToast` already routed
+  through `Toast` (story evidence predated that convergence).
+- Judgment calls:
+  1. One toast *body*, three mount points: the standard toast (bottom-6), sync
+     stack (bottom-4) and export cards (bottom-16) keep their offsets so
+     simultaneous toasts don't overlap. Collapsing them into one global queue
+     would rewire `useToast` + ActivityContext + export state and was judged
+     too broad for this pass.
+  2. Skin convergence: the standard toast adopts the family skin (tinted
+     border + blurred surface); sync-toast dismiss becomes the standard cross
+     and its JS entrance transition becomes the shared fadeInUp keyframe.
+  3. The rich hover cards (TicketStatusPill card, RefinementGemHoverCard) are
+     interactive hover panels, not text tooltips - kept as components on the
+     `z-tooltip` layer. `OpenSubtasksIndicator` is click-driven (panel family,
+     `z-popover`).
 
 ## Related
 
