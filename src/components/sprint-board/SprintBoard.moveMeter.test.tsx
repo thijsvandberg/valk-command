@@ -69,6 +69,8 @@ vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
   computeSprintWorkDays: () => ({ elapsed: 5, total: 10 }),
   scopePlaceholdersToSprintFilter: (placeholders: unknown[]) => placeholders,
   shouldAutoEnableTestDocTag: () => false,
+  readTestDocTagSprints: () => new Set<string>(),
+  persistTestDocTagSprints: () => {},
 }));
 
 vi.mock("@/components/sprint-board/SprintSlots", () => ({ SprintSlots: () => <div data-testid="sprint-slots" /> }));

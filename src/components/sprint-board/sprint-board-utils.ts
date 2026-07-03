@@ -282,3 +282,32 @@ export function shouldAutoEnableTestDocTag(
     return false;
   }
 }
+
+// BRDG-426: the test-doc row marker is a per-sprint setting, not a board-wide
+// one — the delivery check belongs to one sprint, and the next sprint must
+// start with the marker off again. Stored as a plain id array.
+const TEST_DOC_TAG_SPRINTS_KEY = "bridge:test-doc-tag-sprints";
+
+export function readTestDocTagSprints(
+  storage: Pick<Storage, "getItem"> = localStorage,
+): Set<string> {
+  try {
+    const raw = storage.getItem(TEST_DOC_TAG_SPRINTS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function persistTestDocTagSprints(
+  ids: Set<string>,
+  storage: Pick<Storage, "setItem"> = localStorage,
+): void {
+  try {
+    storage.setItem(TEST_DOC_TAG_SPRINTS_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Best-effort persistence; the in-memory set still drives this session.
+  }
+}

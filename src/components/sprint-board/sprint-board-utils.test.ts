@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { saveTicketMetadata, saveStoryPoints, scopePlaceholdersToSprintFilter, shouldAutoEnableTestDocTag } from "./sprint-board-utils";
+import { saveTicketMetadata, saveStoryPoints, scopePlaceholdersToSprintFilter, shouldAutoEnableTestDocTag, readTestDocTagSprints, persistTestDocTagSprints } from "./sprint-board-utils";
 
 const globalMutate = vi.fn();
 const updateMetadata = vi.fn();
@@ -168,5 +168,28 @@ describe("shouldAutoEnableTestDocTag (BRDG-426)", () => {
     // A new sprint gets its own once-only flag.
     expect(shouldAutoEnableTestDocTag("6361", 1, storage)).toBe(true);
     expect(shouldAutoEnableTestDocTag("6394", 1, storage)).toBe(true);
+  });
+});
+
+describe("test-doc tag per-sprint persistence (BRDG-426)", () => {
+  function fakeStorage(initial: Record<string, string> = {}) {
+    const store = { ...initial };
+    return {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => { store[k] = v; },
+      store,
+    };
+  }
+
+  it("round-trips the enabled sprint ids", () => {
+    const storage = fakeStorage();
+    persistTestDocTagSprints(new Set(["6361", "6394"]), storage);
+    expect(readTestDocTagSprints(storage)).toEqual(new Set(["6361", "6394"]));
+  });
+
+  it("returns an empty set on missing or corrupt storage", () => {
+    expect(readTestDocTagSprints(fakeStorage())).toEqual(new Set());
+    expect(readTestDocTagSprints(fakeStorage({ "bridge:test-doc-tag-sprints": "{not json" }))).toEqual(new Set());
+    expect(readTestDocTagSprints(fakeStorage({ "bridge:test-doc-tag-sprints": '"scalar"' }))).toEqual(new Set());
   });
 });

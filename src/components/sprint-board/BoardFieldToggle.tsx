@@ -14,26 +14,41 @@ export function BoardFieldList({
   visible,
   onChange,
   onReset,
+  disabledIds,
+  disabledTitle,
 }: {
   visible: Set<InlineTagId>;
   onChange: (id: InlineTagId, show: boolean) => void;
   onReset?: () => void;
+  /** Fields that cannot be toggled in the current context (e.g. the per-sprint
+   *  test-doc marker on the All view, BRDG-426). */
+  disabledIds?: Set<InlineTagId>;
+  disabledTitle?: string;
 }) {
   return (
     <div className="flex flex-col">
       <div className="max-h-[70vh] overflow-y-auto py-1.5">
         {ROW_FIELDS.map((field, idx) => {
           const checked = visible.has(field.id);
+          const disabled = disabledIds?.has(field.id) ?? false;
           // Divider between the secondary signals and the always-present badges (BRDG-299).
           const startsBadgeGroup = field.group === "badge" && ROW_FIELDS[idx - 1]?.group === "signal";
           return (
             <div key={field.id} className="contents">
               {startsBadgeGroup && <div className="my-1 h-px bg-overlay-default" />}
-              <label className="flex w-full cursor-pointer select-none items-center gap-3 px-3.5 py-1 text-body text-text-secondary hover:bg-hover-list-item hover:text-text-primary">
+              <label
+                title={disabled ? disabledTitle : undefined}
+                className={`flex w-full select-none items-center gap-3 px-3.5 py-1 text-body ${
+                  disabled
+                    ? "cursor-default text-text-muted opacity-60"
+                    : "cursor-pointer text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
+                }`}
+              >
                 <Checkbox checked={checked} />
                 <input
                   type="checkbox"
                   checked={checked}
+                  disabled={disabled}
                   onChange={(e) => onChange(field.id, e.target.checked)}
                   className="sr-only"
                 />

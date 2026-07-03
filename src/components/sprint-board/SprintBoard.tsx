@@ -32,7 +32,7 @@ import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
 import { usePlaceholders } from "@/hooks/usePlaceholders";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays, scopePlaceholdersToSprintFilter, shouldAutoEnableTestDocTag } from "@/components/sprint-board/sprint-board-utils";
+import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays, scopePlaceholdersToSprintFilter, shouldAutoEnableTestDocTag, readTestDocTagSprints, persistTestDocTagSprints } from "@/components/sprint-board/sprint-board-utils";
 import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint, isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
 import type { SavedView, InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { cycleMetricSort, DEFAULT_SORT } from "@/components/sprint-board/filter-bar-types";
@@ -579,15 +579,45 @@ export default function SprintBoard() {
   const sprintWorkDays = useMemo(() => computeSprintWorkDays(activeSprint), [activeSprint]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
 
-  // BRDG-426: reveal the test-doc row marker automatically once the active sprint
-  // enters its last working day — the moment the delivery check matters. Applied
-  // ONCE per sprint (localStorage flag inside the helper), so switching it off
-  // afterwards sticks. toggleColumn persists via the regular column-config path,
-  // exactly as if the PO ticked it in the Display menu.
+  // BRDG-426: the test-doc marker is a PER-SPRINT setting (the delivery check
+  // belongs to one sprint; the next one starts with the marker off). The set
+  // holds the sprint ids where it is on, persisted across sessions.
+  const [testDocSprints, setTestDocSprints] = useState<Set<string>>(() => readTestDocTagSprints());
+  const setTestDocForSprint = useCallback((sprintId: string, on: boolean) => {
+    setTestDocSprints((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(sprintId); else next.delete(sprintId);
+      persistTestDocTagSprints(next);
+      return next;
+    });
+  }, []);
+  // The single-sprint scope the marker toggle applies to; null on the All view
+  // and saved views (no single sprint to scope to — markers stay off there).
+  const testDocScopeSprintId = !isAllView && activeSprint ? activeSprint.id : null;
+  const effectiveVisibleTags = useMemo(() => {
+    const tags = new Set(f.visibleTags);
+    tags.delete("testDoc");
+    if (testDocScopeSprintId && testDocSprints.has(testDocScopeSprintId)) tags.add("testDoc");
+    return tags;
+  }, [f.visibleTags, testDocScopeSprintId, testDocSprints]);
+  const handleColumnToggle = useCallback(
+    (id: InlineTagId, show: boolean) => {
+      if (id === "testDoc") {
+        if (testDocScopeSprintId) setTestDocForSprint(testDocScopeSprintId, show);
+        return;
+      }
+      toggleColumn(id, show);
+    },
+    [testDocScopeSprintId, setTestDocForSprint, toggleColumn],
+  );
+
+  // Reveal the marker automatically once the active sprint enters its last
+  // working day — the moment the delivery check matters. Applied ONCE per
+  // sprint (localStorage flag inside the helper), so switching it off sticks.
   useEffect(() => {
     if (!shouldAutoEnableTestDocTag(activeSprint?.id, sprintWorkDays.remaining)) return;
-    if (!f.visibleTags.has("testDoc")) toggleColumn("testDoc", true);
-  }, [activeSprint, sprintWorkDays, f.visibleTags, toggleColumn]);
+    setTestDocForSprint(activeSprint!.id, true);
+  }, [activeSprint, sprintWorkDays, setTestDocForSprint]);
 
   // The flat (ungrouped) list creates into one concrete target: the open sprint, or
   // the backlog. Suppressed for the All view and saved views, where the flat list spans
@@ -1009,7 +1039,7 @@ export default function SprintBoard() {
       sortDir={f.sortDir}
       onMetricSort={handleMetricSort}
       onMetricToggleColumn={handleMetricToggleColumn}
-      visibleTags={f.visibleTags}
+      visibleTags={effectiveVisibleTags}
       slotSprintsSet={slotSprintsSet}
       onPinSprint={handleAddSlotWithSprint}
       onEditSprintDetails={handleEditSprintFromGroup}
@@ -1081,8 +1111,12 @@ export default function SprintBoard() {
     issueTypeOptions: f.issueTypeOptions,
     teamOptions: f.teamOptions,
     onClearAll: f.resetFilters,
-    columnVisible: f.visibleTags,
-    onColumnToggle: toggleColumn,
+    columnVisible: effectiveVisibleTags,
+    onColumnToggle: handleColumnToggle,
+    // The test-doc marker is a per-sprint setting; without a single sprint in
+    // scope (All view / saved views) there is nothing to toggle it FOR.
+    columnDisabledIds: testDocScopeSprintId ? undefined : new Set<InlineTagId>(["testDoc"]),
+    columnDisabledTitle: "Test documentation markers are per sprint - open a sprint to toggle them",
     onColumnReset: resetToDefaults,
     ...(isAllView
       ? {
@@ -1140,7 +1174,7 @@ export default function SprintBoard() {
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-surface-elevated px-4 pb-20 pt-3">
           <div className={boardMaxW}>
-          <TicketTable tickets={displayTickets} hideRowAccent warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} searchActive={f.searchQuery.trim().length >= 2} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onSubtasksAdded={ta.handleSubtasksAdded} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} onMetricSort={handleMetricSort} onMetricToggleColumn={handleMetricToggleColumn} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onSprintTestDocs={handleSprintTestDocs} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} freshlyCreatedKeys={freshlyCreatedKeys} statusChangeMap={statusChangeMapForTable} onStatusChangeSeen={markStatusChangeSeen} onStatusChangeMoveToBottom={handleStatusChangeMoveToBottom} onStatusChangeGenerateTestDoc={(key) => setTestDocKeys([key])} showFinishedDivider={!!flatIsActiveSprint} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} placeholders={placeholdersForTable} onPlaceholderUpdate={handlePlaceholderUpdate} onPlaceholderDelete={handlePlaceholderDelete} onPlaceholderPromote={handlePlaceholderPromote} onPlaceholderCreate={planningVisible ? handlePlaceholderCreate : undefined} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={displayTickets} hideRowAccent warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} searchActive={f.searchQuery.trim().length >= 2} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={effectiveVisibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onSubtasksAdded={ta.handleSubtasksAdded} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} onMetricSort={handleMetricSort} onMetricToggleColumn={handleMetricToggleColumn} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onSprintTestDocs={handleSprintTestDocs} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} freshlyCreatedKeys={freshlyCreatedKeys} statusChangeMap={statusChangeMapForTable} onStatusChangeSeen={markStatusChangeSeen} onStatusChangeMoveToBottom={handleStatusChangeMoveToBottom} onStatusChangeGenerateTestDoc={(key) => setTestDocKeys([key])} showFinishedDivider={!!flatIsActiveSprint} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} placeholders={placeholdersForTable} onPlaceholderUpdate={handlePlaceholderUpdate} onPlaceholderDelete={handlePlaceholderDelete} onPlaceholderPromote={handlePlaceholderPromote} onPlaceholderCreate={planningVisible ? handlePlaceholderCreate : undefined} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
           </div>
         )}

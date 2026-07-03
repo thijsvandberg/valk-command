@@ -79,6 +79,9 @@ export interface FilterControlsPanelProps {
   columnVisible: Set<InlineTagId>;
   onColumnToggle: (id: InlineTagId, show: boolean) => void;
   onColumnReset: () => void;
+  /** Fields not toggleable in the current context (per-sprint fields on the All view). */
+  columnDisabledIds?: Set<InlineTagId>;
+  columnDisabledTitle?: string;
   /**
    * Restrict the filter categories to this set of keys, in order (BRDG-357). The
    * New story inbox passes a subset (no Readiness/Changes/Gaps). Omitted on the
@@ -360,7 +363,13 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
       </div>
 
       {view === "display" ? (
-        <BoardFieldList visible={props.columnVisible} onChange={props.onColumnToggle} onReset={props.onColumnReset} />
+        <BoardFieldList
+          visible={props.columnVisible}
+          onChange={props.onColumnToggle}
+          onReset={props.onColumnReset}
+          disabledIds={props.columnDisabledIds}
+          disabledTitle={props.columnDisabledTitle}
+        />
       ) : (
         <div className="flex h-[306px]">
           {/* Category rail */}
