@@ -573,12 +573,6 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
                 yourself below to enable saving.
               </InlineAlert>
             )}
-            {entry.classification === "not_stakeholder_relevant" && !generating && (
-              <InlineAlert variant="info">
-                Classified as not stakeholder-testable (internal change, spike or chore).
-                Saving stores the one-line mention so the sprint delivery stays complete.
-              </InlineAlert>
-            )}
             {/* A doc that exists but is NOT saved must be unmissable; a saved
                 doc only gets a quiet provenance line (below, in the toolbar
                 row) — the old explanatory banner said nothing (PO feedback). */}

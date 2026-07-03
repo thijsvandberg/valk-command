@@ -403,11 +403,11 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     expect(screen.getByText("Save").closest("button")).not.toBeDisabled();
   });
 
-  it("not_stakeholder_relevant: shows the notice but keeps Save enabled", async () => {
+  it("not_stakeholder_relevant: no banner (PO feedback), Save stays enabled", async () => {
     render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
     await emitResult("VPL-1", "Internal: sync groundwork", "not_stakeholder_relevant");
 
-    expect(screen.getByText(/not stakeholder-testable/)).toBeInTheDocument();
+    expect(screen.queryByText(/not stakeholder-testable/)).not.toBeInTheDocument();
     expect(screen.getByText("Save").closest("button")).not.toBeDisabled();
   });
 
