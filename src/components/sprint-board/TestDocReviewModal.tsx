@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { stripTestDocBlock } from "@/lib/test-doc";
+import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { useTaskStream } from "@/hooks/useTaskStream";
@@ -20,6 +21,10 @@ import { ClipboardCheck, Loader2, RefreshCw, X } from "lucide-react";
 // and the "workspace" rate-limit tier allows 10 requests/min — three rolling
 // starts stay well under both.
 const MAX_CONCURRENT_GENERATIONS = 3;
+
+const SPLIT_STORAGE_KEY = "bridge:test-doc-split";
+const SPLIT_MIN = 30;
+const SPLIT_MAX = 70;
 
 /** One reviewable doc variant; regeneration adds versions instead of replacing (PO compares, then accepts one). */
 interface DocVersion {
@@ -113,6 +118,36 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   // editing); the textarea is one Edit click away. Auto-opens for results
   // that require hand-work (unstructured output, needs_input).
   const [editing, setEditing] = useState(false);
+  // Adjustable pane split (PO preference varies per story length); persisted.
+  const splitRef = useRef<HTMLDivElement>(null);
+  const [splitPct, setSplitPct] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem(SPLIT_STORAGE_KEY));
+      return v >= SPLIT_MIN && v <= SPLIT_MAX ? v : 50;
+    } catch {
+      return 50;
+    }
+  });
+  const handleSplitDrag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const container = splitRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const onMove = (ev: PointerEvent) => {
+      const pct = Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, ((ev.clientX - rect.left) / rect.width) * 100));
+      setSplitPct(pct);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setSplitPct((v) => {
+        try { localStorage.setItem(SPLIT_STORAGE_KEY, String(Math.round(v))); } catch { /* in-memory only */ }
+        return v;
+      });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, []);
   const { mutate } = useSWRConfig();
 
   const currentKey = keys[index] ?? null;
@@ -453,11 +488,12 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
               <p className="text-body font-semibold leading-tight text-text-primary">
                 Test documentation
               </p>
-              <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
-                {/* The key lives ONCE in the story pane as the regular ticket pill;
-                    the header only carries the title for context. */}
-                for <span className="text-text-secondary">{detail?.title ?? currentKey}</span>
-              </p>
+              {/* The key lives ONCE, here in the header, as the regular ticket
+                  pill (status + hover card + open in new tab). */}
+              <div className="mt-1 flex min-w-0 items-center gap-2">
+                <TicketRefPill ticketKey={currentKey} />
+                <span className="truncate text-body-sm text-text-tertiary">{detail?.title ?? ""}</span>
+              </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3">
@@ -484,9 +520,9 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
           </div>
         </div>
 
-        {/* Body: doc left, story right */}
-        <div className="grid min-h-0 flex-1 grid-cols-2">
-          <div className="flex min-h-0 flex-col gap-3 border-r border-border-subtle p-4">
+        {/* Body: doc left, story right; the divider drags to resize (persisted). */}
+        <div ref={splitRef} className="flex min-h-0 flex-1">
+          <div className="flex min-h-0 flex-col gap-3 p-4" style={{ width: `${splitPct}%` }}>
             {entry.unstructured && !generating && (
               <InlineAlert variant="warning">
                 The workspace returned unstructured output — review it carefully before saving.
@@ -626,17 +662,18 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
             )}
           </div>
 
-          <div className="flex min-h-0 flex-col p-4">
-            {/* The regular ticket pill (status + hover card + open in new tab) —
-                the single place the key shows in this modal. */}
-            <div className="mb-3 flex shrink-0 items-center gap-2">
-              <TicketRefPill ticketKey={currentKey} />
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border-subtle bg-surface-base p-4" data-testid="test-doc-story-pane">
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            onPointerDown={handleSplitDrag}
+            className="w-1 shrink-0 cursor-col-resize bg-border-subtle transition-colors duration-150 hover:bg-[var(--color-brand-500)]/40"
+          />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1" data-testid="test-doc-story-pane">
               {detail ? (
                 <>
-                  <h3 className="mb-3 text-body-lg font-semibold text-text-primary">{detail.title}</h3>
-                  <div className="description-content">
+                  <h3 className="mb-3 text-h4 font-semibold text-text-primary">{detail.title}</h3>
+                  <div className="description-content text-body-lg leading-prose text-text-secondary">
                     {detail.description?.trim()
                       ? // The doc under review IS the expand block; repeating it
                         // inside the story rendering is pure noise.
@@ -644,20 +681,31 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                       : <p className="text-body-lg text-text-muted">No description.</p>}
                   </div>
                   {detail.jiraComments && detail.jiraComments.length > 0 && (
-                    <div className="mt-5 border-t border-border-subtle pt-3" data-testid="test-doc-story-comments">
-                      <p className="mb-2 text-caption font-medium uppercase tracking-wide text-text-tertiary">
+                    <div className="mt-6 border-t border-border-subtle pt-4" data-testid="test-doc-story-comments">
+                      <p className="mb-3 text-caption font-medium uppercase tracking-wide text-text-tertiary">
                         Comments ({detail.jiraComments.length})
                       </p>
-                      <div className="flex flex-col gap-3">
+                      {/* Mirrors the ticket sidebar's comment styling (CommentsSection). */}
+                      <div className="flex flex-col gap-4">
                         {detail.jiraComments.map((c) => (
-                          <div key={c.id}>
-                            <p className="text-caption text-text-muted">
-                              {c.authorName}
-                              {!Number.isNaN(new Date(c.createdAt).getTime()) && (
-                                <> &middot; {new Date(c.createdAt).toLocaleString()}</>
-                              )}
-                            </p>
-                            <div className="description-content text-body-sm">{renderMarkdown(c.content)}</div>
+                          <div key={c.id} className="flex gap-3">
+                            <div
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
+                              style={{ backgroundColor: c.authorColor }}
+                            >
+                              {c.authorInitials}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-body-sm font-medium text-text-secondary">{c.authorName}</span>
+                                <span className="text-caption text-text-muted" title={formatAbsoluteDate(c.createdAt)}>
+                                  {relativeDate(c.createdAt)}
+                                </span>
+                              </div>
+                              <div className="description-content mt-1 text-body-lg leading-prose text-text-secondary">
+                                {renderMarkdown(c.content, { linkifyRefs: true })}
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
