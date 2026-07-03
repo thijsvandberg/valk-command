@@ -28,10 +28,10 @@ export function TestDocMarker({
 
   const icon =
     state === "not_needed" ? (
-      <FileX2 size={16} strokeWidth={1.75} className="text-text-muted" />
+      <FileX2 size={14} strokeWidth={1.75} className="text-text-muted" />
     ) : (
       <FileCheck2
-        size={16}
+        size={14}
         strokeWidth={1.75}
         className={
           state === "accepted"
@@ -61,7 +61,7 @@ export function TestDocMarker({
         onOpenReview();
       }}
       onPointerDown={(e) => e.stopPropagation()}
-      className="inline-flex shrink-0 cursor-pointer rounded p-1 -m-1 outline-none transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      className="grid h-6 w-6 -my-0.5 shrink-0 cursor-pointer place-items-center rounded-md outline-none transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
     >
       {icon}
     </button>

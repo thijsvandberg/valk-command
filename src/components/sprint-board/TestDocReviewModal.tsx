@@ -491,7 +491,14 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
           />
         );
       })}
-      <div className="flex h-[min(760px,88vh)] w-[min(1180px,94vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
+      {/* data-autofocus: the modal focuses the card itself on open — the first
+          focusable element is the header's ticket pill, which would otherwise
+          pop its hover card immediately. */}
+      <div
+        data-autofocus
+        tabIndex={-1}
+        className="flex h-[min(760px,88vh)] w-[min(1180px,94vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl outline-none"
+      >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">

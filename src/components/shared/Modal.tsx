@@ -48,9 +48,16 @@ export function Modal({
 
     previousFocusRef.current = document.activeElement as HTMLElement | null;
 
-    // Auto-focus the first focusable element inside the modal
+    // Auto-focus: an explicit [data-autofocus] anchor wins (it may carry
+    // tabindex=-1, adding no tab stop — used when the first focusable element
+    // has focus side effects, e.g. a ticket pill opening its hover card);
+    // otherwise the first focusable element inside the modal.
     const raf = requestAnimationFrame(() => {
-      const el = containerRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTORS);
+      const container = containerRef.current;
+      if (!container) return;
+      const el =
+        container.querySelector<HTMLElement>("[data-autofocus]") ??
+        container.querySelector<HTMLElement>(FOCUSABLE_SELECTORS);
       el?.focus();
     });
 
