@@ -1092,6 +1092,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   ? () => onStatusChangeGenerateTestDoc(statusChange.ticketKey)
                   : undefined
               }
+              testDocState={ticket.testDocState ?? null}
             />
           )}
         </div>

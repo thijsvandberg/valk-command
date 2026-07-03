@@ -75,6 +75,7 @@ export function StatusChangeLine({
   onMoveToBottom,
   onCloseSubtasks,
   onGenerateTestDoc,
+  testDocState,
 }: {
   change: StatusChangeItem;
   deploy?: LastDeployedInfo;
@@ -83,11 +84,17 @@ export function StatusChangeLine({
   onSeen: () => void;
   onMoveToBottom: () => void;
   onCloseSubtasks?: (key: string) => Promise<void>;
-  /** To-Test action: opens the stakeholder test-doc generate + validate flow (BRDG-426). */
+  /** Test/Done action: opens the stakeholder test-doc generate + validate flow (BRDG-426). */
   onGenerateTestDoc?: () => void;
+  /** Drives the action label: no doc → Generate; draft/accepted → View (opens the
+   *  same editable review flow). Explicitly marked not-needed shows no action. */
+  testDocState?: "accepted" | "draft" | "not_needed" | null;
 }) {
   const isFinished = change.toStatus === "DONE" || change.toStatus === "DEPRECATED";
   const isTest = change.toStatus === "TEST";
+  // Testable or delivered work carries the test-doc affordance (BRDG-426);
+  // deprecated work never needs delivery documentation.
+  const showsTestDoc = (isTest || change.toStatus === "DONE") && testDocState !== "not_needed";
   // Show the last-deploy badge once work is testable or actively in progress.
   const showsDeploy = isTest || change.toStatus === "IN PROGRESS";
   const showSubtaskFlag = isFinished && change.openSubtaskCount > 0;
@@ -226,14 +233,20 @@ export function StatusChangeLine({
               </button>
             </Tooltip>
           )}
-          {isTest && onGenerateTestDoc && (
-            <Tooltip content="Generate stakeholder test documentation from the story and comments, then validate it next to the story">
+          {showsTestDoc && onGenerateTestDoc && (
+            <Tooltip
+              content={
+                testDocState === "accepted" || testDocState === "draft"
+                  ? "View and edit the test documentation next to the story"
+                  : "Generate stakeholder test documentation from the story and comments, then validate it next to the story"
+              }
+            >
               <button
                 type="button"
                 onClick={onGenerateTestDoc}
                 className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
-                Generate test doc
+                {testDocState === "accepted" || testDocState === "draft" ? "View test doc" : "Generate test doc"}
               </button>
             </Tooltip>
           )}

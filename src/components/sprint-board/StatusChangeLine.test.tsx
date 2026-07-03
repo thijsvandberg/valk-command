@@ -59,6 +59,48 @@ describe("StatusChangeLine (BRDG-414)", () => {
       expect(onGenerate).toHaveBeenCalledTimes(1);
     });
 
+    it("also renders on Done lines, but not on Deprecated", () => {
+      render(
+        <StatusChangeLine
+          change={makeChange({ toStatus: "DONE" })}
+          onSeen={noop}
+          onMoveToBottom={noop}
+          onGenerateTestDoc={vi.fn()}
+        />,
+      );
+      expect(screen.getByText("Generate test doc")).toBeInTheDocument();
+
+      render(
+        <StatusChangeLine
+          change={makeChange({ toStatus: "DEPRECATED" })}
+          onSeen={noop}
+          onMoveToBottom={noop}
+          onGenerateTestDoc={vi.fn()}
+        />,
+      );
+      expect(screen.queryAllByText("Generate test doc")).toHaveLength(1);
+    });
+
+    it("reads View test doc once a doc or draft exists, and hides for not_needed", () => {
+      const onGenerate = vi.fn();
+      const { rerender } = render(
+        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} testDocState="accepted" />,
+      );
+      fireEvent.click(screen.getByText("View test doc"));
+      expect(onGenerate).toHaveBeenCalledTimes(1);
+
+      rerender(
+        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} testDocState="draft" />,
+      );
+      expect(screen.getByText("View test doc")).toBeInTheDocument();
+
+      rerender(
+        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} testDocState="not_needed" />,
+      );
+      expect(screen.queryByText("View test doc")).not.toBeInTheDocument();
+      expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
+    });
+
     it("is absent when no handler is supplied (non-board hosts)", () => {
       render(<StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} />);
       expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
