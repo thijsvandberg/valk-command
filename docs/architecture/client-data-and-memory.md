@@ -108,7 +108,21 @@ DOM, and off-viewport groups collapse to a single spacer row (virtual-core clamp
 out-of-view ranges to the nearest edge instead of returning an empty range, so the
 component gates on real viewport overlap itself). Droppable measuring flips to
 `Always` while windowed so rows mounting under mid-drag auto-scroll are measured
-(BRDG-347). The Inbox and the Refinement queue still render all rows; virtualizing
+(BRDG-347).
+
+**Prod-only attach deadlock (BRDG-452, read before touching any useVirtualizer):** on
+first mount a descendant's layout effects run BEFORE an ancestor's ref attaches, so
+`getScrollElement: () => someAncestorRef.current` returns null at attach time;
+tanstack silently skips attaching its scroll/rect observers and only retries on a
+later render. Dev never shows this (StrictMode re-runs effects after refs attach); on
+a prod build a virtualizer can stay permanently scroll-dead. Both board paths
+therefore resolve the scroll element into STATE via a passive effect (refs are
+attached by then, and the state change guarantees the re-render tanstack needs) and
+pass `initialOffset: () => el?.scrollTop ?? 0` so a late attach does not scroll the
+shared container to 0 (`_willUpdate` ends with `_scrollToOffset(getScrollOffset())`).
+Per-group `scrollMargin`s additionally self-heal on scroll (rAF-throttled re-measure)
+because layout shifts between a group's mount and later settles do not fire any
+observed resize. The Inbox and the Refinement queue still render all rows; virtualizing
 them was reviewed and not pursued (memory is bounded by the cap, so it is a perf
 nice-to-have).
 

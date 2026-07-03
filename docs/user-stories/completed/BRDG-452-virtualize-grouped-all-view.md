@@ -166,3 +166,24 @@ Live E2E on the dev board (All view, ~9000 items, 40 group cards):
 - [[BRDG-415-finish-board-row-actions-glue-convergence]] — shared row-actions the grouped rows use.
 - Touch points: `TicketTable.tsx` (groupedTable), `SprintBoard.tsx` (dndMeasuringStrategy),
   `useGroupBy.ts`, `useSprintBoardDragDrop.ts`.
+
+## Post-release fix (2026-07-03, same day)
+
+The PO hit "half-empty tables" on the prod build: groups painting their row windows at
+stale offsets or not at all. Root cause (diagnosed via an auth-free repro page on the
+prod build): on first mount a descendant's layout effects run BEFORE an ancestor's ref
+attaches, so tanstack-virtual's `getScrollElement()` returned null at attach time and it
+silently never attached its scroll/rect observers; it only retries on a later render, so
+a quiet component stayed permanently scroll-dead. Dev never showed it because StrictMode
+re-runs effects after refs attach. Fixed for BOTH board paths (grouped
+`VirtualizedGroupRows` and the flat `TicketTable` virtualizer, which had the same latent
+bug) by resolving the scroll element into state via a passive effect and passing
+`initialOffset: () => el?.scrollTop ?? 0` so late attaches stop scrolling the shared
+container to 0. Per-group scrollMargins also self-heal on scroll. Verified on the prod
+build: repro page + real All view + flat backlog all window correctly at every scroll
+position. Details in [Client Data & Memory](../../architecture/client-data-and-memory.md).
+
+Diagnosis footnote: browser probes of scroll behavior are only valid in a RENDERING tab.
+Background tabs run no rendering steps, so scroll events, rAF and ResizeObserver never
+fire there and any virtualized list looks frozen to a probe even when the code is
+correct.
