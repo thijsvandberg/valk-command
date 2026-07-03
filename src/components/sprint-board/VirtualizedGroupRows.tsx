@@ -82,6 +82,7 @@ export function VirtualizedGroupRows({
   // stale offsets (half-empty cards). The DOM ancestor itself is already committed, so
   // closest() is reliable where the ref is not.
   const [scrollMargin, setScrollMargin] = useState(0);
+  const itemCount = items.length;
   useLayoutEffect(() => {
     const el = bodyRef.current;
     const scroller = scrollContainerRef.current;
@@ -97,8 +98,27 @@ export function VirtualizedGroupRows({
     ro.observe(scroller);
     const groupsRoot = el.closest(`[${GROUPS_ROOT_ATTR}]`);
     if (groupsRoot) ro.observe(groupsRoot);
-    return () => ro.disconnect();
-  }, [scrollContainerRef]);
+    // Self-heal on scroll (rAF-throttled): a group's offset must be right exactly when the
+    // user scrolls it into view, and observer triggers alone proved unreliable for layout
+    // shifts between a group's mount and later settles (estimate -> measured heights above
+    // it). Measured live on prod: a stale offset froze a group's window at its mount-time
+    // position and the viewport-overlap gate then kept it spacer-only forever (BRDG-452
+    // half-empty cards). Re-measuring costs two rect reads per group per frame; the guarded
+    // setState only renders on a real change.
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; measure(); });
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      ro.disconnect();
+      scroller.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+    // itemCount: a per-group filter or data refresh changes this group's (and the ones
+    // below it) offsets without any scroll or observed resize.
+  }, [scrollContainerRef, itemCount]);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
