@@ -52,7 +52,7 @@ export function FieldFilterPopover({
   return (
     <div
       ref={ref}
-      className="absolute top-full right-0 z-50 mt-1 min-w-[180px] rounded-xl border border-border-default bg-surface-floating py-1 shadow-popover"
+      className="absolute top-full right-0 z-dropdown mt-1 min-w-[180px] rounded-xl border border-border-default bg-surface-floating py-1 shadow-popover"
       style={{ animation: "fadeInUp 0.1s ease" }}
     >
       <FieldFilterSections

@@ -465,7 +465,7 @@ export default function ConversationList({
       {contextMenu && createPortal(
         <div
           ref={contextMenuRef}
-          className="fixed z-[100] min-w-[160px] rounded-lg border border-border-strong bg-surface-floating py-1 shadow-popover"
+          className="fixed z-popover min-w-[160px] rounded-lg border border-border-strong bg-surface-floating py-1 shadow-popover"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           data-testid="conversation-context-menu"
         >

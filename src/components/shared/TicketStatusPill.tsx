@@ -76,7 +76,7 @@ function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTy
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[130px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover"
+      className="absolute top-full left-0 z-dropdown mt-1 min-w-[130px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover"
     >
       {SELECTABLE_TYPES.map((type) => {
         const isActive = type === currentValue;
@@ -145,7 +145,7 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[188px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover"
+      className="absolute top-full left-0 z-dropdown mt-1 min-w-[188px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover"
     >
       <MenuItem
         href={jiraUrl}
@@ -208,7 +208,7 @@ function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDr
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[172px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover"
+      className="absolute top-full left-0 z-dropdown mt-1 min-w-[172px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover"
     >
       {JIRA_STATUS_ORDER.map((status) => {
         const colors = JIRA_STATUS_COLORS[status];
@@ -248,7 +248,7 @@ function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: Readine
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1 min-w-[210px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover"
+      className="absolute top-full left-0 z-dropdown mt-1 min-w-[210px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover"
     >
       {READINESS_OPTIONS.map((opt) => {
         const isActive = opt.value === currentValue;
@@ -330,7 +330,7 @@ function DropdownPortal({
       style={{
         position: "fixed",
         ...(pos.left != null ? { left: pos.left } : { right: pos.right }),
-        zIndex: 9999,
+        zIndex: "var(--z-popover)",
         ...(pos.openUp
           ? { bottom: window.innerHeight - pos.top + 4 }
           : { top: pos.top }),
@@ -517,7 +517,7 @@ function TicketHoverCard({
       role="tooltip"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed z-[9999] w-[400px] rounded-lg border border-border-default bg-surface-floating p-3 text-left normal-case tracking-normal shadow-popover transition-[opacity,transform] duration-150 ease-out"
+      className="fixed z-tooltip w-[400px] rounded-lg border border-border-default bg-surface-floating p-3 text-left normal-case tracking-normal shadow-popover transition-[opacity,transform] duration-150 ease-out"
       style={{
         left: pos.left,
         ...(pos.openUp ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),

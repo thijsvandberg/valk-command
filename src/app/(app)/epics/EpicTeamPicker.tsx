@@ -98,7 +98,7 @@ export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Tea
           <div
             ref={popoverRef}
             role="menu"
-            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-strong py-1"
+            className="fixed z-popover min-w-[160px] overflow-hidden rounded-lg border border-border-strong py-1"
             style={getPopoverStyle()}
           >
             <div className="px-3 pb-1 pt-1 text-caption font-semibold uppercase tracking-wider text-text-muted">

@@ -832,7 +832,7 @@ export default function CleanupPage() {
               <BarContainer
                 border
                 borderPosition="top"
-                className="bulk-bar-enter sticky bottom-0 z-50 bg-surface-base px-8"
+                className="bulk-bar-enter sticky bottom-0 z-dropdown bg-surface-base px-8"
               >
                 <div className={`${CONTENT_MAX} flex items-center gap-2 sm:gap-3`}>
                 {/* Select all / deselect all visible rows (mirrors the board's toggle). */}

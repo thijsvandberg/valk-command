@@ -55,7 +55,7 @@ export function SprintSelector({
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 z-50 mt-1.5 w-72 rounded-lg border border-border-strong bg-surface-floating shadow-lg"
+      className="absolute top-full left-0 z-dropdown mt-1.5 w-72 rounded-lg border border-border-strong bg-surface-floating shadow-lg"
     >
       {/* Search */}
       <div className="p-2 pb-1">

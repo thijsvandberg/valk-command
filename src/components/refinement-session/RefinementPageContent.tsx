@@ -649,7 +649,7 @@ export function RefinementPageContent({
       <CreateSessionModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={handleCreateSession} scheduledDates={scheduledDates} />
 
       {bulk.copyToast && (
-        <div className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-surface-elevated px-4 py-2 text-body-lg text-text-secondary shadow-md">
+        <div className="pointer-events-none fixed bottom-6 left-1/2 z-notification -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-surface-elevated px-4 py-2 text-body-lg text-text-secondary shadow-md">
           Copied {queueHook.queueTickets.length} ticket{queueHook.queueTickets.length !== 1 ? "s" : ""} to clipboard
         </div>
       )}

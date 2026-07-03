@@ -131,7 +131,7 @@ export function LinkPopover({ editor, open, onClose }: LinkPopoverProps) {
     <div
       ref={ref}
       onKeyDown={handleKeyDown}
-      className="absolute left-0 top-full z-50 mt-1 w-72 rounded-lg border border-border-strong bg-surface-floating p-3 shadow-lg shadow-black/40"
+      className="absolute left-0 top-full z-dropdown mt-1 w-72 rounded-lg border border-border-strong bg-surface-floating p-3 shadow-lg shadow-black/40"
     >
       <label className="mb-1.5 block text-label font-medium uppercase tracking-wider text-text-tertiary">
         URL

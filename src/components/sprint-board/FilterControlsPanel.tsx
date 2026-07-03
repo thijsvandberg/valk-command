@@ -305,7 +305,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
   }
 
   return (
-    <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[548px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border-strong bg-surface-floating shadow-xl">
+    <div className="absolute right-0 top-[calc(100%+8px)] z-dropdown w-[548px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border-strong bg-surface-floating shadow-xl">
       <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
 
       {/* Header: title + Display toggle + contextual Clear/Reset */}

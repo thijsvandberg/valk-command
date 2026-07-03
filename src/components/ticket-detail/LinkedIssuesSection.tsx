@@ -528,7 +528,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
       {headerMenuOpen && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-50 mt-1 w-[232px] overflow-hidden rounded-xl border border-border-default bg-surface-floating p-1 shadow-popover"
+          className="absolute top-full right-0 z-dropdown mt-1 w-[232px] overflow-hidden rounded-xl border border-border-default bg-surface-floating p-1 shadow-popover"
           style={{ animation: "fadeInUp 0.1s ease" }}
         >
           <button
@@ -605,7 +605,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
                   requestAnimationFrame(() => inlineInputRef.current?.focus());
                 }}
                 onClose={() => setInlineRelationOpen(false)}
-                className="absolute left-0 top-full z-50 mt-1 w-56"
+                className="absolute left-0 top-full z-dropdown mt-1 w-56"
               />
             )}
           </div>
@@ -658,7 +658,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
             ref={inlineDropdownRef}
             onMouseDown={() => { interactingWithDropdownRef.current = true; }}
             onMouseUp={() => { setTimeout(() => { interactingWithDropdownRef.current = false; }, 300); }}
-            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-surface-elevated shadow-lg"
+            className="absolute left-0 right-0 top-full z-dropdown mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-surface-elevated shadow-lg"
             style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
           >
             <StatusFilterChips
@@ -705,7 +705,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
           <div
             onMouseDown={() => { interactingWithDropdownRef.current = true; }}
             onMouseUp={() => { setTimeout(() => { interactingWithDropdownRef.current = false; }, 300); }}
-            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-surface-elevated py-1 shadow-lg"
+            className="absolute left-0 right-0 top-full z-dropdown mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-surface-elevated py-1 shadow-lg"
             style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
           >
             {referencedPicks.length > 0 && (

@@ -203,7 +203,7 @@ export function LinkIssueDialog({
             </button>
             {relationOpen && (
               <div
-                className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border border-border-strong bg-surface-elevated shadow-lg"
+                className="absolute inset-x-0 top-full z-dropdown mt-1 rounded-lg border border-border-strong bg-surface-elevated shadow-lg"
               >
                 <div className="px-2 pt-2 pb-1">
                   <input

@@ -199,7 +199,7 @@ function TeamFilterDropdown({
         </span>
       </button>
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-28 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
+        <div className="absolute top-full right-0 z-dropdown mt-1 w-28 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
           <button
             type="button"
             onClick={() => { onToggle(null); setOpen(false); }}
@@ -459,7 +459,7 @@ export function SprintListModal({
   const content = (
     <div
       ref={ref}
-      className={portalAnchor ? "fixed z-[9999] w-96 rounded-lg border border-border-strong bg-surface-floating" : `absolute top-full z-50 mt-1.5 w-96 rounded-lg border border-border-strong bg-surface-floating shadow-popover ${alignLeft ? "left-0" : "right-0"}`}
+      className={portalAnchor ? "fixed z-popover w-96 rounded-lg border border-border-strong bg-surface-floating" : `absolute top-full z-dropdown mt-1.5 w-96 rounded-lg border border-border-strong bg-surface-floating shadow-popover ${alignLeft ? "left-0" : "right-0"}`}
       style={portalAnchor ? {
         top: portalAnchor.top,
         left: portalAnchor.left,

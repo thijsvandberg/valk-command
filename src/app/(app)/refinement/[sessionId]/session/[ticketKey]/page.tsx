@@ -675,7 +675,7 @@ export default function RefinementSessionTicketPage({
               </button>
               {overflowOpen && (
                 <div
-                  className="absolute top-full right-0 z-50 mt-2 w-48 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+                  className="absolute top-full right-0 z-dropdown mt-2 w-48 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
                   style={{ animation: "fadeInUp 0.1s ease" }}
                 >
                   {/* Panel toggles - visible in menu below xl */}

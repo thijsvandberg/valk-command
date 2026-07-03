@@ -550,7 +550,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
 
                 {showDropdown && searchResults.length > 0 && (
                   <div ref={dropdownRef}
-                    className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-border-strong bg-surface-floating shadow-modal"
+                    className="absolute left-0 right-0 top-[calc(100%+4px)] z-dropdown overflow-hidden rounded-xl border border-border-strong bg-surface-floating shadow-modal"
                   >
                     {searchResults.map((r, i) => {
                       const isFoc = i === focusedSearch;

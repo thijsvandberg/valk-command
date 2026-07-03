@@ -64,7 +64,7 @@ export function EpicColorPicker({ epicKey, name, color }: EpicColorPickerProps) 
           <div
             ref={popoverRef}
             role="menu"
-            className="fixed z-[9999] w-[180px] overflow-hidden rounded-lg border border-border-strong py-2"
+            className="fixed z-popover w-[180px] overflow-hidden rounded-lg border border-border-strong py-2"
             style={getPopoverStyle()}
           >
             <div className="px-3 pb-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">

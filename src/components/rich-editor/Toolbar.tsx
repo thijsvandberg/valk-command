@@ -362,7 +362,7 @@ function ColorButton({ editor }: { editor: Editor }) {
       </Tooltip>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-36 rounded-lg border border-border-strong bg-surface-floating p-2 shadow-lg shadow-black/40">
+        <div className="absolute left-0 top-full z-dropdown mt-1 w-36 rounded-lg border border-border-strong bg-surface-floating p-2 shadow-lg shadow-black/40">
           <div className="mb-2 grid grid-cols-4 gap-1">
             {TEXT_COLORS.map((c) => (
               <button
@@ -422,7 +422,7 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
       </Tooltip>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg shadow-black/40">
+        <div className="absolute left-0 top-full z-dropdown mt-1 w-40 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg shadow-black/40">
           {CALLOUT_OPTIONS.map((opt) => (
             <button
               key={opt.type}
@@ -479,7 +479,7 @@ function ExpandButton({ editor }: { editor: Editor }) {
       </Tooltip>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border-strong bg-surface-floating p-3 shadow-lg shadow-black/40">
+        <div className="absolute left-0 top-full z-dropdown mt-1 w-52 rounded-lg border border-border-strong bg-surface-floating p-3 shadow-lg shadow-black/40">
           <label className="mb-1.5 block text-label font-medium uppercase tracking-wider text-text-tertiary">
             Section title
           </label>
@@ -573,7 +573,7 @@ function EmojiButton({ editor }: { editor: Editor }) {
       </Tooltip>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-border-strong bg-surface-floating p-2 shadow-lg shadow-black/40">
+        <div className="absolute left-0 top-full z-dropdown mt-1 w-56 rounded-lg border border-border-strong bg-surface-floating p-2 shadow-lg shadow-black/40">
           <div className="grid grid-cols-9 gap-0.5">
             {COMMON_EMOJIS.map(({ emoji, shortname }) => (
               <button

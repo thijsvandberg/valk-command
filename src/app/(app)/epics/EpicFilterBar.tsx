@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { Users, CircleDot, ChevronDown, X, Slash } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Popover } from "@/components/shared/Popover";
 import { Checkbox } from "@/components/shared/Checkbox";
 import { TEAMS, type Team } from "@/lib/sprint-utils";
 import { EPIC_STATUSES } from "@/lib/epic-filters";
@@ -27,8 +28,9 @@ function Dropdown({
   children: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <Button
         variant="ghost"
         size="md"
@@ -40,14 +42,9 @@ function Dropdown({
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
-      {open && (
-        <>
-          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] overflow-hidden rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
-            {children(() => setOpen(false))}
-          </div>
-        </>
-      )}
+      <Popover open={open} onClose={() => setOpen(false)} align="left" offsetClass="mt-1" triggerRef={rootRef} className="min-w-[200px] py-1">
+        {children(() => setOpen(false))}
+      </Popover>
     </div>
   );
 }

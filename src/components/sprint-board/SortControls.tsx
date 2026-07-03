@@ -51,7 +51,7 @@ export function SortDropdown({
       />
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
+        <div className="absolute top-full right-0 z-dropdown mt-1 w-52 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
           {options.map((opt) => (
             <button
               key={opt.field}

@@ -188,7 +188,7 @@ export function StoryPointPicker({
       {open && pos && createPortal(
         <div
           ref={popoverRef}
-          className={`fixed z-[9999] rounded-lg border border-border-default ${popoverPadding}`}
+          className={`fixed z-popover rounded-lg border border-border-default ${popoverPadding}`}
           style={getPopoverStyle()}
         >
           {isLg ? (

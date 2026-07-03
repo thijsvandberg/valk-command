@@ -109,7 +109,7 @@ export function IndicatorPopover({
         ...(pos.flipped ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),
         left: pos.left,
         transform: "translateX(-50%)",
-        zIndex: 9999,
+        zIndex: "var(--z-popover)",
       }}
     >
       <div

@@ -1198,7 +1198,7 @@ export default function SprintBoard() {
         {/* Bulk bar: anchored to the list column (not the viewport) so it stays centered
             in the list and never overlaps the ticket detail pane when it is open. */}
         {bulkActionBar && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center pb-5 pl-20 pr-2 sm:pl-24 sm:pr-4">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-dropdown flex justify-center pb-5 pl-20 pr-2 sm:pl-24 sm:pr-4">
             <div className="pointer-events-auto px-3 sm:px-4">{bulkActionBar}</div>
           </div>
         )}

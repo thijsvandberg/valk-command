@@ -264,7 +264,7 @@ function HoverCard({
       onMouseLeave={onMouseLeave}
       onPointerDown={stop}
       onClick={stop}
-      className="fixed z-[9999] overflow-hidden rounded-xl border border-border-strong bg-surface-floating text-left normal-case tracking-normal shadow-popover [transition:opacity_.15s_ease,transform_.15s_ease]"
+      className="fixed z-tooltip overflow-hidden rounded-xl border border-border-strong bg-surface-floating text-left normal-case tracking-normal shadow-popover [transition:opacity_.15s_ease,transform_.15s_ease]"
       style={{
         width: CARD_WIDTH,
         left: pos.left,

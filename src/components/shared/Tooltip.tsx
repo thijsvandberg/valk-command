@@ -84,7 +84,7 @@ export function Tooltip({ content, children, delay = 400, className = "" }: Tool
             bottom: position.flipUp ? window.innerHeight - position.top : undefined,
             left: clampedLeft ?? position.left,
             transform: "translateX(-50%)",
-            zIndex: 9999,
+            zIndex: "var(--z-tooltip)",
             backgroundColor: "var(--color-surface-floating)",
             boxShadow: "var(--shadow-md)",
           }}

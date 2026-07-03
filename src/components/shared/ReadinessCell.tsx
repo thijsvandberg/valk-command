@@ -61,7 +61,7 @@ export function ReadinessCell({
 
       {open && (
         <div
-          className={`absolute top-full z-50 mt-1 min-w-[210px] rounded-lg border border-border-default py-1 ${align === "left" ? "left-0" : "right-0"}`}
+          className={`absolute top-full z-dropdown mt-1 min-w-[210px] rounded-lg border border-border-default py-1 ${align === "left" ? "left-0" : "right-0"}`}
           style={{
             backgroundColor: "var(--color-surface-floating)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",

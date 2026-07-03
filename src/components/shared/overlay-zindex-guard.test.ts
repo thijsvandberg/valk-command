@@ -1,12 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 // BRDG-422 guards: lock in the z-index inversion fixes and the dialog semantics
 // added to the hand-rolled overlays, so they can't silently regress.
+// BRDG-428 extends this: the token scale (dropdown 50 < modal 60 < popover 65 <
+// tooltip 70 < notification 80) is the single source for overlay layering; raw
+// z values are forbidden in the real UI.
 
 function read(rel: string): string {
   return readFileSync(join(process.cwd(), rel), "utf8");
+}
+
+function walk(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "exploration" || entry.name === "deleted") continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walk(full));
+    else if (entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx")) out.push(full);
+  }
+  return out;
 }
 
 describe("BRDG-422: z-index inversions are fixed", () => {
@@ -66,5 +80,34 @@ describe("BRDG-422: hand-rolled overlays expose dialog semantics", () => {
     expect(src).toContain('import { Modal }');
     expect(src).toContain("<Modal");
     expect(src).toContain("shadow-modal");
+  });
+});
+
+describe("BRDG-428: the z-index token scale is authoritative", () => {
+  // Raw values that used to sit on overlays. z-40 is deliberately not listed:
+  // its two remaining uses (ChatLayout mobile drawer, InboxDigestBanner) are
+  // layout layers that intentionally sit BELOW the token scale.
+  const RAW_Z = [/\bz-50\b/, /\bz-\[9999\]\b/, /zIndex:\s*9999/, /\bz-\[100\]\b/, /\bz-\[200\]\b/];
+
+  it("no raw overlay z values remain in the real UI (use the five tokens)", () => {
+    const offenders: string[] = [];
+    for (const file of [...walk("src/components"), ...walk("src/app")]) {
+      const src = readFileSync(file, "utf8");
+      for (const pattern of RAW_Z) {
+        if (pattern.test(src)) offenders.push(`${file} matches ${pattern}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the five tokens exist in the expected order", () => {
+    const css = read("src/app/globals.css");
+    const value = (name: string) =>
+      Number(new RegExp(`--z-index-${name}:\\s*(\\d+)`).exec(css)?.[1]);
+    expect(value("dropdown")).toBe(50);
+    expect(value("modal")).toBe(60);
+    expect(value("popover")).toBe(65);
+    expect(value("tooltip")).toBe(70);
+    expect(value("notification")).toBe(80);
   });
 });

@@ -152,7 +152,7 @@ export function ChildIssueListHeader({
       {open && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-50 mt-1 w-[420px] overflow-hidden rounded-xl border border-border-default bg-surface-floating shadow-popover"
+          className="absolute top-full right-0 z-dropdown mt-1 w-[420px] overflow-hidden rounded-xl border border-border-default bg-surface-floating shadow-popover"
           style={{ animation: "fadeInUp 0.1s ease" }}
         >
           <div className="flex">

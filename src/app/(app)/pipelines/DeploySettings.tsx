@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Bell, Rocket, ChevronDown, ChevronUp, CheckCircle2, XCircle, Loader2, Pause, OctagonX } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { Popover } from "@/components/shared/Popover";
 import { useNotification } from "@/hooks/useNotification";
 import { useDeploySettings } from "@/hooks/usePipelines";
 import type { PipelineRunPayload } from "@/app/api/pipelines/route";
@@ -107,6 +108,7 @@ export function DeploySettingsPanel() {
   const { settings, update } = useDeploySettings();
   const { permission, requestPermission } = useNotification();
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   if (!settings) return null;
 
@@ -126,7 +128,7 @@ export function DeploySettingsPanel() {
   const totalEnvCount = Object.keys(settings.environments).length;
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <Button
         variant="ghost"
         size="md"
@@ -137,10 +139,7 @@ export function DeploySettingsPanel() {
         aria-label="Notification settings"
       />
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-lg border border-border-strong bg-surface-floating shadow-lg overflow-hidden">
+      <Popover open={open} onClose={() => setOpen(false)} align="right" offsetClass="mt-1" triggerRef={rootRef} className="w-[260px]">
             {/* Header */}
             <div className="px-4 pt-3.5 pb-2.5">
               <h3 className="font-[var(--font-display)] text-body-sm font-semibold text-text-secondary">Deploy notifications</h3>
@@ -198,9 +197,7 @@ export function DeploySettingsPanel() {
                 ))}
               </div>
             )}
-          </div>
-        </>
-      )}
+      </Popover>
     </div>
   );
 }

@@ -241,7 +241,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
             left: coords.left,
             width: POPOVER_WIDTH,
             transform: coords.placement === "top" ? "translateY(-100%)" : undefined,
-            zIndex: 9999,
+            zIndex: "var(--z-popover)",
             animation: "fadeInUp 0.12s ease",
           }}
           className="rounded-xl border border-border-strong bg-surface-floating p-3 shadow-popover"

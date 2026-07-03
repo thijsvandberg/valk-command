@@ -127,7 +127,7 @@ export function RefinementSessionMenu({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[100] rounded-lg border border-border-strong bg-surface-floating py-1 shadow-popover"
+            className="fixed z-popover rounded-lg border border-border-strong bg-surface-floating py-1 shadow-popover"
             style={{ top: coords.top, left: coords.left, width: MENU_WIDTH, animation: "fadeInUp 0.1s ease" }}
             role="menu"
           >

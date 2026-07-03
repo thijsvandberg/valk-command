@@ -41,7 +41,7 @@ export function SaveViewPopover({
   return (
     <div
       ref={ref}
-      className="absolute top-full right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-border-strong bg-surface-floating p-3 shadow-xl"
+      className="absolute top-full right-0 z-dropdown mt-1.5 w-64 overflow-hidden rounded-xl border border-border-strong bg-surface-floating p-3 shadow-xl"
     >
       <p className="mb-2 text-label font-medium text-text-tertiary">
         {isUpdate ? "Update saved view" : "Save current filter view"}

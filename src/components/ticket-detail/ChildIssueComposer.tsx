@@ -105,7 +105,7 @@ export function ChildIssueComposer({
           <div
             ref={popoverRef}
             // surface-elevated (not literal white) so the popover is opaque in both themes (BRDG-315).
-            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-elevated shadow-popover"
+            className="fixed z-popover min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-elevated shadow-popover"
             style={getPopoverStyle()}
           >
             {CHILD_ISSUE_TYPES.map((opt) => (

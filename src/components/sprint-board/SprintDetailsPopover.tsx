@@ -242,7 +242,7 @@ export function SprintDetailsPopover({
     return createPortal(
       <div
         ref={panelRef}
-        className="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-border-strong bg-surface-floating shadow-lg"
+        className="fixed z-popover w-56 overflow-hidden rounded-xl border border-border-strong bg-surface-floating shadow-lg"
         style={{ top: coords.top, right: coords.right }}
       >
         {inner}

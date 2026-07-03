@@ -149,7 +149,7 @@ export function BusinessValuePicker({
       {open && pos && createPortal(
         <div
           ref={popoverRef}
-          className="fixed z-[9999] rounded-lg border border-border-default p-1.5"
+          className="fixed z-popover rounded-lg border border-border-default p-1.5"
           style={getPopoverStyle()}
         >
           <div className="mb-2 px-0.5 text-micro font-semibold uppercase tracking-wider text-text-muted">

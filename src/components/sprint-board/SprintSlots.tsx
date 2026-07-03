@@ -128,7 +128,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
         className={isActive ? "border-0 bg-transparent text-[var(--color-brand-400)] hover:bg-hover-list-item" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
+        <div className="absolute top-full right-0 z-dropdown mt-1 w-36 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
           {GROUP_BY_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -221,7 +221,7 @@ function BacklogsDropdown({
         <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} strokeWidth={1.75} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 max-h-[60vh] w-56 overflow-y-auto rounded-lg border border-border-strong bg-surface-floating p-1 shadow-lg">
+        <div className="absolute top-full left-0 z-dropdown mt-1 max-h-[60vh] w-56 overflow-y-auto rounded-lg border border-border-strong bg-surface-floating p-1 shadow-lg">
           {primary.map((s) => row(s, true))}
           {primary.length > 0 && rest.length > 0 && <div className="my-1 h-px bg-border-subtle" />}
           {rest.map((s) => row(s, false))}{/* icon-free list */}
@@ -315,7 +315,7 @@ function SavedViewsMenu({
         <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} strokeWidth={1.75} />
       </button>
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-56 rounded-lg border border-border-strong bg-surface-floating p-1 shadow-lg">
+        <div className="absolute top-full right-0 z-dropdown mt-1 w-56 rounded-lg border border-border-strong bg-surface-floating p-1 shadow-lg">
           {savedViews.length === 0 && !naming && (
             <p className="px-2.5 py-2 text-body-sm text-text-muted">No saved filters yet</p>
           )}

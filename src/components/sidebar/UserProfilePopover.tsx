@@ -88,7 +88,7 @@ export function UserProfilePopover({
       onKeyDown={keyNavHandlers.onKeyDown}
       className="fixed w-64 rounded-xl border border-border-strong bg-surface-floating shadow-xl"
       style={{
-        zIndex: 60,
+        zIndex: "var(--z-popover)",
         bottom: pos.bottom,
         left: pos.left,
       }}

@@ -79,7 +79,7 @@ export default function ConversationOverflowMenu({
 
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-surface-floating py-1 shadow-popover"
+          className="absolute right-0 top-full z-dropdown mt-1 min-w-[180px] rounded-lg border border-border-strong bg-surface-floating py-1 shadow-popover"
           style={{ animation: "fadeInUp 0.1s ease" }}
           role="menu"
           data-testid="conversation-overflow-menu"

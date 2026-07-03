@@ -60,7 +60,7 @@ export function InboxGroupByDropdown({
       {open && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg"
+          className="absolute top-full right-0 z-dropdown mt-1 w-36 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg"
         >
           {options.map((opt) => (
             <button
