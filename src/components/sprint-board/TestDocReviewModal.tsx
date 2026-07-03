@@ -14,6 +14,7 @@ import { useTaskStream } from "@/hooks/useTaskStream";
 import { friendlyStreamError } from "@/lib/agent-errors";
 import { parseTestDoc, coerceClassification, type TestDocClassification } from "@/lib/parse-test-doc";
 import { getCachedTestDoc, primeTestDocCache, invalidateTestDocCache } from "@/lib/test-doc-prefetch";
+import { usePersistedSplit } from "@/components/sprint-board/usePersistedSplit";
 import { tickets as ticketsApi, workspaceTasks, ApiError } from "@/lib/api-client";
 import { ArrowLeft, ClipboardCheck, Loader2, RefreshCw } from "lucide-react";
 
@@ -133,34 +134,10 @@ export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle 
   // that require hand-work (unstructured output, needs_input).
   const [editing, setEditing] = useState(false);
   // Adjustable pane split (PO preference varies per story length); persisted.
-  const splitRef = useRef<HTMLDivElement>(null);
-  const [splitPct, setSplitPct] = useState<number>(() => {
-    try {
-      const v = Number(localStorage.getItem(SPLIT_STORAGE_KEY));
-      return v >= SPLIT_MIN && v <= SPLIT_MAX ? v : 50;
-    } catch {
-      return 50;
-    }
+  const { splitPct, splitRef, handleSplitDrag } = usePersistedSplit(SPLIT_STORAGE_KEY, {
+    min: SPLIT_MIN,
+    max: SPLIT_MAX,
   });
-  const handleSplitDrag = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    const container = splitRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const onMove = (ev: PointerEvent) => {
-      const pct = Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, ((ev.clientX - rect.left) / rect.width) * 100));
-      setSplitPct(pct);
-      // Persist per browser (localStorage) DURING the drag: a missed pointerup
-      // (released outside the window) must not lose the chosen width.
-      try { localStorage.setItem(SPLIT_STORAGE_KEY, String(Math.round(pct))); } catch { /* in-memory only */ }
-    };
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  }, []);
   const { mutate } = useSWRConfig();
 
   const currentKey = keys[index] ?? null;
