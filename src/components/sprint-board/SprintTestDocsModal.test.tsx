@@ -46,12 +46,13 @@ function renderModal(overrides: Partial<Parameters<typeof SprintTestDocsModal>[0
 }
 
 describe("buildTestDocDocument", () => {
-  it("joins documented blocks and appends internal under a Misc header, no keys", () => {
+  it("joins documented blocks with Jira key links behind titles, Misc trailing", () => {
     const doc = buildTestDocDocument(BASE);
     expect(doc).toBe(
-      "**Big feature**\n\n- Confirm A\n\n**Flagged**\n\n- Confirm B\n\n**Misc**\n\nInternal: sync groundwork",
+      "**Big feature** ([VPL-2](https://new-story.atlassian.net/browse/VPL-2))\n\n- Confirm A\n\n" +
+      "**Flagged** ([VPL-1](https://new-story.atlassian.net/browse/VPL-1))\n\n- Confirm B\n\n" +
+      "**Misc**\n\nInternal: sync groundwork ([VPL-3](https://new-story.atlassian.net/browse/VPL-3))",
     );
-    expect(doc).not.toContain("VPL-");
   });
 
   it("omits the Misc section when there are no internal docs", () => {
@@ -75,6 +76,9 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(blocks[0]).toHaveTextContent("Big feature");
     expect(blocks[1]).toHaveTextContent("Flagged");
     expect(blocks[1]).toHaveTextContent("needs input");
+    // In-Bridge view links the key to the Bridge ticket page (the copy uses Jira links).
+    const link = within(blocks[0]).getByRole("link", { name: "VPL-2" });
+    expect(link).toHaveAttribute("href", "/tickets/VPL-2");
 
     expect(screen.getByTestId("test-docs-misc")).toHaveTextContent("Internal: sync groundwork");
     const missing = screen.getByTestId("test-docs-missing");

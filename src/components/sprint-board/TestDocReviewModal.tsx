@@ -321,7 +321,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
       if (doc) {
         ticketsApi
           .saveTestDocDraft(key, { markdown: doc, classification })
-          .then(() => mutate((k) => typeof k === "string" && k.startsWith("/api/tickets?")))
+          .then(() => mutate((k) => typeof k === "string" && k.startsWith("/api/tickets")))
           .catch(() => {});
       }
     },
@@ -373,7 +373,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
       // Refresh an open detail panel and the board lists (the row's test-doc
       // marker flips to accepted); the server cache is already invalidated.
       void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
-      void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets?"));
+      void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
       setSaving(false);
       if (result.conflict) {
         // Bridge copy is saved; the description merge stays as a local edit for
@@ -404,7 +404,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
       }
       await ticketsApi.markTestDocNotNeeded(currentKey);
       void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
-      void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets?"));
+      void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
       setSaving(false);
       advance();
     } catch (err) {

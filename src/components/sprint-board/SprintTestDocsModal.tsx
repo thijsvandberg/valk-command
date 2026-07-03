@@ -6,7 +6,9 @@ import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
+import Link from "next/link";
 import { swrFetcher, sprints, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
+import { getJiraUrl } from "@/lib/jira-url";
 import type { ShowToast } from "@/hooks/useToast";
 import { ClipboardCopy, FileCheck2, Loader2, X } from "lucide-react";
 
@@ -18,26 +20,51 @@ interface SprintTestDocsModalProps {
   showToast: ShowToast;
 }
 
+/** Split a doc block into its bold title line (if any) and the remainder. */
+export function splitDocTitle(doc: string): { title: string | null; body: string } {
+  const trimmed = doc.trim();
+  const match = trimmed.match(/^\*\*(.+?)\*\*\s*\n?/);
+  if (!match) return { title: null, body: trimmed };
+  return { title: match[1].trim(), body: trimmed.slice(match[0].length).trim() };
+}
+
+// Append the ticket key behind the block's title line as a Jira link (the
+// copied document leaves Bridge, so Bridge links would be useless there).
+function withJiraKeyLink(doc: string, key: string): string {
+  const { title, body } = splitDocTitle(doc);
+  const link = `[${key}](${getJiraUrl(key)})`;
+  if (title === null) return `${doc.trim()} (${link})`;
+  return `**${title}** (${link})${body ? `\n\n${body}` : ""}`;
+}
+
 /**
  * Build the copy-pasteable stakeholder document: validated blocks first (big
  * features lead, matching the manual BT-style deliverables), internal
- * one-liners under a Misc header. No ticket keys — the reader is the customer.
+ * one-liners under a Misc header. Every block carries its ticket key behind
+ * the title as a Jira link.
  */
 export function buildTestDocDocument(data: SprintTestDocs): string {
   const parts: string[] = data.documented
     .filter((d) => d.doc)
-    .map((d) => d.doc!.trim());
-  const internal = data.internal.filter((d) => d.doc).map((d) => d.doc!.trim());
+    .map((d) => withJiraKeyLink(d.doc!, d.key));
+  const internal = data.internal.filter((d) => d.doc).map((d) => withJiraKeyLink(d.doc!, d.key));
   if (internal.length > 0) {
     parts.push(`**Misc**\n\n${internal.join("\n\n")}`);
   }
   return parts.join("\n\n");
 }
 
-function KeyChip({ item }: { item: SprintTestDocItem }) {
+/** In-Bridge key link behind a block title; the COPY uses Jira links instead. */
+function BridgeKeyLink({ item }: { item: SprintTestDocItem }) {
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-caption text-text-muted">
-      {item.key}
+    <span className="inline-flex items-center gap-1.5">
+      <Link
+        href={`/tickets/${encodeURIComponent(item.key)}`}
+        className="font-mono text-caption text-text-muted hover:text-[var(--color-brand-400)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        title="Open in Bridge"
+      >
+        {item.key}
+      </Link>
       {item.needsInput && (
         <span className="rounded bg-[var(--color-status-warning-subtle)] px-1 py-px text-caption font-medium text-[var(--color-status-warning)]">
           needs input
@@ -148,18 +175,22 @@ export function SprintTestDocsModal({
                 </p>
               )}
 
-              {data.documented.map((item) => (
-                <div
-                  key={item.key}
-                  data-testid="test-docs-block"
-                  className="rounded-xl border border-border-subtle bg-surface-base p-4"
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <KeyChip item={item} />
+              {data.documented.map((item) => {
+                const { title, body } = splitDocTitle(item.doc ?? "");
+                return (
+                  <div
+                    key={item.key}
+                    data-testid="test-docs-block"
+                    className="rounded-xl border border-border-subtle bg-surface-base p-4"
+                  >
+                    <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span className="font-semibold text-text-primary">{title ?? item.title}</span>
+                      <BridgeKeyLink item={item} />
+                    </div>
+                    <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
                   </div>
-                  <div className="description-content">{renderMarkdown(item.doc ?? "")}</div>
-                </div>
-              ))}
+                );
+              })}
 
               {data.internal.length > 0 && (
                 <div data-testid="test-docs-misc" className="rounded-xl border border-border-subtle bg-surface-base p-4">
@@ -167,7 +198,7 @@ export function SprintTestDocsModal({
                   <div className="flex flex-col gap-3">
                     {data.internal.map((item) => (
                       <div key={item.key}>
-                        <KeyChip item={item} />
+                        <BridgeKeyLink item={item} />
                         <div className="description-content mt-1">{renderMarkdown(item.doc ?? "")}</div>
                       </div>
                     ))}
