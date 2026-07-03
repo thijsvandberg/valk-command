@@ -88,6 +88,10 @@ Deferred (annotated, not blocking): comment freshness pre-sync before gathering.
 1. Bulk no longer generates one-at-a-time. All generations start on open (rolling prefetch, max 3 concurrent to respect the workspace rate tier), the first result shows as soon as it lands, and the rest generate while the PO reviews — Save/Skip advances instantly to prefetched docs ("N ready" indicator). Closing mid-queue cancels the in-flight tasks.
 2. Draft cache: every completed generation is stored immediately in `ticket_metadata.test_doc_draft*` (never read by the BRDG-461 bundle). Reopening shows the cached draft — or the accepted doc — instantly with a provenance banner and a Regenerate escape hatch; accepting clears the draft.
 3. Skill calibration after first real output (VPL-46241 came out far too heavy): doc length must match story weight (normal story ≤ 3–5 short bullets), translation strings/tables are banned from the doc (one "check per language" line instead), verbatim quotes only for strings the tester must literally compare, and checks state what to verify — never why.
+4. Explicit "No test doc needed" marker (Bridge-only, no Jira write) from the review modal; bundle lists those separately, missing overview skips them; unfinished stories get a per-row Generate in the bundle (PO decides what ships); deprecated tickets are excluded everywhere.
+5. Board-row marker (per-sprint Display toggle, auto-revealed once on the sprint's last working day) with 4 states; clicking opens the review modal. Status line offers the flow on Test AND Done ("View test doc" once a doc exists).
+6. Review modal UX round: rendered-markdown default with Edit toggle, versioned regeneration (chips + Compare, accept one), draggable persisted pane split, ticket pill in the header, story pane in sidebar style incl. Jira comments (own component `TestDocStoryPane`), doc's own expand block stripped from the story rendering.
+7. Refactor: board wiring consolidated in `useTestDocBoard`, classification parsing deduped via `coerceClassification`, and a real bug fixed (a background prefetch result flipped the on-screen item into edit mode).
 
 ## Acceptance Criteria
 
