@@ -47,18 +47,19 @@ const VIRTUALIZER_OVERSCAN = 20;
 // Pre-mount margin around the viewport before a group's rows are considered visible.
 const VIEWPORT_SLACK = 400;
 
+// Marker attribute for the element wrapping ALL group cards. Each group's scrollMargin
+// must re-measure when ANY group above it changes height (estimate -> measured rows), and
+// that shift resizes neither the group itself nor the scroller — only this shared wrapper.
+export const GROUPS_ROOT_ATTR = "data-board-groups-root";
+
 export function VirtualizedGroupRows({
   items,
   scrollContainerRef,
-  contentRef,
   renderItem,
 }: {
   items: GroupRowItem[];
   /** The board's shared scroll container (SprintBoard's contentScrollRef). */
   scrollContainerRef: React.RefObject<HTMLElement | null>;
-  /** Element wrapping ALL group cards. A group changing height shifts every group below
-   *  it without resizing them or the scroller, so offsets re-measure off THIS element. */
-  contentRef: React.RefObject<HTMLElement | null>;
   renderItem: (
     item: GroupRowItem,
     index: number,
@@ -72,6 +73,14 @@ export function VirtualizedGroupRows({
   // attached), so measure in a layout effect and re-measure when the scroller or the
   // group stack changes size. Rect deltas (not offsetTop) because a tbody's offsetParent
   // is its table, not the scroll container.
+  //
+  // The group stack is resolved via closest(GROUPS_ROOT_ATTR), NOT via an ancestor's ref
+  // prop: on first mount in production a descendant's layout effect runs BEFORE the
+  // ancestor's ref attaches (dev's StrictMode re-run masked this), so a ref prop read
+  // here was still null, the observer silently never attached, and margins went stale as
+  // estimated heights resolved to measured ones — groups then painted their windows at
+  // stale offsets (half-empty cards). The DOM ancestor itself is already committed, so
+  // closest() is reliable where the ref is not.
   const [scrollMargin, setScrollMargin] = useState(0);
   useLayoutEffect(() => {
     const el = bodyRef.current;
@@ -86,9 +95,10 @@ export function VirtualizedGroupRows({
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(scroller);
-    if (contentRef.current) ro.observe(contentRef.current);
+    const groupsRoot = el.closest(`[${GROUPS_ROOT_ATTR}]`);
+    if (groupsRoot) ro.observe(groupsRoot);
     return () => ro.disconnect();
-  }, [scrollContainerRef, contentRef]);
+  }, [scrollContainerRef]);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({

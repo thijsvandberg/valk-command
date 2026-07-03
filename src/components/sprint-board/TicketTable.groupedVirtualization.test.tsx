@@ -246,6 +246,16 @@ describe("TicketTable grouped virtualization (BRDG-452)", () => {
     expect(droppableIds).toContain("group-zone:2");
   });
 
+  it("marks the table container as the groups root so per-group scrollMargins can re-measure", () => {
+    // VirtualizedGroupRows resolves this ancestor via closest() at layout-effect time; a
+    // ref prop is NOT attached yet at that moment on first mount in production (no
+    // StrictMode re-run), which silently broke offset re-measuring (half-empty cards).
+    const a = makeGroupTickets("A", 120);
+    const groups = [{ key: "1", label: "Sprint 1", tickets: a, sortOrder: 0 }];
+    const { container } = render(<TicketTable {...baseProps(a)} groups={groups} />);
+    expect(container.querySelector("[data-board-groups-root]")).not.toBeNull();
+  });
+
   it("registers every expanded group header as a drop target, collapsed ones as zones (BRDG-452)", () => {
     const a = makeGroupTickets("A", 120);
     const b = makeGroupTickets("B", 10);

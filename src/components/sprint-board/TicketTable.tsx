@@ -34,7 +34,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { VirtualizedGroupRows, isGroupedVirtualizationActive, type GroupRowItem } from "@/components/sprint-board/VirtualizedGroupRows";
+import { VirtualizedGroupRows, isGroupedVirtualizationActive, GROUPS_ROOT_ATTR, type GroupRowItem } from "@/components/sprint-board/VirtualizedGroupRows";
 import { BoardRow, SortableBoardRow } from "@/components/sprint-board/BoardRow";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import type { RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
@@ -1101,10 +1101,10 @@ export function TicketTable({
               <table className="w-full table-fixed border-collapse text-body-lg">
                 {groupItems.length > 0 && (externalDnd ? (
                   <SortableContext items={groupTicketIds} strategy={() => null}>
-                    <VirtualizedGroupRows items={groupItems} scrollContainerRef={effectiveScrollRef} contentRef={tableContainerRef} renderItem={renderGroupItem} />
+                    <VirtualizedGroupRows items={groupItems} scrollContainerRef={effectiveScrollRef} renderItem={renderGroupItem} />
                   </SortableContext>
                 ) : (
-                  <VirtualizedGroupRows items={groupItems} scrollContainerRef={effectiveScrollRef} contentRef={tableContainerRef} renderItem={renderGroupItem} />
+                  <VirtualizedGroupRows items={groupItems} scrollContainerRef={effectiveScrollRef} renderItem={renderGroupItem} />
                 ))}
                 {(hasPlaceholders || (externalDnd && group.tickets.length === 0)) && (
                   <tbody>
@@ -1157,6 +1157,7 @@ export function TicketTable({
   return (
     <div
       ref={tableContainerRef}
+      {...{ [GROUPS_ROOT_ATTR]: "" }}
       className={scrollContainerRef
         ? "min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
         : "flex-1 min-w-0 min-h-0 overflow-y-auto focus:outline-none"}
