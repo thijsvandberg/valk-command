@@ -83,21 +83,31 @@ describe("StatusChangeLine (BRDG-414)", () => {
 
     it("reads View test doc once a doc or draft exists, and hides for not_needed", () => {
       const onGenerate = vi.fn();
+      const onView = vi.fn();
       const { rerender } = render(
-        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} testDocState="accepted" />,
+        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} onViewTestDoc={onView} testDocState="accepted" />,
       );
       fireEvent.click(screen.getByText("View test doc"));
-      expect(onGenerate).toHaveBeenCalledTimes(1);
+      expect(onView).toHaveBeenCalledTimes(1);
+      expect(onGenerate).not.toHaveBeenCalled();
 
       rerender(
-        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} testDocState="draft" />,
+        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} onViewTestDoc={onView} testDocState="draft" />,
       );
       expect(screen.getByText("View test doc")).toBeInTheDocument();
 
       rerender(
-        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} testDocState="not_needed" />,
+        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} onViewTestDoc={onView} testDocState="not_needed" />,
       );
       expect(screen.queryByText("View test doc")).not.toBeInTheDocument();
+      expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
+    });
+
+    it("shows a Generating state while a background generation runs", () => {
+      render(
+        <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={vi.fn()} testDocGenerating />,
+      );
+      expect(screen.getByTestId("test-doc-generating")).toHaveTextContent("Generating...");
       expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
     });
 

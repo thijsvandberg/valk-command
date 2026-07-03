@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownToLine, Check, Rocket } from "lucide-react";
+import { ArrowDownToLine, Check, Loader2, Rocket } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo } from "@/hooks/usePipelines";
@@ -75,6 +75,8 @@ export function StatusChangeLine({
   onMoveToBottom,
   onCloseSubtasks,
   onGenerateTestDoc,
+  onViewTestDoc,
+  testDocGenerating = false,
   testDocState,
 }: {
   change: StatusChangeItem;
@@ -84,10 +86,15 @@ export function StatusChangeLine({
   onSeen: () => void;
   onMoveToBottom: () => void;
   onCloseSubtasks?: (key: string) => Promise<void>;
-  /** Test/Done action: opens the stakeholder test-doc generate + validate flow (BRDG-426). */
+  /** Fire-and-forget background generation (BRDG-426): the PO keeps working;
+   *  the button flips to "View test doc" once the draft lands. */
   onGenerateTestDoc?: () => void;
-  /** Drives the action label: no doc → Generate; draft/accepted → View (opens the
-   *  same editable review flow). Explicitly marked not-needed shows no action. */
+  /** Opens the review modal on the existing doc/draft (no generation). */
+  onViewTestDoc?: () => void;
+  /** A background generation for this ticket is in flight. */
+  testDocGenerating?: boolean;
+  /** Drives the action label: no doc → Generate; draft/accepted → View.
+   *  Explicitly marked not-needed shows no action. */
   testDocState?: "accepted" | "draft" | "not_needed" | null;
 }) {
   const isFinished = change.toStatus === "DONE" || change.toStatus === "DEPRECATED";
@@ -226,22 +233,34 @@ export function StatusChangeLine({
         )}
 
         <span className="flex items-center gap-1.5">
-          {showsTestDoc && onGenerateTestDoc && (
-            <Tooltip
-              content={
-                testDocState === "accepted" || testDocState === "draft"
-                  ? "View and edit the test documentation next to the story"
-                  : "Generate stakeholder test documentation from the story and comments, then validate it next to the story"
-              }
-            >
+          {showsTestDoc && (testDocState === "accepted" || testDocState === "draft") && onViewTestDoc && (
+            <Tooltip content="View and edit the test documentation next to the story">
               <button
                 type="button"
-                onClick={onGenerateTestDoc}
+                onClick={onViewTestDoc}
                 className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
-                {testDocState === "accepted" || testDocState === "draft" ? "View test doc" : "Generate test doc"}
+                View test doc
               </button>
             </Tooltip>
+          )}
+          {showsTestDoc && testDocState == null && onGenerateTestDoc && (
+            testDocGenerating ? (
+              <span className={`${ACTION_BTN} inline-flex items-center gap-1.5 text-text-muted`} data-testid="test-doc-generating">
+                <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
+                Generating...
+              </span>
+            ) : (
+              <Tooltip content="Generate test documentation in the background — keep working; the button flips to View when it is ready">
+                <button
+                  type="button"
+                  onClick={onGenerateTestDoc}
+                  className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
+                >
+                  Generate test doc
+                </button>
+              </Tooltip>
+            )
           )}
           {/* Icon-only, parked next to the dismiss check (PO feedback): filing
               a finished row is the same kind of ack as marking the line seen. */}

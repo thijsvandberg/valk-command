@@ -24,7 +24,7 @@ export function TestDocMarker({
         ? "Test doc generated, not yet reviewed — click to review"
         : state === "not_needed"
           ? "Marked: no test documentation needed — click to revisit"
-          : "No test documentation yet — click to generate";
+          : "No test documentation yet — click to open the review (generate from there)";
 
   const icon =
     state === "not_needed" ? (

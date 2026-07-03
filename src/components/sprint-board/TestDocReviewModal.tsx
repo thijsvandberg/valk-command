@@ -34,8 +34,8 @@ interface DocVersion {
 }
 
 interface EntryState {
-  /** checking (cache lookup) → queued → generating (task streaming) → ready | error */
-  status: "checking" | "queued" | "generating" | "ready" | "error";
+  /** checking (cache lookup) → idle (no cache, awaiting explicit Generate) | queued → generating (task streaming) → ready | error */
+  status: "checking" | "idle" | "queued" | "generating" | "ready" | "error";
   taskId: string | null;
   /** The ACTIVE working copy (editable); versions[activeVersion] holds its last snapshot. */
   doc: string;
@@ -91,6 +91,13 @@ function TaskStreamWatcher({
 interface TestDocReviewModalProps {
   /** Queue of ticket keys to generate + validate; a single key is the non-bulk case. */
   keys: string[];
+  /**
+   * When false (the "view" entry points: row marker, status line), a key
+   * without any cached doc opens IDLE with an explicit Generate button —
+   * opening the modal must not silently start an agent task. Explicit
+   * generate actions (bulk toolbar, context menu, generate-missing) pass true.
+   */
+  autoGenerate?: boolean;
   onClose: () => void;
 }
 
@@ -103,7 +110,7 @@ interface TestDocReviewModalProps {
  * the first result shows as soon as it lands, and the rest generate while the
  * PO reviews — advancing to an already-finished doc is instant.
  */
-export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
+export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestDocReviewModalProps) {
   const [index, setIndex] = useState(0);
   const [entries, setEntries] = useState<Record<string, EntryState>>(() =>
     Object.fromEntries(keys.map((k) => [k, makeEntry("checking")])),
@@ -230,15 +237,15 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
               activeVersion: versions.length - 1,
             });
           } else {
-            patchEntry(key, { status: "queued" });
+            patchEntry(key, { status: autoGenerate ? "queued" : "idle" });
           }
         })
         .catch(() => {
-          // Cache miss on error: fall through to a fresh generation.
-          patchEntry(key, { status: "queued" });
+          // Cache lookup failure reads as a miss.
+          patchEntry(key, { status: autoGenerate ? "queued" : "idle" });
         });
     }
-  }, [keys, patchEntry]);
+  }, [keys, patchEntry, autoGenerate]);
 
   // Scheduler: keep up to MAX_CONCURRENT_GENERATIONS running ahead of the
   // review. startedRef guards double-starts (the effect re-runs on every
@@ -584,7 +591,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
             {/* Toolbar: version chips (regenerations pile up next to the older
                 doc; the PO switches, compares, then accepts ONE — Save discards
                 the rest) plus the rendered/edit toggle. */}
-            {!generating && (
+            {entry.status === "ready" && (
               <div className="flex shrink-0 items-center gap-1.5" data-testid="test-doc-toolbar">
                 {entry.versions.length > 1 && (
                   <span className="flex items-center gap-1.5" data-testid="test-doc-versions">
@@ -624,7 +631,17 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                 </span>
               </div>
             )}
-            {generating ? (
+            {entry.status === "idle" ? (
+              <div
+                className="flex flex-1 flex-col items-center justify-center gap-3 text-text-tertiary"
+                data-testid="test-doc-idle"
+              >
+                <p className="text-body-sm">No test documentation yet.</p>
+                <Button variant="primary" size="md" onClick={handleRegenerate}>
+                  Generate test doc
+                </Button>
+              </div>
+            ) : generating ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-text-tertiary">
                 <Loader2 size={20} strokeWidth={1.75} className="animate-spin text-[var(--color-brand-400)]" />
                 <p className="max-w-[320px] truncate text-body-sm" data-testid="test-doc-progress">

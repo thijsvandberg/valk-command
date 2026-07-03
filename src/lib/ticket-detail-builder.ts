@@ -156,6 +156,13 @@ function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof run
     businessValue: meta?.businessValue ?? null,
     editState,
     notes: meta?.poNotes ?? "",
+    testDocState: meta?.testDoc
+      ? "accepted" as const
+      : meta?.testDocDraft
+        ? "draft" as const
+        : meta?.testDocClassification === "not_stakeholder_relevant"
+          ? "not_needed" as const
+          : null,
     sprintId: t.sprintName ?? undefined,
     removedFromJiraAt: t.removedFromJiraAt ?? null,
   };

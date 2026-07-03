@@ -335,6 +335,31 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     });
   });
 
+  describe("view mode (autoGenerate=false)", () => {
+    it("opens idle without starting a generation; the explicit button generates", async () => {
+      render(<TestDocReviewModal keys={["VPL-1"]} autoGenerate={false} onClose={() => {}} />);
+
+      await waitFor(() => expect(screen.getByTestId("test-doc-idle")).toBeInTheDocument());
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByText("Generate test doc"));
+      await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1"));
+      await emitResult("VPL-1", DOC);
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Confirm the thing");
+    });
+
+    it("still shows a cached doc immediately in view mode", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        saved: null,
+        draft: { markdown: "**Cached**", classification: "ok", generatedAt: null },
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} autoGenerate={false} onClose={() => {}} />);
+
+      await waitFor(() => expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("**Cached**"));
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
+    });
+  });
+
   it("needs_input: shows the notice and disables Save until the PO edits", async () => {
     render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
     await emitResult("VPL-1", "**Dates preserved** — needs input", "needs_input");

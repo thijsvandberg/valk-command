@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { errorResponse, agentErrorResponse } from "@/lib/api-response";
 import { db } from "@/db";
 import { ticket, ticketLocalEdit, jiraComment, ticketStatusChange } from "@/db/schema";
@@ -8,6 +8,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { isDraftKey } from "@/lib/draft-key";
 import { logger } from "@/lib/logger";
+import { persistTestDocDraftWhenDone } from "@/lib/test-doc-background";
 
 // Recent transitions give the skill testing context (what moved to Test and
 // when) without dumping the ticket's whole history into the prompt.
@@ -107,6 +108,12 @@ export async function POST(
   const taskData = result.data as Record<string, unknown>;
   const taskId = typeof taskData.id === "string" ? taskData.id : null;
   const streamUrl = taskId ? `/api/workspace-tasks/${taskId}/stream` : null;
+
+  // Server-side completion capture: the draft lands in Bridge even when the
+  // PO fired this from the status line (fire-and-forget) or closed the modal.
+  if (taskId) {
+    after(() => persistTestDocDraftWhenDone(key, taskId));
+  }
 
   return NextResponse.json({ taskId, streamUrl }, { status: 202 });
 }

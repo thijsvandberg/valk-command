@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSWRConfig } from "swr";
+import { tickets as ticketsApi } from "@/lib/api-client";
 import type { ReactNode } from "react";
 import type { Sprint, Ticket } from "@/types/ticket";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
@@ -35,10 +37,47 @@ export function useTestDocBoard({
   showToast: (message: ReactNode, durationMs?: number) => void;
 }) {
   // Review queue (BRDG-426): non-null opens the split-view modal; a single key
-  // is the row/status-line case, multiple the bulk queue.
-  const [testDocKeys, setTestDocKeys] = useState<string[] | null>(null);
+  // is the row/status-line case, multiple the bulk queue. autoGenerate is false
+  // for the "view" entry points (marker, status line): opening the modal must
+  // not silently start an agent task.
+  const [testDocQueue, setTestDocQueue] = useState<{ keys: string[]; autoGenerate: boolean } | null>(null);
   // Sprint bundle modal (BRDG-461): the sprint whose delivery document is open.
   const [testDocsSprintId, setTestDocsSprintId] = useState<string | null>(null);
+  const { mutate } = useSWRConfig();
+
+  // Fire-and-forget generation from the status line: the task runs on the
+  // workspace, the SERVER persists the draft on completion (generate route's
+  // after() capture), and this poll only watches the cheap local cache read to
+  // flip the button to "View test doc" and toast when it lands.
+  const [backgroundGenerating, setBackgroundGenerating] = useState<Set<string>>(new Set());
+  const unmountedRef = useRef(false);
+  useEffect(() => () => { unmountedRef.current = true; }, []);
+  const startBackgroundGeneration = useCallback(async (key: string) => {
+    setBackgroundGenerating((prev) => new Set(prev).add(key));
+    try {
+      await ticketsApi.generateTestDoc(key);
+      // ~6 min at 5s, matching the server-side capture window.
+      for (let attempt = 0; attempt < 72 && !unmountedRef.current; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const data = await ticketsApi.getTestDoc(key).catch(() => null);
+        if (data && (data.draft || data.saved)) {
+          void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
+          showToast(`Test doc ready for ${key} — review it via the status line`);
+          break;
+        }
+      }
+    } catch {
+      showToast(`Test doc generation failed for ${key}`);
+    } finally {
+      if (!unmountedRef.current) {
+        setBackgroundGenerating((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    }
+  }, [mutate, showToast]);
 
   const [testDocSprints, setTestDocSprints] = useState<Set<string>>(() => readTestDocTagSprints());
   const setTestDocForSprint = useCallback((sprintId: string, on: boolean) => {
@@ -77,13 +116,13 @@ export function useTestDocBoard({
   // sprint (localStorage flag inside the helper), so switching it off sticks.
   useEffect(() => {
     if (!shouldAutoEnableTestDocTag(activeSprint?.id, remainingWorkDays)) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fires at most once per sprint (localStorage flag inside the helper), so it cannot cascade
+     
     setTestDocForSprint(activeSprint!.id, true);
   }, [activeSprint, remainingWorkDays, setTestDocForSprint]);
 
   // Deprecated work never needs delivery documentation: every entry point into
   // the generate/validate queue silently drops those keys.
-  const openTestDocQueue = useCallback((keys: string[]) => {
+  const openTestDocQueue = useCallback((keys: string[], opts?: { autoGenerate?: boolean }) => {
     const eligible = keys.filter((k) => {
       const t = allTickets.find((x) => x.key === k);
       return !t || t.jiraStatus !== "DEPRECATED";
@@ -92,7 +131,7 @@ export function useTestDocBoard({
       showToast("Deprecated tickets don't get test documentation");
       return;
     }
-    setTestDocKeys(eligible);
+    setTestDocQueue({ keys: eligible, autoGenerate: opts?.autoGenerate ?? true });
   }, [allTickets, showToast]);
 
   const handleSprintTestDocs = useCallback((sprintId: string) => {
@@ -100,8 +139,10 @@ export function useTestDocBoard({
   }, []);
 
   return {
-    testDocKeys,
-    setTestDocKeys,
+    testDocQueue,
+    setTestDocQueue,
+    backgroundGenerating,
+    startBackgroundGeneration,
     testDocsSprintId,
     setTestDocsSprintId,
     testDocScopeSprintId,

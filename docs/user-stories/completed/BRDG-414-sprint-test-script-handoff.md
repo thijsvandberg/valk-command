@@ -1,13 +1,17 @@
 # BRDG-414: Generate per-ticket test scripts for sprint handoff (placeholder)
 
-**Status:** Placeholder — needs scoping
+**Status:** Superseded — shipped as BRDG-426 + BRDG-461
 **Priority:** TBD
 **Type:** TBD
 
 ## Description
 
-Placeholder for upcoming work. This file exists so the idea isn't lost and a
-ticket number is reserved. **Do not implement before scoping and approval.**
+This placeholder was superseded by [[BRDG-426-generate-test-doc]] (per-story
+generation, validation, storage in Bridge + Jira expand block) and
+[[BRDG-461-sprint-test-doc-delivery]] (sprint bundle, copy-paste export,
+missing overview), which together cover every open question below. Archived
+without separate implementation. Note: the number collides with the completed
+BRDG-414 status-changes story (duplicate-number artifact).
 
 The idea, in short:
 

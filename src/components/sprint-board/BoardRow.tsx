@@ -167,8 +167,12 @@ export interface BoardRowBaseProps {
   statusChangeAtBottom?: boolean;
   onStatusChangeSeen?: (item: StatusChangeItem) => void;
   onStatusChangeMoveToBottom?: (item: StatusChangeItem) => void;
-  /** To-Test line action: opens the test-doc generate + validate flow (BRDG-426). */
+  /** Status-line action (BRDG-426): fire-and-forget background generation. */
   onStatusChangeGenerateTestDoc?: (ticketKey: string) => void;
+  /** Opens the review modal on the existing doc/draft (marker + View button). */
+  onStatusChangeViewTestDoc?: (ticketKey: string) => void;
+  /** Tickets with a background generation in flight (status-line spinner). */
+  testDocGeneratingKeys?: Set<string>;
   /** Drop the leading selection-checkbox gutter (views without bulk selection, e.g. the
    *  Story Writer landing). Off by default so the board keeps its checkbox. */
   hideCheckbox?: boolean;
@@ -301,6 +305,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onStatusChangeSeen,
     onStatusChangeMoveToBottom,
     onStatusChangeGenerateTestDoc,
+    onStatusChangeViewTestDoc,
+    testDocGeneratingKeys,
     hideCheckbox = false,
     hideAssigneeUntilHover = false,
     isNewSinceLastViewed,
@@ -795,8 +801,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 <TestDocMarker
                   state={ticket.testDocState ?? null}
                   onOpenReview={
-                    onStatusChangeGenerateTestDoc
-                      ? () => onStatusChangeGenerateTestDoc(ticket.key)
+                    onStatusChangeViewTestDoc
+                      ? () => onStatusChangeViewTestDoc(ticket.key)
                       : undefined
                   }
                 />
@@ -1091,6 +1097,12 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   ? () => onStatusChangeGenerateTestDoc(statusChange.ticketKey)
                   : undefined
               }
+              onViewTestDoc={
+                onStatusChangeViewTestDoc
+                  ? () => onStatusChangeViewTestDoc(statusChange.ticketKey)
+                  : undefined
+              }
+              testDocGenerating={testDocGeneratingKeys?.has(statusChange.ticketKey) ?? false}
               testDocState={ticket.testDocState ?? null}
             />
           )}

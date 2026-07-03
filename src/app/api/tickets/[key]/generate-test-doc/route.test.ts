@@ -21,6 +21,11 @@ vi.mock("@/lib/agent-fetch", () => ({
   agentFetch: (...args: unknown[]) => mockAgentFetch(...args),
 }));
 
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return { ...actual, after: vi.fn() };
+});
+
 vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));

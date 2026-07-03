@@ -5,7 +5,7 @@ import type { Ticket, TicketReadiness, TicketDetail, JiraStatus } from "@/types/
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, AlertTriangle, Play, Boxes } from "lucide-react";
+import { ChevronDown, AlertTriangle, Play, Boxes, FileCheck2, FileX2 } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets, jira, apiFetch } from "@/lib/api-client";
 import { patchTicketCaches, patchTicketDetailCache, moveTicketSprintCaches } from "@/lib/ticket-cache";
@@ -23,6 +23,7 @@ import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { AssigneePicker } from "@/components/shared/AssigneePicker";
 import { WatchersRow } from "@/components/shared/WatchersRow";
+import { TestDocReviewModal } from "@/components/sprint-board/TestDocReviewModal";
 import { EpicPicker } from "@/components/shared/EpicPicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -124,6 +125,8 @@ export function TicketMetaContent({
   const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
   const [jiraStatus, setJiraStatus] = useState<JiraStatus>(ticket.jiraStatus);
+  // Test-doc review opened from the meta row (BRDG-426); view mode, no auto-generate.
+  const [testDocReviewOpen, setTestDocReviewOpen] = useState(false);
   // Labels arrive async via detail; an override lets edits win until the host
   // remounts (keyed on ticket) without a state-sync effect.
   const [labelsOverride, setLabelsOverride] = useState<string[] | null>(null);
@@ -518,6 +521,41 @@ export function TicketMetaContent({
                 ))}
               </div>
             </DetailRow>
+          )}
+          {ticket.testDocState != null && (
+            <DetailRow label="Test doc">
+              <button
+                type="button"
+                data-testid="meta-test-doc"
+                onClick={() => setTestDocReviewOpen(true)}
+                title="Open the test documentation review"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 -mr-2 text-body-sm hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                style={{ transition: "background-color 0.15s ease" }}
+              >
+                {ticket.testDocState === "accepted" && (
+                  <span className="inline-flex items-center gap-1.5 text-[var(--color-status-success)]">
+                    <FileCheck2 size={13} strokeWidth={1.75} /> Saved
+                  </span>
+                )}
+                {ticket.testDocState === "draft" && (
+                  <span className="inline-flex items-center gap-1.5 text-[var(--color-status-warning)]">
+                    <FileCheck2 size={13} strokeWidth={1.75} /> Draft pending review
+                  </span>
+                )}
+                {ticket.testDocState === "not_needed" && (
+                  <span className="inline-flex items-center gap-1.5 text-text-muted">
+                    <FileX2 size={13} strokeWidth={1.75} /> Not needed
+                  </span>
+                )}
+              </button>
+            </DetailRow>
+          )}
+          {testDocReviewOpen && (
+            <TestDocReviewModal
+              keys={[ticket.key]}
+              autoGenerate={false}
+              onClose={() => setTestDocReviewOpen(false)}
+            />
           )}
           <DetailRow label="Assignee">
             <AssigneePicker

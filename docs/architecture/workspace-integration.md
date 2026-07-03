@@ -244,7 +244,20 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   auto-reveals once per sprint on the last working day (`shouldAutoEnableTestDocTag`,
   localStorage flag `bridge:test-doc-tag-auto:<sprintId>`), so switching it off sticks.
   All board wiring for the feature lives in `useTestDocBoard` (per-sprint set, effective
-  tags, Display override, auto-reveal, both modal states, deprecated-skipping queue opener).
+  tags, Display override, auto-reveal, both modal states, deprecated-skipping queue opener,
+  background generation state).
+- **Background generation**: the status line's "Generate test doc" is fire-and-forget — the
+  generate route's `after()` capture (`persistTestDocDraftWhenDone` in
+  `src/lib/test-doc-background.ts`) polls the workspace task server-side and persists the
+  draft on completion, so it survives navigation; the board polls the cheap local
+  GET `test-doc` to flip the line to "View test doc" (with a Generating… state) and toast.
+- **View mode**: the row marker and the status line's View button open the modal with
+  `autoGenerate: false` — a key without any cached doc lands IDLE with an explicit Generate
+  button; opening the modal never silently starts an agent task. Explicit generate entry
+  points (bulk toolbar, context menu, generate-missing) keep auto-start.
+- **Single ticket view**: `TicketMetaContent` shows a "Test doc" row (Saved / Draft pending
+  review / Not needed, from `testDocState` on the detail payload) that opens the same
+  review modal in view mode.
 - **Review modal layout**: the doc renders as markdown by default (Edit toggles the raw
   textarea; hand-work results open in the editor directly); the story pane
   (`TestDocStoryPane`) mirrors the ticket sidebar's reading style incl. Jira comments and
