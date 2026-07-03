@@ -100,10 +100,17 @@ Any list whose row count can grow (boards, queues, inbox, cleanup, search) must 
 windowed (`@tanstack/react-virtual`) so only visible rows mount to the DOM. The
 flat Sprint Board and the Cleanup list
 ([BRDG-393](../user-stories/completed/BRDG-393-virtualize-remaining-lists.md)) do this
-above 40 rows. The grouped Sprint Board
-([BRDG-392](../user-stories/completed/BRDG-392-virtualize-grouped-sprint-board.md)),
-the Inbox, and the Refinement queue still render all rows; virtualizing them was
-reviewed and not pursued (memory is bounded by the cap, so it is a perf nice-to-have).
+above 40 rows. The grouped Sprint Board windows rows INSIDE each expanded group card
+past 100 total expanded rows
+([BRDG-452](../user-stories/completed/BRDG-452-virtualize-grouped-all-view.md)): one
+virtualizer per group (`VirtualizedGroupRows.tsx`), card chrome and headers stay real
+DOM, and off-viewport groups collapse to a single spacer row (virtual-core clamps
+out-of-view ranges to the nearest edge instead of returning an empty range, so the
+component gates on real viewport overlap itself). Droppable measuring flips to
+`Always` while windowed so rows mounting under mid-drag auto-scroll are measured
+(BRDG-347). The Inbox and the Refinement queue still render all rows; virtualizing
+them was reviewed and not pursued (memory is bounded by the cap, so it is a perf
+nice-to-have).
 
 ## Surfacing fetch errors (every SWR surface)
 
