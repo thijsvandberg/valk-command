@@ -319,6 +319,22 @@ describe("useRowActions - bulkMoveSprint (board overlay + dest-cache injection)"
     expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1", "A-2", "A-3"], targetSprintId: "200", topKeys: [] });
   });
 
+  it("sends an explicit position and suppresses the topKeys placement rule (BRDG-362)", async () => {
+    const source = [makeTicket("A-1", false, "100")];
+    const { result } = setup(source, "/api/tickets?sprintId=100");
+    await act(async () => { await result.current.bulkMoveSprint("200", new Set(["A-1"]), "top"); });
+
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1"], targetSprintId: "200", topKeys: undefined, position: "top" });
+  });
+
+  it("an explicit bottom position also overrides the backlog top-placement rule (BRDG-362)", async () => {
+    const source = [makeTicket("A-1", false, "100")];
+    const { result } = setup(source, "/api/tickets?sprintId=100");
+    await act(async () => { await result.current.bulkMoveSprint("__backlog__", new Set(["A-1"]), "bottom"); });
+
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1"], targetSprintId: "__backlog__", topKeys: undefined, position: "bottom" });
+  });
+
   it("does not duplicate a ticket already present in the destination cache", async () => {
     const source = [makeTicket("A-1", false, "100")];
     const { result } = setup(source, "/api/tickets?sprintId=100");

@@ -198,7 +198,7 @@ export function useRowActions(opts: UseRowActionsOpts) {
   // --- Sprint move: mechanics only (no toast); see `move` for the toasted entry ---
 
   const bulkMoveSprint = useCallback(
-    async (targetSprintId: string, keys: Set<string> = selectedKeys): Promise<MoveResult> => {
+    async (targetSprintId: string, keys: Set<string> = selectedKeys, position?: "top" | "bottom"): Promise<MoveResult> => {
       const list = [...keys];
       const destName = destNameFor(targetSprintId);
       const isBacklog = targetSprintId === "__backlog__";
@@ -208,9 +208,11 @@ export function useRowActions(opts: UseRowActionsOpts) {
       adapter.beginMove(moved, targetSprintId, destName);
       try {
         // Placement rule (BRDG-370): a regular sprint takes the whole batch at the
-        // bottom; a backlog destination takes it at the top.
-        const topKeys = topKeysForMove(list, destName);
-        await jira.moveSprint({ issueKeys: list, targetSprintId, topKeys });
+        // bottom; a backlog destination takes it at the top. An explicit position
+        // (BRDG-362 top/bottom buttons) overrides it — the route lets topKeys win,
+        // so the default must be suppressed when a position is given.
+        const topKeys = position ? undefined : topKeysForMove(list, destName);
+        await jira.moveSprint({ issueKeys: list, targetSprintId, topKeys, position });
         adapter.confirmMove({ moved, keys: list, targetSprintId, newSprintId });
         return { ok: true, count: list.length, destName: destName ?? "backlog" };
       } catch {
@@ -224,10 +226,10 @@ export function useRowActions(opts: UseRowActionsOpts) {
   // Toasted move used by the bar/menu and quick-moves on surfaces that don't wrap it
   // (inbox/epic). The board passes `onMove` to drive its own loading + rich toast + meter.
   const moveSprint = useCallback(
-    async (targetSprintId: string, keys: Set<string> = selectedKeys) => {
+    async (targetSprintId: string, keys: Set<string> = selectedKeys, position?: "top" | "bottom") => {
       const list = [...keys];
       if (list.length === 0) return;
-      const { ok } = await bulkMoveSprint(targetSprintId, keys);
+      const { ok } = await bulkMoveSprint(targetSprintId, keys, position);
       if (ok) showToast(`Moved ${list.length} issue${list.length === 1 ? "" : "s"} to sprint`);
       else if (onMoveError) onMoveError(`Failed to move ${list.length} issue${list.length === 1 ? "" : "s"} to sprint`);
       else showToast(`Failed to move ${list.length} issue${list.length === 1 ? "" : "s"} to sprint`);

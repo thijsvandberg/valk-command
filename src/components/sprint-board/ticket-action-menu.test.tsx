@@ -198,9 +198,33 @@ describe("TicketActionMenuContent", () => {
     expect(screen.getAllByText("BT: 140")).toHaveLength(1);
     expect(screen.getAllByText("BT: 141")).toHaveLength(1);
     // Remaining sprints sort by number ascending within the team; "TODO" (no number) last.
-    const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+    // Sprint rows are div[role=button] (they nest the top/bottom icon buttons, BRDG-362).
+    const labels = Array.from(container.querySelectorAll("[role='button']"))
+      .map((b) => b.querySelector("span.truncate")?.textContent ?? b.textContent);
     expect(labels.indexOf("BT: 142")).toBeLessThan(labels.indexOf("BT: 144"));
     expect(labels.indexOf("BT: 144")).toBeLessThan(labels.indexOf("BT: TODO"));
+  });
+
+  it("the other-sprint picker's top/bottom buttons pass the position to onMoveSprint (BRDG-362)", () => {
+    const onMoveSprint = vi.fn();
+    const close = vi.fn();
+    render(
+      <TicketActionMenuContent
+        onMoveSprint={onMoveSprint}
+        sprints={[{ id: "s1", name: "BT: 142", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null }]}
+        initialView="move"
+        close={close}
+      />,
+    );
+    fireEvent.click(screen.getByTitle("Move to top of sprint"));
+    expect(onMoveSprint).toHaveBeenCalledWith("s1", "top");
+    expect(close).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTitle("Move to bottom of sprint"));
+    expect(onMoveSprint).toHaveBeenCalledWith("s1", "bottom");
+
+    fireEvent.click(screen.getByText("BT: 142"));
+    expect(onMoveSprint).toHaveBeenCalledWith("s1", undefined);
   });
 
   it("Add to refinement shows each session's ticket count (BRDG-374)", () => {

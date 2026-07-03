@@ -901,7 +901,7 @@ export default function SprintBoard() {
   );
   const handleBulkSetStatus = useCallback(async (status: JiraStatus, targets: Set<string> = checkedTickets) => { await ra.bulkSetStatus(status, targets); }, [ra, checkedTickets]);
   const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await ra.bulkSetEpic(epicKey, epicName, targets); }, [ra, checkedTickets]);
-  const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
+  const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets, position?: "top" | "bottom") => {
     const isBacklog = sprintId === "__backlog__";
     const dest = sprintNameMap[sprintId] ?? (isBacklog ? "backlog" : "sprint");
     const count = targets.size;
@@ -911,7 +911,7 @@ export default function SprintBoard() {
       0,
       { loading: true },
     );
-    const { ok } = await ra.bulkMoveSprint(sprintId, targets);
+    const { ok } = await ra.bulkMoveSprint(sprintId, targets, position);
     if (!ok) { showToast("Failed to move tickets to sprint"); return; }
     // The capacity meter reads a separate server total; refresh it so used points
     // recompute for both source and destination sprint without a manual reload.
@@ -1164,7 +1164,7 @@ export default function SprintBoard() {
   // overflow over the panel when the list column is narrowed.
   const bulkActionBar = someChecked && (() => {
     const sel = tickets.filter((t) => checkedTickets.has(t.key));
-    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedEffectivePoints={sel.reduce((s, t) => s + effectivePoints(t.storyPoints, t.guestimation), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} quickMoves={quickMovesFor(checkedTickets)} currentSprintIds={currentSprintIdsFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onGenerateTestDocs={() => openTestDocQueue([...checkedTickets])} onRefine={handleRefineSelected} refinements={refinementOptions} onAddToRefinement={(id) => handleAddToRefinement(id, checkedTickets)} />;
+    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedEffectivePoints={sel.reduce((s, t) => s + effectivePoints(t.storyPoints, t.guestimation), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={(sprintId, position) => handleBulkMoveSprint(sprintId, checkedTickets, position)} quickMoves={quickMovesFor(checkedTickets)} currentSprintIds={currentSprintIdsFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onGenerateTestDocs={() => openTestDocQueue([...checkedTickets])} onRefine={handleRefineSelected} refinements={refinementOptions} onAddToRefinement={(id) => handleAddToRefinement(id, checkedTickets)} />;
   })();
 
   return (
@@ -1255,7 +1255,7 @@ export default function SprintBoard() {
             epicValue={rowMenuEpic}
             epicSuggestTicketKey={rowMenu.targets.size === 1 ? Array.from(rowMenu.targets)[0] : undefined}
             epicClearable={rowMenu.targets.size > 1}
-            onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
+            onMoveSprint={(sprintId, position) => handleBulkMoveSprint(sprintId, rowMenu.targets, position)}
             quickMoves={quickMovesFor(rowMenu.targets)}
             currentSprintIds={currentSprintIdsFor(rowMenu.targets)}
             onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}

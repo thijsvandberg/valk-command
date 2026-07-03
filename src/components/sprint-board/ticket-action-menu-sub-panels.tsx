@@ -8,8 +8,8 @@ import { useState, useMemo } from "react";
 import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import { READINESS_OPTIONS, READINESS_CONFIG, JIRA_STATUS_COLORS, JIRA_STATUS_ABBREVIATIONS } from "@/types/ticket";
-import { isBacklogSprintName, isOverallRefinementSprint, extractTeamPrefix, sprintNumber } from "@/lib/sprint-utils";
 import { swrFetcher } from "@/lib/api-client";
+import { SprintListBody, type SprintMovePosition } from "@/components/shared/SprintListBody";
 import { Search } from "lucide-react";
 import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { Checkbox } from "@/components/shared/Checkbox";
@@ -90,78 +90,20 @@ export function SprintSubPanel({
   /** Sprints already offered one level up (active / next / named backlog quick-moves)
    *  plus the selection's current sprint; omitted from the list to avoid duplicates. */
   excludeSprintIds?: Set<string>;
-  onSelect: (sprintId: string) => void;
+  /** `position` is set only by the explicit top/bottom row buttons (BRDG-362);
+   *  a plain row click leaves it undefined so the BRDG-370 placement rule applies. */
+  onSelect: (sprintId: string, position?: SprintMovePosition) => void;
 }) {
-  const [query, setQuery] = useState("");
-  // The two generic buckets lead the list (BRDG-374). The named backlog (e.g. "BT:
-  // Backlog") is dropped here - the generic "Backlog" + the parent "Move to backlog"
-  // already cover it - and "Overall refinement" is pinned at the top as its own bucket.
-  const overall = useMemo(() => sprints.find((s) => isOverallRefinementSprint(s.name)) ?? null, [sprints]);
-  const sorted = useMemo(() => {
-    const exclude = excludeSprintIds ?? new Set<string>();
-    const eligible = sprints.filter(
-      (s) =>
-        (s.state === "active" || s.state === "future") &&
-        !isBacklogSprintName(s.name) &&
-        !isOverallRefinementSprint(s.name) &&
-        !exclude.has(s.id),
-    );
-    // Group by team, then ascending by sprint number so a team's sprints read in
-    // series (BT: 143, BT: 144, BT: 145…); non-numbered names (e.g. "BT: TODO") sort
-    // last within their team. Pinned (slot) sprints lead, in slot order.
-    const pinnedOrder = pinnedSprintIds ?? [];
-    return [...eligible].sort((a, b) => {
-      const ai = pinnedOrder.indexOf(a.id);
-      const bi = pinnedOrder.indexOf(b.id);
-      if (ai !== -1 || bi !== -1) {
-        if (ai !== -1 && bi !== -1) return ai - bi;
-        return ai !== -1 ? -1 : 1;
-      }
-      const teamA = extractTeamPrefix(a.name) ?? "";
-      const teamB = extractTeamPrefix(b.name) ?? "";
-      if (teamA !== teamB) return teamA.localeCompare(teamB);
-      return sprintNumber(a.name) - sprintNumber(b.name);
-    });
-  }, [sprints, pinnedSprintIds, excludeSprintIds]);
-
-  const q = query.toLowerCase();
-  const matches = (name: string) => !query || name.toLowerCase().includes(q);
-  const showBacklog = matches("Backlog");
-  const showOverall = overall != null && matches(overall.name);
-  const filtered = query ? sorted.filter((s) => matches(s.name)) : sorted;
-  const hasTopBuckets = showBacklog || showOverall;
-
   return (
-    <div className="py-1">
-      <div className="px-2 pb-1">
-        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-surface-base px-2 py-1">
-          <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search sprints..."
-            className="w-full bg-transparent text-body-sm text-text-primary outline-none placeholder:text-text-muted"
-            autoFocus
-          />
-        </div>
-      </div>
-      <div className="max-h-[240px] overflow-y-auto">
-        {showBacklog && (
-          <MenuItem onClick={() => onSelect("__backlog__")}>Backlog</MenuItem>
-        )}
-        {showOverall && overall && (
-          <MenuItem onClick={() => onSelect(overall.id)}>{overall.name}</MenuItem>
-        )}
-        {hasTopBuckets && filtered.length > 0 && <div className="mx-2 my-0.5 h-px bg-overlay-strong" />}
-        {filtered.map((s) => (
-          <MenuItem key={s.id} onClick={() => onSelect(s.id)}>{s.name}</MenuItem>
-        ))}
-        {filtered.length === 0 && !hasTopBuckets && (
-          <div className="px-3 py-2 text-body-sm text-text-tertiary">{query ? "No sprints found" : "No sprints available"}</div>
-        )}
-      </div>
-    </div>
+    <SprintListBody
+      sprints={sprints}
+      variant="move"
+      pinnedOrder={pinnedSprintIds}
+      excludeSprintIds={excludeSprintIds}
+      onSelect={(id, _name, position) => onSelect(id, position)}
+      onClose={() => {}}
+      listMaxHeightClass="max-h-[240px]"
+    />
   );
 }
 

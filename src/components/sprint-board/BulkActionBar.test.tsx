@@ -189,7 +189,8 @@ describe("BulkActionBar", () => {
     openGroup("Move");
     fireEvent.click(screen.getByText("Move to other sprint…"));
     fireEvent.click(screen.getByText("Sprint 42"));
-    expect(onMoveSprint).toHaveBeenCalledWith("42");
+    // No explicit position on a plain row click (BRDG-362 top/bottom buttons set one).
+    expect(onMoveSprint).toHaveBeenCalledWith("42", undefined);
   });
 
   it("opens the Assist dropdown and shows menu items", () => {

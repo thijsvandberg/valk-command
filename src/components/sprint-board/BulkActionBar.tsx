@@ -177,7 +177,7 @@ export function BulkActionBar({
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetStatus?: (status: JiraStatus) => void;
   onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
-  onMoveSprint?: (sprintId: string) => void;
+  onMoveSprint?: (sprintId: string, position?: "top" | "bottom") => void;
   /** One-click move destinations shown above "More sprints" (BRDG-369). */
   quickMoves?: QuickMoveOption[];
   /** The selection's current sprint id(s); excluded from the Move dropdown's "More sprints". */

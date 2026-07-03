@@ -75,7 +75,9 @@ export function TicketActionMenuContent({
   /** Multi-select only: show a single "Remove epic" action (no single value to
    *  unlink). Omitted for single-row, which unlinks via its current epic. */
   epicClearable?: boolean;
-  onMoveSprint?: (sprintId: string) => void;
+  /** `position` comes from the move panel's explicit top/bottom buttons (BRDG-362);
+   *  undefined on a plain destination click (BRDG-370 placement rule applies). */
+  onMoveSprint?: (sprintId: string, position?: "top" | "bottom") => void;
   /** Rank the target(s) to the top/bottom of the current sprint (whole sprint). */
   onMoveToTop?: () => void;
   onMoveToBottom?: () => void;
@@ -147,7 +149,7 @@ export function TicketActionMenuContent({
         ))}
       {onMoveSprint && sprints && (
         <Flyout icon={<ArrowRightLeft className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Move to other sprint…" width="w-[260px]">
-          <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} excludeSprintIds={excludeSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
+          <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} excludeSprintIds={excludeSprintIds} onSelect={(id, position) => { onMoveSprint?.(id, position); close(); }} />
         </Flyout>
       )}
       {onMoveToTop && (
