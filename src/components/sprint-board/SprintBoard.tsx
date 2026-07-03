@@ -57,6 +57,7 @@ import { SingleSprintHeader } from "@/components/sprint-board/SingleSprintHeader
 import { SprintBoardHeader } from "@/components/sprint-board/SprintBoardHeader";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/components/sprint-board/SprintBoardDragDrop";
+import { isGroupedVirtualizationActive } from "@/components/sprint-board/VirtualizedGroupRows";
 import { ExportToasts } from "@/components/sprint-board/ExportToasts";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
@@ -1104,14 +1105,15 @@ export default function SprintBoard() {
       : {}),
   };
 
-  // Drag-and-drop droppable measuring strategy. The flat list is virtualized (few rows
-  // mounted), so MeasuringStrategy.Always is cheap and needed there — rows mount/unmount
-  // on scroll during a drag and must be re-measured (BRDG-347). The grouped All view is
-  // NOT virtualized: every ticket across every sprint is a droppable, so Always re-measured
-  // hundreds of rects on every idle render, saturating the main thread so a drag could not
-  // even start. There, measure only WhileDragging (dnd-kit's default) — during a drag the
-  // set is stable (no unmounting), so no positions are missed.
-  const dndMeasuringStrategy = groups.length > 0 ? MeasuringStrategy.WhileDragging : MeasuringStrategy.Always;
+  // Drag-and-drop droppable measuring strategy. Virtualized views (the flat list, and the
+  // grouped view once it windows per group, BRDG-452) mount few rows, so Always is cheap
+  // AND required: rows mount/unmount on scroll during a drag and must be re-measured
+  // (BRDG-347). Only a small NON-virtualized grouped board keeps WhileDragging (dnd-kit's
+  // default): all its rows are mounted droppables, Always would re-measure them all on
+  // every idle render, and during a drag the set is stable so no positions are missed.
+  const dndMeasuringStrategy = groups.length > 0 && !isGroupedVirtualizationActive(groups, collapsedGroups)
+    ? MeasuringStrategy.WhileDragging
+    : MeasuringStrategy.Always;
 
   // Shared board content rendered once, conditionally wrapped in DndContext.
   // The list would otherwise span the full viewport, stranding the right-hand metadata far from
@@ -1280,6 +1282,7 @@ export default function SprintBoard() {
         <TestDocReviewModal
           keys={testDocQueue.keys}
           autoGenerate={testDocQueue.autoGenerate}
+          returnsToBundle={!!testDocQueue.returnToSprintId}
           onClose={() => {
             // A queue opened FROM the sprint bundle returns there (refreshed on
             // remount), so edit round-trips land back in the full document.

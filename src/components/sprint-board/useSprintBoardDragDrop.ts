@@ -87,7 +87,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
     const { active, over } = event;
     const overId = over ? String(over.id) : null;
     setBoardOverId(
-      overId && !overId.startsWith("sprint-slot:") && !overId.startsWith("group-zone:")
+      overId && !overId.startsWith("sprint-slot:") && !overId.startsWith("group-zone:") && !overId.startsWith("group-header:")
         ? overId
         : null
     );
@@ -179,8 +179,10 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       return;
     }
 
-    // Group-zone droppable (empty sprint group in grouped All view)
-    if (overId.startsWith("group-zone:")) {
+    // Group-zone droppable (empty sprint group in grouped All view) or an expanded
+    // group header (BRDG-452): both carry { sprintId } droppable data and move the
+    // dragged batch to that sprint.
+    if (overId.startsWith("group-zone:") || overId.startsWith("group-header:")) {
       const targetSprintId = over.data.current?.sprintId as string | undefined;
       if (!targetSprintId || targetSprintId === (active.data.current?.sprintId as string | undefined)) return;
 

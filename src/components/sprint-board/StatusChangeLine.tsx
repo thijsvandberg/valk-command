@@ -10,6 +10,7 @@ import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksInd
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { describeDeploy } from "@/lib/deploy-describe";
 import { buildTicketDetailUrl } from "@/lib/ticket-detail-url";
+import { prefetchTestDoc } from "@/lib/test-doc-prefetch";
 
 // BRDG-414: the chosen "quiet line" beneath a changed board row. A grey info marker sits in
 // the checkbox gutter; the sentence + signals are plain text; the contextual action (Move to
@@ -238,6 +239,7 @@ export function StatusChangeLine({
               <button
                 type="button"
                 onClick={onViewTestDoc}
+                onMouseEnter={() => prefetchTestDoc(change.ticketKey)}
                 className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
                 View test doc

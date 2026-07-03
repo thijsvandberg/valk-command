@@ -1090,10 +1090,14 @@ export const confluence = {
 export interface SprintTestDocItem {
   key: string;
   title: string;
+  type: string;
   status: string;
   storyPoints: number | null;
+  epic: string | null;
   doc: string | null;
   needsInput?: boolean;
+  /** An unreviewed draft exists (relevant for missing items: review beats regenerate). */
+  hasDraft?: boolean;
 }
 
 export interface SprintTestDocs {

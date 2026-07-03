@@ -56,12 +56,14 @@ export function useTestDocBoard({
     setBackgroundGenerating((prev) => new Set(prev).add(key));
     try {
       await ticketsApi.generateTestDoc(key);
-      // ~6 min at 5s, matching the server-side capture window.
-      for (let attempt = 0; attempt < 72 && !unmountedRef.current; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+      // ~6 min at 3s, matching the server-side capture window.
+      for (let attempt = 0; attempt < 120 && !unmountedRef.current; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
         const data = await ticketsApi.getTestDoc(key).catch(() => null);
         if (data && (data.draft || data.saved)) {
-          void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
+          // AWAIT the revalidation: dropping the Generating state before the
+          // rows carry the new testDocState flashes the stale Generate button.
+          await mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
           showToast(`Test doc ready for ${key} — review it via the status line`);
           break;
         }

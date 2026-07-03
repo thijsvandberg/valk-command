@@ -7,10 +7,14 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 export interface SprintTestDocItem {
   key: string;
   title: string;
+  type: string;
   status: string;
   storyPoints: number | null;
+  epic: string | null;
   doc: string | null;
   needsInput?: boolean;
+  /** An unreviewed draft exists (relevant for `missing`: review beats regenerate). */
+  hasDraft?: boolean;
 }
 
 /**
@@ -46,10 +50,13 @@ export async function GET(
     .select({
       key: ticket.jiraKey,
       title: ticket.title,
+      type: ticket.type,
       status: ticket.status,
       storyPoints: ticket.storyPoints,
+      epic: ticket.epic,
       doc: ticketMetadata.testDoc,
       classification: ticketMetadata.testDocClassification,
+      draft: ticketMetadata.testDocDraft,
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticketMetadata.jiraKey, ticket.jiraKey))
@@ -81,9 +88,12 @@ export async function GET(
     const item: SprintTestDocItem = {
       key: row.key,
       title: row.title,
+      type: row.type ?? "task",
       status: row.status,
       storyPoints: row.storyPoints,
+      epic: row.epic ?? null,
       doc: row.doc,
+      hasDraft: row.draft != null,
     };
     if (row.doc) {
       if (row.classification === "not_stakeholder_relevant") {

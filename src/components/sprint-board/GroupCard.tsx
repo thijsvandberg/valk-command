@@ -29,6 +29,11 @@ interface GroupCardProps {
   isCollapsed?: boolean;
   /** Omit to make the card non-collapsible: no chevron affordance, always expanded. */
   onToggleCollapse?: () => void;
+  /** Registers the header zone as a DnD drop target (BRDG-452: dropping on an expanded
+   *  sprint header moves the dragged batch to that sprint). */
+  headerRef?: (el: HTMLElement | null) => void;
+  /** Brand ring while a drag hovers the header drop target. */
+  headerRing?: boolean;
   /** Card body (rows / table), rendered only while expanded. */
   children: ReactNode;
 }
@@ -40,6 +45,8 @@ export function GroupCard({
   floatingActionVisible = false,
   isCollapsed = false,
   onToggleCollapse,
+  headerRef,
+  headerRing = false,
   children,
 }: GroupCardProps) {
   const collapsible = onToggleCollapse !== undefined;
@@ -47,12 +54,13 @@ export function GroupCard({
   return (
     <div className={GROUP_CARD_CLASS}>
       <div
+        ref={headerRef}
         onClick={onToggleCollapse}
-        className={`group/grouprow @container relative flex select-none items-center gap-3 bg-surface-chrome/30 px-3 py-[9px] [transition:background-color_.12s_ease] ${
+        className={`group/grouprow @container relative flex select-none items-center gap-3 bg-surface-chrome/30 px-3 py-[9px] [transition:background-color_.12s_ease,box-shadow_.12s_ease] ${
           collapsible ? "cursor-pointer hover:bg-surface-chrome/50" : ""
         } ${
           collapsed ? "rounded-xl" : "rounded-t-xl border-b border-border-subtle"
-        }`}
+        } ${headerRing ? "shadow-[inset_0_0_0_2px_var(--color-brand-500)]" : ""}`}
       >
         <div className="min-w-0 flex-1">{header}</div>
         {headerExtras && <div className="flex shrink-0 items-center gap-3">{headerExtras}</div>}
