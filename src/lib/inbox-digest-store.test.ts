@@ -20,7 +20,13 @@ vi.mock("@/lib/inbox-digest", async (importOriginal) => {
   return { ...actual, computeInboxDigest: (...args: unknown[]) => computeMock(...args) };
 });
 
-import { evaluateInboxDigest, clearActiveDigest, type InboxDigestState } from "@/lib/inbox-digest-store";
+import {
+  evaluateInboxDigest,
+  clearActiveDigest,
+  snoozeActiveDigest,
+  SNOOZE_DURATION_MINUTES,
+  type InboxDigestState,
+} from "@/lib/inbox-digest-store";
 import { readUserSetting, writeUserSetting } from "@/lib/user-settings";
 import type { NewStoryQueryCtx } from "@/lib/new-stories-query";
 
@@ -184,5 +190,67 @@ describe("clearActiveDigest (BRDG-413)", () => {
   it("is a no-op when there is no stored state", async () => {
     await expect(clearActiveDigest("user-a")).resolves.toBeUndefined();
     expect(await storedState("user-a")).toBeNull();
+  });
+});
+
+describe("snooze (BRDG-462)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    computeMock.mockReset();
+  });
+
+  async function seedActive(): Promise<void> {
+    await writeUserSetting(
+      "inbox_digest",
+      "user-a",
+      JSON.stringify({
+        active: { id: "2026-06-26:morning", generatedAt: "x", baselineAt: null, total: 3, buckets: [] },
+        deliveryDate: "2026-06-26",
+        deliveredWindows: ["morning"],
+      } satisfies InboxDigestState),
+    );
+  }
+
+  it("snoozeActiveDigest sets snoozedUntil one hour ahead, preserving active + slots", async () => {
+    await seedActive();
+    await snoozeActiveDigest("user-a", MORNING_0930);
+
+    const state = (await storedState("user-a"))!;
+    expect(state.active!.id).toBe("2026-06-26:morning");
+    expect(state.deliveredWindows).toEqual(["morning"]);
+    expect(Date.parse(state.snoozedUntil!) - MORNING_0930.getTime()).toBe(
+      SNOOZE_DURATION_MINUTES * 60_000,
+    );
+  });
+
+  it("snoozeActiveDigest is a no-op when there is no active digest", async () => {
+    await expect(snoozeActiveDigest("user-a", MORNING_0930)).resolves.toBeUndefined();
+    expect(await storedState("user-a")).toBeNull();
+  });
+
+  it("evaluate suppresses the active digest while snoozed, then restores it", async () => {
+    // Both windows spent, so no fresh delivery can muddy the snooze behaviour.
+    await writeUserSetting(
+      "inbox_digest",
+      "user-a",
+      JSON.stringify({
+        active: { id: "2026-06-26:afternoon", generatedAt: "x", baselineAt: null, total: 4, buckets: [] },
+        deliveryDate: "2026-06-26",
+        deliveredWindows: ["morning", "afternoon"],
+        snoozedUntil: new Date("2026-06-26T15:30:00Z").toISOString(), // 17:30 Amsterdam
+      } satisfies InboxDigestState),
+    );
+
+    // 16:00 local < 17:30: hidden, snooze intact, nothing computed.
+    expect(await evaluateInboxDigest(CTX, LATE_1600)).toBeNull();
+    expect((await storedState("user-a"))!.snoozedUntil).not.toBeNull();
+    expect(computeMock).not.toHaveBeenCalled();
+
+    // 18:00 local > 17:30: restored, snooze cleared, still nothing computed.
+    const afterSnooze = new Date("2026-06-26T16:00:00Z"); // 18:00 Amsterdam
+    const restored = await evaluateInboxDigest(CTX, afterSnooze);
+    expect(restored!.id).toBe("2026-06-26:afternoon");
+    expect((await storedState("user-a"))!.snoozedUntil ?? null).toBeNull();
+    expect(computeMock).not.toHaveBeenCalled();
   });
 });

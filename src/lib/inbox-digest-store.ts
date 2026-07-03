@@ -17,6 +17,9 @@ import type { NewStoryQueryCtx } from "@/lib/new-stories-query";
 
 const SETTING_KEY = "inbox_digest";
 
+// Snooze postpones the active banner for this long, then it resurfaces on its own.
+export const SNOOZE_DURATION_MINUTES = 60;
+
 // The currently displayed digest. Null between deliveries / after a dismiss.
 export interface ActiveDigest {
   /** `<date>:<window>` dedupe / render key, e.g. "2026-06-26:afternoon". */
@@ -35,10 +38,17 @@ export interface InboxDigestState {
   deliveryDate: string;
   /** Windows already spent today; resets on day rollover. */
   deliveredWindows: DigestWindowKey[];
+  /**
+   * When set, the active banner is suppressed until this ISO instant, then it
+   * resurfaces (snooze). Null / absent means not snoozed; self-expiring so it
+   * needs no day-rollover cleanup. Older stored state predating this field reads
+   * as absent.
+   */
+  snoozedUntil?: string | null;
 }
 
 function emptyState(today: string): InboxDigestState {
-  return { active: null, deliveryDate: today, deliveredWindows: [] };
+  return { active: null, deliveryDate: today, deliveredWindows: [], snoozedUntil: null };
 }
 
 async function readDigestState(userId: string): Promise<InboxDigestState | null> {
@@ -88,6 +98,18 @@ export async function evaluateInboxDigest(
     changed = true;
   }
 
+  // Snooze: suppress the active banner until the snooze instant, then resume. A
+  // 60-minute snooze cannot span two delivery windows (~5h apart), so returning
+  // early here never hides a genuinely new later window.
+  if (state.snoozedUntil) {
+    if (now.getTime() < Date.parse(state.snoozedUntil)) {
+      if (changed) await writeDigestState(ctx.userId, state);
+      return null;
+    }
+    state = { ...state, snoozedUntil: null };
+    changed = true;
+  }
+
   if (!isWeekday(now)) {
     if (changed) await writeDigestState(ctx.userId, state);
     return state.active;
@@ -129,4 +151,20 @@ export async function clearActiveDigest(userId: string): Promise<void> {
   const state = await readDigestState(userId);
   if (!state || state.active === null) return;
   await writeDigestState(userId, { ...state, active: null });
+}
+
+/**
+ * Snooze the active digest: hide the banner until `now + minutes`, after which
+ * `evaluateInboxDigest` resurfaces it. No-op when nothing is active. Leaves
+ * `deliveredWindows` intact, so snoozing never spends a slot or the per-day cap.
+ */
+export async function snoozeActiveDigest(
+  userId: string,
+  now: Date,
+  minutes: number = SNOOZE_DURATION_MINUTES,
+): Promise<void> {
+  const state = await readDigestState(userId);
+  if (!state || state.active === null) return;
+  const snoozedUntil = new Date(now.getTime() + minutes * 60_000).toISOString();
+  await writeDigestState(userId, { ...state, snoozedUntil });
 }

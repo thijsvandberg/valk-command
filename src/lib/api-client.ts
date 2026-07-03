@@ -1060,6 +1060,8 @@ export const inboxDigest = {
     apiFetch<InboxDigestResponse>("/api/inbox/digest", { signal }),
   dismiss: (signal?: AbortSignal) =>
     apiFetch<{ ok: boolean }>("/api/inbox/digest", { method: "DELETE", signal }),
+  snooze: (signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>("/api/inbox/digest", { method: "POST", signal }),
 };
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ const h = vi.hoisted(() => ({
   mutate: vi.fn(),
   push: vi.fn(),
   dismiss: vi.fn(),
+  snooze: vi.fn(),
 }));
 
 vi.mock("swr", () => ({
@@ -24,6 +25,7 @@ vi.mock("@/lib/api-client", () => ({
   inboxDigest: {
     url: () => "/api/inbox/digest",
     dismiss: (...args: unknown[]) => h.dismiss(...args),
+    snooze: (...args: unknown[]) => h.snooze(...args),
   },
 }));
 
@@ -33,6 +35,7 @@ describe("InboxDigestBanner (BRDG-413)", () => {
     h.mutate = vi.fn().mockResolvedValue(undefined);
     h.push = vi.fn();
     h.dismiss = vi.fn().mockResolvedValue({ ok: true });
+    h.snooze = vi.fn().mockResolvedValue({ ok: true });
     sessionStorage.clear();
     localStorage.clear();
   });
@@ -109,55 +112,27 @@ describe("InboxDigestBanner (BRDG-413)", () => {
     await waitFor(() => expect(h.dismiss).toHaveBeenCalledTimes(1));
   });
 
-  it("Minimize collapses the card into a count bubble without clearing the digest", () => {
+  it("Snooze hides the banner and snoozes on the server without dismissing (BRDG-462)", async () => {
     h.active = { id: "x", generatedAt: "x", baselineAt: null, total: 10, buckets: [] };
     render(<InboxDigestBanner />);
 
     expect(screen.getByText("10 new tickets in your inbox")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Minimize" }));
+    fireEvent.click(screen.getByRole("button", { name: "Snooze for 1 hour" }));
 
-    expect(screen.queryByText("10 new tickets in your inbox")).not.toBeInTheDocument();
-    const bubble = screen.getByRole("button", { name: /Open inbox digest: 10 new tickets/ });
-    expect(bubble).toHaveTextContent("10");
-    // Minimize is purely a UI collapse; it must not dismiss on the server.
+    // Optimistically hidden, snoozed server-side, and NOT dismissed.
+    expect(h.mutate).toHaveBeenCalledWith({ active: null }, { revalidate: false });
+    await waitFor(() => expect(h.snooze).toHaveBeenCalledTimes(1));
     expect(h.dismiss).not.toHaveBeenCalled();
   });
 
-  it("clicking the bubble re-expands the full card", () => {
-    h.active = { id: "x", generatedAt: "x", baselineAt: null, total: 6, buckets: [] };
-    render(<InboxDigestBanner />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Minimize" }));
-    fireEvent.click(screen.getByRole("button", { name: /Open inbox digest/ }));
-
-    expect(screen.getByText("6 new tickets in your inbox")).toBeInTheDocument();
-  });
-
-  it("stays collapsed across reloads when the stored id matches the active digest", () => {
-    localStorage.setItem("inbox-digest-collapsed-id", "x");
-    h.active = { id: "x", generatedAt: "x", baselineAt: null, total: 3, buckets: [] };
-    render(<InboxDigestBanner />);
-
-    expect(screen.queryByText("3 new tickets in your inbox")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Open inbox digest: 3 new tickets/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("re-expands when a new digest id no longer matches the stored collapse", () => {
-    localStorage.setItem("inbox-digest-collapsed-id", "old");
-    h.active = { id: "new", generatedAt: "x", baselineAt: null, total: 5, buckets: [] };
-    render(<InboxDigestBanner />);
-
-    expect(screen.getByText("5 new tickets in your inbox")).toBeInTheDocument();
-  });
-
-  it("caps the bubble count badge at 99+", () => {
-    localStorage.setItem("inbox-digest-collapsed-id", "x");
+  it("no longer renders a minimize control or corner bubble (BRDG-462)", () => {
     h.active = { id: "x", generatedAt: "x", baselineAt: null, total: 150, buckets: [] };
     render(<InboxDigestBanner />);
 
-    expect(screen.getByRole("button", { name: /Open inbox digest/ })).toHaveTextContent("99+");
+    expect(screen.queryByRole("button", { name: "Minimize" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Open inbox digest/ })).not.toBeInTheDocument();
+    // The full card renders directly (no collapsed state to toggle into).
+    expect(screen.getByText("150 new tickets in your inbox")).toBeInTheDocument();
   });
 });

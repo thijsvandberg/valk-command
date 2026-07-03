@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveUserId } from "@/lib/user-settings";
 import { resolveNewStoryQueryCtx } from "@/lib/new-stories-ctx";
-import { evaluateInboxDigest, clearActiveDigest } from "@/lib/inbox-digest-store";
+import {
+  evaluateInboxDigest,
+  clearActiveDigest,
+  snoozeActiveDigest,
+} from "@/lib/inbox-digest-store";
 
 // GET /api/inbox/digest - evaluate (lazy-cron) and return the acting user's
 // active inbox digest, or null (BRDG-413). This GET mutates per-day delivery
@@ -23,5 +27,17 @@ export async function DELETE() {
 
   const userId = await resolveUserId();
   await clearActiveDigest(userId);
+  return NextResponse.json({ ok: true });
+}
+
+// POST /api/inbox/digest - snooze the active digest for an hour (BRDG-462). The
+// banner is suppressed server-side until the snooze elapses, then resurfaces on
+// the next GET; the delivery cap (deliveredWindows) is left untouched.
+export async function POST() {
+  const limited = await applyRateLimit("write");
+  if (limited) return limited;
+
+  const userId = await resolveUserId();
+  await snoozeActiveDigest(userId, new Date());
   return NextResponse.json({ ok: true });
 }

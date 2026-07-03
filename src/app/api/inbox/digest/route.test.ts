@@ -39,7 +39,7 @@ vi.mock("@/lib/inbox-digest", async (importOriginal) => {
   return { ...actual, computeInboxDigest: (...args: unknown[]) => computeMock(...args) };
 });
 
-import { GET, DELETE } from "./route";
+import { GET, DELETE, POST } from "./route";
 
 function digest(total: number) {
   return {
@@ -110,5 +110,25 @@ describe("/api/inbox/digest (BRDG-413)", () => {
     // Re-evaluating the same day: slot already spent, so no fresh banner.
     const after = await (await GET()).json();
     expect(after.active).toBeNull();
+  });
+
+  it("POST snoozes the active digest so a later GET hides it, then it resurfaces (BRDG-462)", async () => {
+    currentUser = "user-a";
+    computeMock.mockResolvedValue(digest(4));
+
+    // Deliver (consumes both windows at 14:00 today).
+    expect((await (await GET()).json()).active.total).toBe(4);
+
+    const res = await POST();
+    expect(res.status).toBe(200);
+    expect((await res.json()).ok).toBe(true);
+
+    // Snoozed one hour ahead of 14:00; still 14:00 now, so the banner is hidden.
+    expect((await (await GET()).json()).active).toBeNull();
+
+    // Advance past the snooze: the same slot is spent, so it resurfaces without
+    // a fresh delivery.
+    vi.setSystemTime(new Date("2026-06-26T13:30:00Z")); // 15:30 Amsterdam
+    expect((await (await GET()).json()).active.total).toBe(4);
   });
 });
