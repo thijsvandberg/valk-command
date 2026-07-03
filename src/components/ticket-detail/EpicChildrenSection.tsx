@@ -1128,7 +1128,7 @@ export function EpicChildrenSection({
           onSetStatus={ra.bulkSetStatus}
           onSetReadiness={ra.bulkSetReadiness}
           onSetEpic={(epicKey) => ra.bulkSetEpic(epicKey)}
-          onMoveSprint={(sprintId) => ra.moveSprint(sprintId)}
+          onMoveSprint={(sprintId, position) => ra.moveSprint(sprintId, undefined, position)}
           quickMoves={ra.quickMovesFor(checkedKeys)}
           currentSprintIds={ra.currentSprintIdsFor(checkedKeys)}
           onQuickMove={(opt) => ra.handleQuickMove(opt, checkedKeys)}
@@ -1155,7 +1155,7 @@ export function EpicChildrenSection({
             onSetEpic={(epicKey) => ra.bulkSetEpic(epicKey, null, rowMenu.targets)}
             epicSuggestTicketKey={rowMenu.targets.size === 1 ? [...rowMenu.targets][0] : undefined}
             epicClearable
-            onMoveSprint={(sprintId) => ra.moveSprint(sprintId, rowMenu.targets)}
+            onMoveSprint={(sprintId, position) => ra.moveSprint(sprintId, rowMenu.targets, position)}
             quickMoves={ra.quickMovesFor(rowMenu.targets)}
             currentSprintIds={ra.currentSprintIdsFor(rowMenu.targets)}
             onQuickMove={(opt) => ra.handleQuickMove(opt, rowMenu.targets)}

@@ -23,14 +23,6 @@ export function stripTestDocBlock(description: string): string {
   return description.replace(TEST_DOC_BLOCK_RE, "\n").trimEnd();
 }
 
-/** Extract the inner markdown of the Test documentation block, or null. */
-export function extractTestDocBlock(description: string): string | null {
-  const match = description.match(
-    new RegExp(`:::expand ${TEST_DOC_EXPAND_TITLE}\\n([\\s\\S]*?)\\n:::`),
-  );
-  return match ? match[1].trim() : null;
-}
-
 /**
  * Append the doc as the single Test documentation expand block at the end of
  * the description, replacing any previous block.
@@ -39,4 +31,25 @@ export function appendTestDocBlock(description: string, doc: string): string {
   const base = stripTestDocBlock(description ?? "");
   const block = `:::expand ${TEST_DOC_EXPAND_TITLE}\n${doc.trim()}\n:::`;
   return base ? `${base}\n\n${block}\n` : `${block}\n`;
+}
+
+/** The board-row / detail test-doc marker state. */
+export type TestDocState = "accepted" | "draft" | "not_needed" | null;
+
+/**
+ * Derive the marker state from a ticket_metadata row. Single source of truth
+ * for the list route and the detail builder, which must stay in lockstep: an
+ * accepted doc wins, then an unreviewed draft, then the explicit not-needed
+ * marker, else none.
+ */
+export function deriveTestDocState(
+  meta:
+    | { testDoc?: string | null; testDocDraft?: string | null; testDocClassification?: string | null }
+    | null
+    | undefined,
+): TestDocState {
+  if (meta?.testDoc) return "accepted";
+  if (meta?.testDocDraft) return "draft";
+  if (meta?.testDocClassification === "not_stakeholder_relevant") return "not_needed";
+  return null;
 }

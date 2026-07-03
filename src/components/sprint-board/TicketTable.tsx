@@ -468,6 +468,17 @@ export function TicketTable({
 
   const effectiveScrollRef = scrollContainerRef ?? tableContainerRef;
 
+  // Resolve the scroll element into STATE via a passive effect (BRDG-452): on first mount
+  // a descendant's layout effects run before an ancestor's ref attaches, so reading the
+  // ref in an effect saw null and tanstack silently never attached its scroll observers —
+  // on a prod build (no StrictMode effect re-run) the virtualizer then stayed permanently
+  // scroll-dead. Passive effects run after refs attach, and the state change guarantees
+  // the re-render tanstack needs. Same-value setState is a no-op, so no loop.
+  const [resolvedScrollEl, setResolvedScrollEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setResolvedScrollEl((prev) => (prev === effectiveScrollRef.current ? prev : effectiveScrollRef.current));
+  }, [effectiveScrollRef]);
+
   // BRDG-416: the virtualizer's scrollMargin must be the table's offset within the
   // external scroll container. Reading `tableContainerRef.current?.offsetTop` in render
   // returned 0 on first paint (ref not attached yet) and never recomputed reactively, so
@@ -483,16 +494,30 @@ export function TicketTable({
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    const scroller = scrollContainerRef.current;
-    if (scroller) ro.observe(scroller);
+    if (resolvedScrollEl) ro.observe(resolvedScrollEl);
     return () => ro.disconnect();
-  }, [scrollContainerRef]);
+  }, [scrollContainerRef, resolvedScrollEl]);
+  // Re-measure the table offset after EVERY render: content above it (the analytics panel)
+  // can open/close and REPOSITION the table without resizing it or the scroller, which a
+  // ResizeObserver (size-only) misses — the same stale-offset class of bug the grouped
+  // path hit with the pinned-sprint hoist (BRDG-452). Guarded setState = no-op unless it
+  // moved; a single offsetTop read per render.
+  // Intentional every-render re-measure; the guarded setState is a no-op unless the offset
+  // moved, so there is no update loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (!scrollContainerRef) return;
+    const el = tableContainerRef.current;
+    if (el) setTableOffsetTop((prev) => (prev === el.offsetTop ? prev : el.offsetTop));
+  });
   const tableScrollMargin = scrollContainerRef ? tableOffsetTop : 0;
 
-  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: enableVirtualization ? tickets.length : 0,
-    getScrollElement: () => effectiveScrollRef.current,
+    getScrollElement: () => resolvedScrollEl,
+    // Attaching scrolls the element to getScrollOffset(); starting from the live position
+    // (not the default 0) keeps late attaches from yanking the board to the top.
+    initialOffset: () => resolvedScrollEl?.scrollTop ?? 0,
     estimateSize: () => ROW_HEIGHT_ESTIMATE,
     overscan: VIRTUALIZER_OVERSCAN,
     measureElement: (el) => el.getBoundingClientRect().height,

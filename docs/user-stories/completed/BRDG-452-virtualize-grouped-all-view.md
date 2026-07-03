@@ -166,3 +166,49 @@ Live E2E on the dev board (All view, ~9000 items, 40 group cards):
 - [[BRDG-415-finish-board-row-actions-glue-convergence]] — shared row-actions the grouped rows use.
 - Touch points: `TicketTable.tsx` (groupedTable), `SprintBoard.tsx` (dndMeasuringStrategy),
   `useGroupBy.ts`, `useSprintBoardDragDrop.ts`.
+
+## Post-release fix (2026-07-03, same day)
+
+The PO hit "half-empty tables" on the prod build: groups painting their row windows at
+stale offsets or not at all. Root cause (diagnosed via an auth-free repro page on the
+prod build): on first mount a descendant's layout effects run BEFORE an ancestor's ref
+attaches, so tanstack-virtual's `getScrollElement()` returned null at attach time and it
+silently never attached its scroll/rect observers; it only retries on a later render, so
+a quiet component stayed permanently scroll-dead. Dev never showed it because StrictMode
+re-runs effects after refs attach. Fixed for BOTH board paths (grouped
+`VirtualizedGroupRows` and the flat `TicketTable` virtualizer, which had the same latent
+bug) by resolving the scroll element into state via a passive effect and passing
+`initialOffset: () => el?.scrollTop ?? 0` so late attaches stop scrolling the shared
+container to 0. Per-group scrollMargins also self-heal on scroll. Verified on the prod
+build: repro page + real All view + flat backlog all window correctly at every scroll
+position. Details in [Client Data & Memory](../../architecture/client-data-and-memory.md).
+
+Diagnosis footnote: browser probes of scroll behavior are only valid in a RENDERING tab.
+Background tabs run no rendering steps, so scroll events, rAF and ResizeObserver never
+fire there and any virtualized list looks frozen to a probe even when the code is
+correct.
+
+## Post-release fix #2 (2026-07-03, same day): empty group boxes until you scroll
+
+After the attach fix, the board was fast but groups rendered as EMPTY boxes on load until
+you scrolled once. Root cause (diagnosed by reading the live prod board's per-group
+virtualizer state): the top group is a PINNED sprint. It first mounts at its sorted slot
+(offset ~9139px down); once the pinned-sprint state loads, React hoists it to the top
+(offset ~58px) while keeping the same keyed component instance. That reposition changes
+neither the component's props nor the SIZES of the observed elements, so neither the effect
+dependency array nor the ResizeObserver (which watches size, not position) fired — the
+group kept its stale scrollMargin (9139), its virtual window sat far below the viewport, and
+the overlap gate rendered it spacer-only. Scrolling triggered the rAF self-heal, which is
+why it "fixed itself" on scroll.
+
+Fix: re-measure each group's scrollMargin after EVERY render via a dependency-less layout
+effect (guarded setState = no-op unless the offset actually moved; browsers coalesce the
+sibling groups' rect reads into one layout pass). The same fix was applied to the flat
+path's table offset for the analytics-panel-toggle reposition case. Verified on the live
+prod board: on load, without scrolling, every group's scrollMargin equals its true offset
+and the visible groups render their rows; off-screen groups stay spacer-only.
+
+General lesson: a ResizeObserver is not sufficient to keep a scroll-offset measurement
+fresh — it only fires on SIZE changes, never on repositions (reorder, pinning, a sibling
+above changing height). Re-measure on every render, or on an explicit order/position
+signal, not just on resize.

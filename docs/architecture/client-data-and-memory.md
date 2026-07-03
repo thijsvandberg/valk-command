@@ -108,7 +108,29 @@ DOM, and off-viewport groups collapse to a single spacer row (virtual-core clamp
 out-of-view ranges to the nearest edge instead of returning an empty range, so the
 component gates on real viewport overlap itself). Droppable measuring flips to
 `Always` while windowed so rows mounting under mid-drag auto-scroll are measured
-(BRDG-347). The Inbox and the Refinement queue still render all rows; virtualizing
+(BRDG-347).
+
+**Prod-only attach deadlock (BRDG-452, read before touching any useVirtualizer):** on
+first mount a descendant's layout effects run BEFORE an ancestor's ref attaches, so
+`getScrollElement: () => someAncestorRef.current` returns null at attach time;
+tanstack silently skips attaching its scroll/rect observers and only retries on a
+later render. Dev never shows this (StrictMode re-runs effects after refs attach); on
+a prod build a virtualizer can stay permanently scroll-dead. Both board paths
+therefore resolve the scroll element into STATE via a passive effect (refs are
+attached by then, and the state change guarantees the re-render tanstack needs) and
+pass `initialOffset: () => el?.scrollTop ?? 0` so a late attach does not scroll the
+shared container to 0 (`_willUpdate` ends with `_scrollToOffset(getScrollOffset())`).
+Each group's `scrollMargin` (its offset in the shared scroller) is re-measured after
+EVERY render, not just on resize: a ResizeObserver fires only on SIZE changes and never
+on a REPOSITION, but a pinned sprint hoisting to the top, a group reorder, or a sibling
+above changing height all move a group's offset with no size change and often no prop
+change on the keyed instance. A stale offset parks the group's window off-screen and it
+renders as an empty box until a scroll re-measures it (the "empty group boxes on load"
+bug). The re-measure is a guarded setState (no-op unless the offset moved) and the
+sibling groups' rect reads coalesce into one layout pass. The flat path's table offset
+does the same for the analytics-panel-toggle reposition. Rule of thumb: never rely on a
+ResizeObserver alone to keep a scroll-offset measurement fresh. The Inbox and the
+Refinement queue still render all rows; virtualizing
 them was reviewed and not pursued (memory is bounded by the cap, so it is a perf
 nice-to-have).
 

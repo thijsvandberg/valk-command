@@ -7,7 +7,7 @@ import { ticket, ticketLocalEdit, ticketMetadata, storyVersion } from "@/db/sche
 import { and, desc, eq } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
-import { isDraftKey } from "@/lib/draft-key";
+import { guardTestDocDraftKey } from "@/lib/test-doc-routes";
 import { appendTestDocBlock } from "@/lib/test-doc";
 import { coerceClassification } from "@/lib/parse-test-doc";
 import * as ticketService from "@/services/ticket-service";
@@ -107,9 +107,8 @@ export async function PUT(
   const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
-  if (isDraftKey(key)) {
-    return errorResponse("Cannot save test documentation for a draft ticket", 409);
-  }
+  const draftBlocked = guardTestDocDraftKey(key, "save");
+  if (draftBlocked) return draftBlocked;
 
   const parsed = await parseJsonBody(request);
   if ("error" in parsed) return parsed.error;

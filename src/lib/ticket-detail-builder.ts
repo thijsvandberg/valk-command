@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { deriveTestDocState } from "@/lib/test-doc";
 import { ticket, ticketLocalEdit, jiraComment, ticketSubtask, storedReview, storyVersion, conversation, message, subtaskSuggestion, sprintNameCache, ticketMetadata } from "@/db/schema";
 import { eq, sql, count } from "drizzle-orm";
 import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, EpicChild, LinkedIssue, TicketEditState } from "@/types/ticket";
@@ -156,13 +157,7 @@ function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof run
     businessValue: meta?.businessValue ?? null,
     editState,
     notes: meta?.poNotes ?? "",
-    testDocState: meta?.testDoc
-      ? "accepted" as const
-      : meta?.testDocDraft
-        ? "draft" as const
-        : meta?.testDocClassification === "not_stakeholder_relevant"
-          ? "not_needed" as const
-          : null,
+    testDocState: deriveTestDocState(meta),
     sprintId: t.sprintName ?? undefined,
     removedFromJiraAt: t.removedFromJiraAt ?? null,
   };

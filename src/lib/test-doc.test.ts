@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendTestDocBlock, extractTestDocBlock, stripTestDocBlock } from "./test-doc";
+import { appendTestDocBlock, deriveTestDocState, stripTestDocBlock } from "./test-doc";
 
 const DOC = "**Forgot password link**\n\n- Confirm the link navigates to the new portal";
 
@@ -55,13 +55,23 @@ describe("stripTestDocBlock", () => {
   });
 });
 
-describe("extractTestDocBlock", () => {
-  it("extracts the inner markdown", () => {
-    const withBlock = appendTestDocBlock("Content", DOC);
-    expect(extractTestDocBlock(withBlock)).toBe(DOC);
+describe("deriveTestDocState", () => {
+  it("prefers an accepted doc over a draft", () => {
+    expect(deriveTestDocState({ testDoc: "doc", testDocDraft: "draft" })).toBe("accepted");
   });
 
-  it("returns null when absent", () => {
-    expect(extractTestDocBlock("no block")).toBeNull();
+  it("reads a draft when there is no accepted doc", () => {
+    expect(deriveTestDocState({ testDoc: null, testDocDraft: "draft" })).toBe("draft");
+  });
+
+  it("reads not_needed only from the not_stakeholder_relevant classification", () => {
+    expect(deriveTestDocState({ testDocClassification: "not_stakeholder_relevant" })).toBe("not_needed");
+    expect(deriveTestDocState({ testDocClassification: "ok" })).toBeNull();
+  });
+
+  it("returns null for an absent or empty row", () => {
+    expect(deriveTestDocState(null)).toBeNull();
+    expect(deriveTestDocState(undefined)).toBeNull();
+    expect(deriveTestDocState({})).toBeNull();
   });
 });

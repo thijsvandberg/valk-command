@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Ticket } from "@/types/ticket";
 import type { TicketGroup } from "@/components/sprint-board/useGroupBy";
@@ -68,62 +68,82 @@ export function VirtualizedGroupRows({
 }) {
   const bodyRef = useRef<HTMLTableSectionElement>(null);
 
+  // THE PROD-ONLY DEADLOCK (diagnosed live on the prod build, BRDG-452): on first mount a
+  // descendant's layout effects run BEFORE an ancestor's ref attaches, so at that moment
+  // `scrollContainerRef.current` is still null. tanstack's _willUpdate silently skips
+  // attaching its scroll/rect observers when getScrollElement() returns null, and it only
+  // ever retries on a LATER render — if nothing re-renders the component, the virtualizer
+  // stays permanently dead (scrollElement null, offset frozen, spacer-only output). Dev
+  // masks this: StrictMode re-runs effects after refs have attached. The fix: resolve the
+  // scroll element into STATE in a passive effect (refs are guaranteed attached by then),
+  // which also guarantees the re-render tanstack needs to attach. Same-value setState is a
+  // no-op, so the every-render effect does not loop.
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setScrollEl((prev) => (prev === scrollContainerRef.current ? prev : scrollContainerRef.current));
+  }, [scrollContainerRef]);
+
   // BRDG-416 pattern: the virtualizer's scrollMargin is this group's row-body offset
-  // within the shared scroll container. Render-time reads see 0 on first paint (ref not
-  // attached), so measure in a layout effect and re-measure when the scroller or the
-  // group stack changes size. Rect deltas (not offsetTop) because a tbody's offsetParent
-  // is its table, not the scroll container.
-  //
-  // The group stack is resolved via closest(GROUPS_ROOT_ATTR), NOT via an ancestor's ref
-  // prop: on first mount in production a descendant's layout effect runs BEFORE the
-  // ancestor's ref attaches (dev's StrictMode re-run masked this), so a ref prop read
-  // here was still null, the observer silently never attached, and margins went stale as
-  // estimated heights resolved to measured ones — groups then painted their windows at
-  // stale offsets (half-empty cards). The DOM ancestor itself is already committed, so
-  // closest() is reliable where the ref is not.
+  // within the shared scroll container. Rect deltas (not offsetTop) because a tbody's
+  // offsetParent is its table, not the scroll container.
   const [scrollMargin, setScrollMargin] = useState(0);
+  const measure = useCallback(() => {
+    const el = bodyRef.current;
+    if (!el || !scrollEl) return;
+    const next = Math.max(0, Math.round(
+      el.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop,
+    ));
+    setScrollMargin((prev) => (prev === next ? prev : next));
+  }, [scrollEl]);
+
+  // Re-measure after EVERY render. A group can be REPOSITIONED without its props, its
+  // size, or the observed elements' sizes changing at all: the pinned-sprint hoist moves
+  // a group from its sorted slot (offset ~9000px) to the top (offset ~58px) once the
+  // pinned state loads, and React keeps the same keyed instance, so neither an effect dep
+  // nor a ResizeObserver (which watches SIZE, not position) fires. A stale scrollMargin
+  // then parks the group's window off-screen and it renders spacer-only — the "empty group
+  // box until you scroll" bug (BRDG-452). The guarded setState makes this a no-op unless
+  // the offset actually moved, and browsers coalesce the sibling groups' rect reads within
+  // one commit into a single layout pass, so the steady-state cost is negligible.
+  useLayoutEffect(() => { measure(); });
+
   const itemCount = items.length;
   useLayoutEffect(() => {
     const el = bodyRef.current;
-    const scroller = scrollContainerRef.current;
-    if (!el || !scroller) return;
-    const measure = () => {
-      const next = Math.max(0, Math.round(
-        el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop,
-      ));
-      setScrollMargin((prev) => (prev === next ? prev : next));
-    };
+    if (!el || !scrollEl) return;
     measure();
+    // Catches offset changes with no accompanying re-render: the scroller resizing, or the
+    // group stack growing as estimated row heights resolve to measured ones.
     const ro = new ResizeObserver(measure);
-    ro.observe(scroller);
+    ro.observe(scrollEl);
     const groupsRoot = el.closest(`[${GROUPS_ROOT_ATTR}]`);
     if (groupsRoot) ro.observe(groupsRoot);
-    // Self-heal on scroll (rAF-throttled): a group's offset must be right exactly when the
-    // user scrolls it into view, and observer triggers alone proved unreliable for layout
-    // shifts between a group's mount and later settles (estimate -> measured heights above
-    // it). Measured live on prod: a stale offset froze a group's window at its mount-time
-    // position and the viewport-overlap gate then kept it spacer-only forever (BRDG-452
-    // half-empty cards). Re-measuring costs two rect reads per group per frame; the guarded
-    // setState only renders on a real change.
+    // Self-heal on scroll (rAF-throttled) so the offset is right exactly when the group
+    // scrolls into view, even if a settle happened while it was off-screen.
     let raf = 0;
     const onScroll = () => {
       if (raf) return;
       raf = requestAnimationFrame(() => { raf = 0; measure(); });
     };
-    scroller.addEventListener("scroll", onScroll, { passive: true });
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       ro.disconnect();
-      scroller.removeEventListener("scroll", onScroll);
+      scrollEl.removeEventListener("scroll", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
     // itemCount: a per-group filter or data refresh changes this group's (and the ones
     // below it) offsets without any scroll or observed resize.
-  }, [scrollContainerRef, itemCount]);
+  }, [scrollEl, itemCount, measure]);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: items.length,
-    getScrollElement: () => scrollContainerRef.current,
+    getScrollElement: () => scrollEl,
+    // A virtualizer (re)attaching to its scroll element scrolls it to getScrollOffset();
+    // the default initialOffset of 0 would yank the shared board scroller to the top on
+    // every late attach or remount. Starting from the element's live position makes that
+    // a no-op AND gives fresh instances a correct offset immediately.
+    initialOffset: () => scrollEl?.scrollTop ?? 0,
     estimateSize: () => ROW_HEIGHT_ESTIMATE,
     overscan: VIRTUALIZER_OVERSCAN,
     measureElement: (el) => el.getBoundingClientRect().height,

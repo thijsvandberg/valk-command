@@ -691,7 +691,7 @@ function InboxView() {
                     onSetStatus={ra.bulkSetStatus}
                     onSetReadiness={ra.bulkSetReadiness}
                     onSetEpic={(epicKey) => ra.bulkSetEpic(epicKey)}
-                    onMoveSprint={(sprintId) => ra.moveSprint(sprintId)}
+                    onMoveSprint={(sprintId, position) => ra.moveSprint(sprintId, undefined, position)}
                     quickMoves={ra.quickMovesFor(checkedKeys)}
                     currentSprintIds={ra.currentSprintIdsFor(checkedKeys)}
                     onQuickMove={ra.handleQuickMove}
@@ -741,7 +741,7 @@ function InboxView() {
             epicValue={rowMenuEpic}
             epicSuggestTicketKey={rowMenu.targets.size === 1 ? [...rowMenu.targets][0] : undefined}
             epicClearable={rowMenu.targets.size > 1}
-            onMoveSprint={(sprintId) => ra.moveSprint(sprintId, rowMenu.targets)}
+            onMoveSprint={(sprintId, position) => ra.moveSprint(sprintId, rowMenu.targets, position)}
             quickMoves={ra.quickMovesFor(rowMenu.targets)}
             currentSprintIds={ra.currentSprintIdsFor(rowMenu.targets)}
             onQuickMove={(opt) => ra.handleQuickMove(opt, rowMenu.targets)}

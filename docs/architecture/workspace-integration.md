@@ -202,7 +202,12 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
 - **Parser**: `src/lib/parse-test-doc.ts` — never throws; null on absent/malformed block;
   unknown classifications degrade to `ok`.
 - **Validation UI**: `src/components/sprint-board/TestDocReviewModal.tsx` — split view with the
-  editable doc left and the story (regular rendered format) right. Entry points: row action
+  editable doc left and the story (regular rendered format) right. The modal is thin layout +
+  wiring: the entry/version/queue state machine (per-key states, cache-lookup-on-open, the
+  rolling generation scheduler, save/not-needed/regenerate/switch/advance) lives in the
+  `useTestDocReview` hook, the left doc pane (alerts + toolbar + version chips + compare +
+  editor/preview) in `TestDocReviewPane`, and the draggable persisted split in
+  `usePersistedSplit`. Entry points: row action
   menu, the to-Test status-change line button (BRDG-414 stub made real), and the bulk toolbar.
   Bulk prefetches: all generations start on open (rolling, max 3 concurrent — each is a full
   agent task and the workspace rate tier allows 10 req/min), the first result shows as soon as
@@ -222,7 +227,8 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
 - **Save**: `PUT /api/tickets/[key]/test-doc` stores the Bridge copy in `ticket_metadata`
   (`test_doc*` columns) and writes exactly one `:::expand Test documentation` block at the end
   of the Jira description through the regular `upsertLocalEdit` + `pushToJira` path
-  (`src/lib/test-doc.ts` strips/appends the block). Draft keys 409 in both routes.
+  (`src/lib/test-doc.ts` strips/appends the block). Draft keys 409 in all three write routes
+  (generate/save/cache) via the shared `guardTestDocDraftKey` (`src/lib/test-doc-routes.ts`).
 - **Sprint delivery** (BRDG-461): the sprint "..." menu (`SprintDetailsPopover`) opens
   `SprintTestDocsModal`, which reads `GET /api/sprints/[id]/test-docs` — validated blocks in
   delivery order, internal one-liners as a Misc tail, and the missing overview (DONE/TEST
@@ -237,7 +243,9 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
 - **Board marker**: the toggleable "Test documentation" row field (off by default,
   `filter-bar-types` tag `testDoc`) shows the per-ticket state — accepted (green), draft
   (amber), not-needed (muted FileX), none (faint) — derived server-side into
-  `Ticket.testDocState` on the list payload. Clicking the marker (`TestDocMarker`, a plain
+  `Ticket.testDocState` on the list payload via `deriveTestDocState` (`src/lib/test-doc.ts`),
+  the single helper shared by the list route and the detail builder so the two stay in lockstep.
+  Clicking the marker (`TestDocMarker`, a plain
   button) opens the centered review modal. The marker visibility is PER SPRINT
   (`bridge:test-doc-tag-sprints` id set; the Display checkbox toggles the current sprint and
   is disabled on the All view), so the next sprint always starts with markers off. It
