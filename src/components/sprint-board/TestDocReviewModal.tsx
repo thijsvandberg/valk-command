@@ -6,13 +6,12 @@ import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
-import { stripTestDocBlock } from "@/lib/test-doc";
-import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
+import { TestDocStoryPane } from "@/components/sprint-board/TestDocStoryPane";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { friendlyStreamError } from "@/lib/agent-errors";
-import { parseTestDoc, type TestDocClassification } from "@/lib/parse-test-doc";
+import { parseTestDoc, coerceClassification, type TestDocClassification } from "@/lib/parse-test-doc";
 import { tickets as ticketsApi, workspaceTasks, ApiError } from "@/lib/api-client";
 import { ClipboardCheck, Loader2, RefreshCw, X } from "lucide-react";
 
@@ -151,6 +150,14 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   const { mutate } = useSWRConfig();
 
   const currentKey = keys[index] ?? null;
+  // Event callbacks (SSE results for background prefetches) must know which
+  // item is on screen without re-binding on every advance.
+  const currentKeyRef = useRef<string | null>(currentKey);
+  // Updated via effect (never during render, per the React Compiler rules);
+  // effects run before any SSE event for the new index can arrive.
+  useEffect(() => {
+    currentKeyRef.current = currentKey;
+  }, [currentKey]);
   const isBulk = keys.length > 1;
   const isLast = index >= keys.length - 1;
   const entry = currentKey ? entries[currentKey] : null;
@@ -201,7 +208,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
               versions.push({
                 label: "Saved",
                 doc: data.saved.markdown,
-                classification: (data.saved.classification as TestDocClassification) ?? "ok",
+                classification: coerceClassification(data.saved.classification),
                 unstructured: false,
               });
             }
@@ -209,14 +216,14 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
               versions.push({
                 label: "Draft",
                 doc: data.draft.markdown,
-                classification: (data.draft.classification as TestDocClassification) ?? "ok",
+                classification: coerceClassification(data.draft.classification),
                 unstructured: false,
               });
             }
             patchEntry(key, {
               status: "ready",
               doc: cached.markdown,
-              classification: (cached.classification as TestDocClassification) ?? "ok",
+              classification: coerceClassification(cached.classification),
               source: data.draft ? "draft" : "saved",
               cachedAt: data.draft ? data.draft.generatedAt : data.saved?.updatedAt ?? null,
               versions,
@@ -295,8 +302,12 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
           },
         };
       });
-      // Results that need hand-work open straight into the editor.
-      setEditing(!parsed || classification === "needs_input");
+      // Results that need hand-work open straight into the editor — but only
+      // for the item on screen; a background prefetch result must not flip
+      // the editor mode of whatever the PO is reviewing right now.
+      if (key === currentKeyRef.current) {
+        setEditing(!parsed || classification === "needs_input");
+      }
       // Cache the raw generation immediately (fire-and-forget): closing the
       // modal or revisiting later must never cost a regeneration. Refresh the
       // board lists after: the row's test-doc marker derives from this state.
@@ -336,9 +347,12 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
     }
     setConflictMessage(null);
     setCompare(false);
-    setEditing(false);
+    // Arriving at an already-ready entry that needs hand-work opens the editor
+    // directly, mirroring what a live result arrival does.
+    const next = entries[keys[index + 1] ?? ""];
+    setEditing(next ? next.unstructured || next.classification === "needs_input" : false);
     setIndex((i) => i + 1);
-  }, [isLast, handleClose]);
+  }, [isLast, handleClose, entries, keys, index]);
 
   const handleSave = useCallback(async () => {
     if (!currentKey || !entry || !entry.doc.trim()) return;
@@ -669,55 +683,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
             className="w-1 shrink-0 cursor-col-resize bg-border-subtle transition-colors duration-150 hover:bg-[var(--color-brand-500)]/40"
           />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col p-4">
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1" data-testid="test-doc-story-pane">
-              {detail ? (
-                <>
-                  <h3 className="mb-3 text-h4 font-semibold text-text-primary">{detail.title}</h3>
-                  <div className="description-content text-body-lg leading-prose text-text-secondary">
-                    {detail.description?.trim()
-                      ? // The doc under review IS the expand block; repeating it
-                        // inside the story rendering is pure noise.
-                        renderMarkdown(stripTestDocBlock(detail.description), { linkifyRefs: true })
-                      : <p className="text-body-lg text-text-muted">No description.</p>}
-                  </div>
-                  {detail.jiraComments && detail.jiraComments.length > 0 && (
-                    <div className="mt-6 border-t border-border-subtle pt-4" data-testid="test-doc-story-comments">
-                      <p className="mb-3 text-caption font-medium uppercase tracking-wide text-text-tertiary">
-                        Comments ({detail.jiraComments.length})
-                      </p>
-                      {/* Mirrors the ticket sidebar's comment styling (CommentsSection). */}
-                      <div className="flex flex-col gap-4">
-                        {detail.jiraComments.map((c) => (
-                          <div key={c.id} className="flex gap-3">
-                            <div
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"
-                              style={{ backgroundColor: c.authorColor }}
-                            >
-                              {c.authorInitials}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-body-sm font-medium text-text-secondary">{c.authorName}</span>
-                                <span className="text-caption text-text-muted" title={formatAbsoluteDate(c.createdAt)}>
-                                  {relativeDate(c.createdAt)}
-                                </span>
-                              </div>
-                              <div className="description-content mt-1 text-body-lg leading-prose text-text-secondary">
-                                {renderMarkdown(c.content, { linkifyRefs: true })}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex h-full items-center justify-center text-text-muted">
-                  <Loader2 size={16} strokeWidth={1.75} className="animate-spin" />
-                </div>
-              )}
-            </div>
+            <TestDocStoryPane detail={detail} />
           </div>
         </div>
 

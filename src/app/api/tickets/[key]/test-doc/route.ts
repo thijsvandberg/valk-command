@@ -9,7 +9,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { isDraftKey } from "@/lib/draft-key";
 import { appendTestDocBlock } from "@/lib/test-doc";
-import { TEST_DOC_CLASSIFICATIONS, type TestDocClassification } from "@/lib/parse-test-doc";
+import { coerceClassification } from "@/lib/parse-test-doc";
 import * as ticketService from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
 import { cache } from "@/lib/cache";
@@ -133,10 +133,7 @@ export async function PUT(
   if (!markdown || typeof markdown !== "string" || !markdown.trim()) {
     return errorResponse("markdown is required", 400);
   }
-  const classification: TestDocClassification =
-    rawClassification && (TEST_DOC_CLASSIFICATIONS as readonly string[]).includes(rawClassification)
-      ? (rawClassification as TestDocClassification)
-      : "ok";
+  const classification = coerceClassification(rawClassification);
 
   const ticketRow = await db
     .select({ jiraKey: ticket.jiraKey, description: ticket.description })

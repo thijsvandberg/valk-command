@@ -196,6 +196,25 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       expect(mockCancelTask).not.toHaveBeenCalledWith(taskIdFor("VPL-1"));
     });
 
+    it("a background unstructured result does not flip the current item into edit mode", async () => {
+      render(<TestDocReviewModal keys={["VPL-1", "VPL-2"]} onClose={() => {}} />);
+      await emitResult("VPL-1", DOC);
+      expect(screen.getByTestId("test-doc-preview")).toBeInTheDocument();
+
+      // VPL-2 lands unstructured in the background while VPL-1 is on screen.
+      const task2 = taskIdFor("VPL-2");
+      await waitFor(() => expect(streamsByTask[task2]).toBeDefined());
+      act(() => {
+        streamsByTask[task2].onResult?.({ output: "plain text, no tag" });
+      });
+
+      // Still previewing VPL-1...
+      expect(screen.getByTestId("test-doc-preview")).toBeInTheDocument();
+      // ...and advancing lands VPL-2 straight in the editor (it needs hand-work).
+      fireEvent.click(screen.getByText("Skip"));
+      await waitFor(() => expect(screen.getByTestId("test-doc-editor")).toBeInTheDocument());
+    });
+
     it("a background prefetch error only surfaces when that item is reached", async () => {
       render(<TestDocReviewModal keys={["VPL-1", "VPL-2"]} onClose={() => {}} />);
       await emitResult("VPL-1", DOC);

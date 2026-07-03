@@ -237,13 +237,19 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
 - **Board marker**: the toggleable "Test documentation" row field (off by default,
   `filter-bar-types` tag `testDoc`) shows the per-ticket state — accepted (green), draft
   (amber), not-needed (muted FileX), none (faint) — derived server-side into
-  `Ticket.testDocState` on the list payload. Hover/click opens `TestDocMarker`'s card with
-  the actual doc (lazy GET), an "Open review"/"Generate" jump into the review flow, and a
-  "Not needed" quick-mark for missing/draft states. The marker visibility is PER SPRINT
+  `Ticket.testDocState` on the list payload. Clicking the marker (`TestDocMarker`, a plain
+  button) opens the centered review modal. The marker visibility is PER SPRINT
   (`bridge:test-doc-tag-sprints` id set; the Display checkbox toggles the current sprint and
   is disabled on the All view), so the next sprint always starts with markers off. It
   auto-reveals once per sprint on the last working day (`shouldAutoEnableTestDocTag`,
   localStorage flag `bridge:test-doc-tag-auto:<sprintId>`), so switching it off sticks.
+  All board wiring for the feature lives in `useTestDocBoard` (per-sprint set, effective
+  tags, Display override, auto-reveal, both modal states, deprecated-skipping queue opener).
+- **Review modal layout**: the doc renders as markdown by default (Edit toggles the raw
+  textarea; hand-work results open in the editor directly); the story pane
+  (`TestDocStoryPane`) mirrors the ticket sidebar's reading style incl. Jira comments and
+  strips the doc's own expand block from the description; the pane split is draggable and
+  persisted (`bridge:test-doc-split`); the header carries the regular ticket pill.
 
 ### already-built topic (BRDG-287)
 

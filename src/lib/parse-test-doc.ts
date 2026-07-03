@@ -27,6 +27,11 @@ function isClassification(value: unknown): value is TestDocClassification {
   );
 }
 
+/** Coerce untrusted wire input to a classification; anything unknown reads as "ok". */
+export function coerceClassification(value: unknown): TestDocClassification {
+  return isClassification(value) ? value : "ok";
+}
+
 /**
  * Extract and parse the `<test-doc>` block from agent output. Returns null when
  * the block is absent, its JSON is unparseable, or the markdown is empty. An

@@ -32,7 +32,8 @@ import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
 import { usePlaceholders } from "@/hooks/usePlaceholders";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays, scopePlaceholdersToSprintFilter, shouldAutoEnableTestDocTag, readTestDocTagSprints, persistTestDocTagSprints } from "@/components/sprint-board/sprint-board-utils";
+import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays, scopePlaceholdersToSprintFilter } from "@/components/sprint-board/sprint-board-utils";
+import { useTestDocBoard } from "@/components/sprint-board/useTestDocBoard";
 import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint, isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
 import type { SavedView, InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { cycleMetricSort, DEFAULT_SORT } from "@/components/sprint-board/filter-bar-types";
@@ -225,11 +226,6 @@ export default function SprintBoard() {
   const [finishSprintId, setFinishSprintId] = useState<string | null>(null);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [bulkGenerating, setBulkGenerating] = useState(false);
-  // Test-doc generate + validate queue (BRDG-426): non-null opens the split-view
-  // modal; a single key is the row/status-line case, multiple the bulk queue.
-  const [testDocKeys, setTestDocKeys] = useState<string[] | null>(null);
-  // Sprint test-doc bundle modal (BRDG-461): the sprint whose delivery document is open.
-  const [testDocsSprintId, setTestDocsSprintId] = useState<string | null>(null);
   const [flagDialog, setFlagDialog] = useState<{ targets: Set<string> } | null>(null);
   const [flagReason, setFlagReason] = useState("");
   const headerMenuRef = useRef<HTMLDivElement>(null);
@@ -579,45 +575,27 @@ export default function SprintBoard() {
   const sprintWorkDays = useMemo(() => computeSprintWorkDays(activeSprint), [activeSprint]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
 
-  // BRDG-426: the test-doc marker is a PER-SPRINT setting (the delivery check
-  // belongs to one sprint; the next one starts with the marker off). The set
-  // holds the sprint ids where it is on, persisted across sessions.
-  const [testDocSprints, setTestDocSprints] = useState<Set<string>>(() => readTestDocTagSprints());
-  const setTestDocForSprint = useCallback((sprintId: string, on: boolean) => {
-    setTestDocSprints((prev) => {
-      const next = new Set(prev);
-      if (on) next.add(sprintId); else next.delete(sprintId);
-      persistTestDocTagSprints(next);
-      return next;
-    });
-  }, []);
-  // The single-sprint scope the marker toggle applies to; null on the All view
-  // and saved views (no single sprint to scope to — markers stay off there).
-  const testDocScopeSprintId = !isAllView && activeSprint ? activeSprint.id : null;
-  const effectiveVisibleTags = useMemo(() => {
-    const tags = new Set(f.visibleTags);
-    tags.delete("testDoc");
-    if (testDocScopeSprintId && testDocSprints.has(testDocScopeSprintId)) tags.add("testDoc");
-    return tags;
-  }, [f.visibleTags, testDocScopeSprintId, testDocSprints]);
-  const handleColumnToggle = useCallback(
-    (id: InlineTagId, show: boolean) => {
-      if (id === "testDoc") {
-        if (testDocScopeSprintId) setTestDocForSprint(testDocScopeSprintId, show);
-        return;
-      }
-      toggleColumn(id, show);
-    },
-    [testDocScopeSprintId, setTestDocForSprint, toggleColumn],
-  );
-
-  // Reveal the marker automatically once the active sprint enters its last
-  // working day — the moment the delivery check matters. Applied ONCE per
-  // sprint (localStorage flag inside the helper), so switching it off sticks.
-  useEffect(() => {
-    if (!shouldAutoEnableTestDocTag(activeSprint?.id, sprintWorkDays.remaining)) return;
-    setTestDocForSprint(activeSprint!.id, true);
-  }, [activeSprint, sprintWorkDays, setTestDocForSprint]);
+  // Stakeholder test-doc feature wiring (BRDG-426/461): per-sprint marker
+  // visibility, last-day auto-reveal, review queue + sprint bundle modals.
+  const {
+    testDocKeys,
+    setTestDocKeys,
+    testDocsSprintId,
+    setTestDocsSprintId,
+    testDocScopeSprintId,
+    effectiveVisibleTags,
+    handleColumnToggle,
+    openTestDocQueue,
+    handleSprintTestDocs,
+  } = useTestDocBoard({
+    isAllView,
+    activeSprint,
+    remainingWorkDays: sprintWorkDays.remaining,
+    visibleTags: f.visibleTags,
+    toggleColumn,
+    allTickets,
+    showToast,
+  });
 
   // The flat (ungrouped) list creates into one concrete target: the open sprint, or
   // the backlog. Suppressed for the All view and saved views, where the flat list spans
@@ -807,23 +785,6 @@ export default function SprintBoard() {
     setEditSprintId(sprintId);
     setEditModalOpen(true);
   }, []);
-  // Sprint test-documentation bundle (BRDG-461), from any sprint "..." menu.
-  const handleSprintTestDocs = useCallback((sprintId: string) => {
-    setTestDocsSprintId(sprintId);
-  }, []);
-  // Deprecated work never needs delivery documentation: every entry point into
-  // the generate/validate queue silently drops those keys (BRDG-426).
-  const openTestDocQueue = useCallback((keys: string[]) => {
-    const eligible = keys.filter((k) => {
-      const t = allTickets.find((x) => x.key === k);
-      return !t || t.jiraStatus !== "DEPRECATED";
-    });
-    if (eligible.length === 0) {
-      showToast("Deprecated tickets don't get test documentation");
-      return;
-    }
-    setTestDocKeys(eligible);
-  }, [allTickets, showToast]);
   const handleCloseSprintFromGroup = useCallback((sprintId: string) => {
     const target = sprints.find((s) => s.id === sprintId) ?? null;
     const workDays = computeSprintWorkDays(target);
