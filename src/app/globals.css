@@ -150,13 +150,18 @@
   --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--color-overlay-subtle);
 
   /* Z-index scale. Tailwind v4 generates z-* utilities from the --z-index-*
-     namespace; the bare --z-* aliases are kept for direct var() usage in inline styles. */
+     namespace; the bare --z-* aliases are kept for direct var() usage in inline styles.
+     `popover` sits between modal and tooltip: portal pickers/menus opened from
+     inside a modal must float above it, while tooltips stay above everything
+     but notifications (BRDG-428/429). */
   --z-index-dropdown: 50;
   --z-index-modal: 60;
+  --z-index-popover: 65;
   --z-index-tooltip: 70;
   --z-index-notification: 80;
   --z-dropdown: var(--z-index-dropdown);
   --z-modal: var(--z-index-modal);
+  --z-popover: var(--z-index-popover);
   --z-tooltip: var(--z-index-tooltip);
   --z-notification: var(--z-index-notification);
 

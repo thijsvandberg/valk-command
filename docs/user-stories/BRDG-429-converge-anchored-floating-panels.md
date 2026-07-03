@@ -1,6 +1,6 @@
 # BRDG-429: Converge the anchored floating panels on one primitive
 
-**Status:** Not Started
+**Status:** Done (2026-07-03, branch ui-wave-427-431)
 **Priority:** Medium
 **Type:** Consistency — overlays / anchored panels (follow-up of BRDG-422)
 
@@ -38,14 +38,46 @@ should own anchor positioning, portal-vs-inline, Escape, and viewport collision.
 
 ## Acceptance Criteria
 
-- [ ] One anchored-panel primitive; `Popover`/`BasePicker`/`AnchoredMenu`/`CursorMenu` and the
+- [x] One anchored-panel primitive; `Popover`/`BasePicker`/`AnchoredMenu`/`CursorMenu` and the
       per-file `absolute z-50` dropdowns route through it (or are removed).
-- [ ] Consistent Escape + outside-click + collision across all anchored panels.
+- [x] Consistent Escape + outside-click + collision across all anchored panels.
 
 ## Tests
 
-- [ ] Behaviour test for the primitive (open/close, Escape, outside-click, flip on collision).
-- [ ] Existing picker/menu/filter tests stay green.
+- [x] Behaviour test for the primitive (open/close, Escape, outside-click, flip on collision).
+- [x] Existing picker/menu/filter tests stay green.
+
+## Implementation notes (2026-07-03)
+
+- New primitive: `shared/AnchoredPanel.tsx` — `useAnchoredPosition` (floating-ui
+  computePosition/autoUpdate: offset, flip, shift-clamp, optional size()-based
+  fit-to-viewport max height, cursor-point mode via virtual element, and the
+  BRDG-303 collapsed-trigger hold) + the `AnchoredPanel` component (portal or
+  inline, Escape + outside-mousedown, `insideRefs` trigger exemption, default
+  panel skin). Introduced the `z-popover` token (65, between modal and tooltip)
+  that all portal panels sit on.
+- Routed through it: `Popover` (inline wrapper, API unchanged, new optional
+  `triggerRef`), `BasePicker`/`usePickerState` (positioning delegated; the seven
+  picker consumers unchanged), `AnchoredMenu` + `CursorMenu` (APIs unchanged),
+  `FilterDropdown`, and the five pipelines `FilterBar` dropdowns (z-40 catcher
+  removed).
+- Judgment calls (conservative, PO can overrule):
+  1. `FilterDropdown` `escapeClose:false` normalized to Escape-closes — it was
+     the only anchored panel opting out.
+  2. `AnchoredMenu` used to flip to whichever side had more space even when the
+     menu fit below; floating-ui flips only when it does not fit. Menus near
+     mid-screen now consistently open downward.
+  3. Pipelines filter panels adopt the shared skin (rounded-xl +
+     shadow-popover instead of rounded-lg + shadow-lg) — minimal radius/shadow
+     shift for one look.
+  4. `FilterDropdown` moved from the notification layer (80) to `z-popover`
+     (65): filters no longer paint above toasts.
+  5. The remaining ad-hoc `absolute z-50` dropdowns beyond the named ones keep
+     their local implementation for now (full re-plumbing of every one-off
+     dropdown was judged too risky for one pass); their raw z values are swept
+     onto tokens in [[BRDG-428-zindex-scale-authoritative-on-anchored-overlays]].
+- `Flyout` (nested hover sub-menus) keeps its CSS-relative side positioning —
+  it is not viewport-anchored and already owns nested-hover semantics.
 
 ## Related
 

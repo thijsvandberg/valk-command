@@ -36,9 +36,12 @@ describe("BRDG-422: z-index inversions are fixed", () => {
     expect(src).toContain("z-modal");
   });
 
-  it("the shared Popover uses token z + popover shadow", () => {
-    const src = read("src/components/shared/Popover.tsx");
+  it("the shared anchored-panel primitive uses token z + popover shadow", () => {
+    // Popover delegates to AnchoredPanel since BRDG-429; the inline skin
+    // (z-dropdown + shadow-popover) lives in the primitive.
+    const src = read("src/components/shared/AnchoredPanel.tsx");
     expect(src).toContain("z-dropdown");
+    expect(src).toContain("z-popover");
     expect(src).toContain("shadow-popover");
   });
 });

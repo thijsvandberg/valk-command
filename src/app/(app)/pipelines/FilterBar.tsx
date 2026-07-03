@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Filter, ChevronDown, Calendar, User, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Popover } from "@/components/shared/Popover";
 import type { StatusFilterValue, DateRangeValue } from "./pipeline-helpers";
+
+// All five filter dropdowns render through the shared Popover primitive
+// (BRDG-429): one dismissal/positioning behaviour, no per-file z-40 catcher.
 
 // -- Status Filter --
 
@@ -15,6 +19,7 @@ export function StatusFilter({
   onSelect: (v: StatusFilterValue) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const options: { value: StatusFilterValue; label: string }[] = [
     { value: "all", label: "All statuses" },
@@ -27,7 +32,7 @@ export function StatusFilter({
   const current = options.find((o) => o.value === selected) ?? options[0];
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <Button
         variant="ghost"
         size="md"
@@ -39,25 +44,20 @@ export function StatusFilter({
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
-      {open && (
-        <>
-          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[170px] rounded-lg border border-border-strong bg-surface-floating shadow-lg py-1">
-            {options.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => { onSelect(opt.value); setOpen(false); }}
-                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <Popover open={open} onClose={() => setOpen(false)} align="right" offsetClass="mt-1" triggerRef={rootRef} className="min-w-[170px] py-1">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => { onSelect(opt.value); setOpen(false); }}
+            className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </Popover>
     </div>
   );
 }
@@ -72,6 +72,7 @@ export function DateRangeFilter({
   onSelect: (v: DateRangeValue) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const options: { value: DateRangeValue; label: string }[] = [
     { value: "all", label: "All time" },
@@ -83,7 +84,7 @@ export function DateRangeFilter({
   const current = options.find((o) => o.value === selected) ?? options[0];
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <Button
         variant="ghost"
         size="md"
@@ -95,25 +96,20 @@ export function DateRangeFilter({
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
-      {open && (
-        <>
-          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg border border-border-strong bg-surface-floating shadow-lg py-1">
-            {options.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => { onSelect(opt.value); setOpen(false); }}
-                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                  selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <Popover open={open} onClose={() => setOpen(false)} align="right" offsetClass="mt-1" triggerRef={rootRef} className="min-w-[150px] py-1">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => { onSelect(opt.value); setOpen(false); }}
+            className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </Popover>
     </div>
   );
 }
@@ -133,6 +129,7 @@ export function CreatorFilter({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
 
   if (creators.length === 0) return null;
 
@@ -147,7 +144,7 @@ export function CreatorFilter({
     : `${selected.length} creators`;
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <Button
         variant="ghost"
         size="md"
@@ -159,59 +156,61 @@ export function CreatorFilter({
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
-      {open && (
-        <>
-          <div aria-hidden className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-border-strong bg-surface-floating shadow-lg overflow-hidden">
-            {/* Search */}
-            <div className="px-2 py-2 border-b border-border-default">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-overlay-subtle">
-                <Search size={11} strokeWidth={1.5} className="text-text-muted shrink-0" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search creators..."
-                  autoFocus
-                  className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-y-auto max-h-[260px] py-1">
-              {selected.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => { onClear(); }}
-                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                >
-                  Clear selection
-                </button>
-              )}
-              {filtered.map((name) => {
-                const isChecked = selected.includes(name);
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => onToggle(name)}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                      isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
-                    }`}
-                  >
-                    <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
-                      isChecked ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-border-strong"
-                    }`}>
-                      {isChecked && "\u2713"}
-                    </span>
-                    {name}
-                  </button>
-                );
-              })}
-            </div>
+      <Popover
+        open={open}
+        onClose={() => { setOpen(false); setSearch(""); }}
+        align="right"
+        offsetClass="mt-1"
+        triggerRef={rootRef}
+        className="min-w-[200px]"
+      >
+        {/* Search */}
+        <div className="px-2 py-2 border-b border-border-default">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-overlay-subtle">
+            <Search size={11} strokeWidth={1.5} className="text-text-muted shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search creators..."
+              autoFocus
+              className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted outline-none"
+            />
           </div>
-        </>
-      )}
+        </div>
+
+        <div className="overflow-y-auto max-h-[260px] py-1">
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { onClear(); }}
+              className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              Clear selection
+            </button>
+          )}
+          {filtered.map((name) => {
+            const isChecked = selected.includes(name);
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => onToggle(name)}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                  isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
+                }`}
+              >
+                <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
+                  isChecked ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-border-strong"
+                }`}>
+                  {isChecked && "\u2713"}
+                </span>
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      </Popover>
     </div>
   );
 }
@@ -228,11 +227,12 @@ export function RepoFilter({
   onSelect: (repo: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   if (repos.length <= 1) return null;
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <Button
         variant="ghost"
         size="md"
@@ -244,34 +244,29 @@ export function RepoFilter({
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
-      {open && (
-        <>
-          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border-strong bg-surface-floating shadow-lg py-1">
-            <button
-              type="button"
-              onClick={() => { onSelect(null); setOpen(false); }}
-              className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
-              }`}
-            >
-              All repos
-            </button>
-            {repos.map((repo) => (
-              <button
-                key={repo}
-                type="button"
-                onClick={() => { onSelect(repo); setOpen(false); }}
-                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                  selected === repo ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
-                }`}
-              >
-                {repo}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <Popover open={open} onClose={() => setOpen(false)} align="right" offsetClass="mt-1" triggerRef={rootRef} className="min-w-[160px] py-1">
+        <button
+          type="button"
+          onClick={() => { onSelect(null); setOpen(false); }}
+          className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+            !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
+          }`}
+        >
+          All repos
+        </button>
+        {repos.map((repo) => (
+          <button
+            key={repo}
+            type="button"
+            onClick={() => { onSelect(repo); setOpen(false); }}
+            className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              selected === repo ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
+            }`}
+          >
+            {repo}
+          </button>
+        ))}
+      </Popover>
     </div>
   );
 }
@@ -291,6 +286,7 @@ export function SprintFilter({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const selectedSet = new Set(selected);
 
@@ -340,7 +336,7 @@ export function SprintFilter({
   }
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <Button
         variant="ghost"
         size="md"
@@ -352,58 +348,60 @@ export function SprintFilter({
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
       </Button>
 
-      {open && (
-        <>
-          <div aria-hidden className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-border-strong bg-surface-floating shadow-lg overflow-hidden">
-            {/* Search */}
-            <div className="px-2 py-2 border-b border-border-default">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-overlay-subtle">
-                <Search size={11} strokeWidth={1.5} className="text-text-muted shrink-0" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search sprints..."
-                  autoFocus
-                  className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-y-auto max-h-[300px] py-1">
-              {/* Clear button */}
-              {selected.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => { onClear(); }}
-                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                >
-                  Clear selection
-                </button>
-              )}
-
-              {/* Selected sprints not in the standard list */}
-              {filtered(selectedNotVisible).map((s) => renderItem(s))}
-              {filtered(selectedNotVisible).length > 0 && (filtered(current).length > 0 || filtered(closed).length > 0) && (
-                <div className="mx-3 my-1 border-t border-border-default" />
-              )}
-
-              {/* Active / future */}
-              {filtered(current).map((s) => renderItem(s))}
-
-              {/* Closed */}
-              {filtered(closed).length > 0 && (
-                <>
-                  <div className="mx-3 my-1 border-t border-border-default" />
-                  <span className="block px-3 py-1 text-caption font-medium text-text-muted uppercase tracking-wider">Recent</span>
-                  {filtered(closed).map((s) => renderItem(s, true))}
-                </>
-              )}
-            </div>
+      <Popover
+        open={open}
+        onClose={() => { setOpen(false); setSearch(""); }}
+        align="right"
+        offsetClass="mt-1"
+        triggerRef={rootRef}
+        className="min-w-[220px]"
+      >
+        {/* Search */}
+        <div className="px-2 py-2 border-b border-border-default">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-overlay-subtle">
+            <Search size={11} strokeWidth={1.5} className="text-text-muted shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search sprints..."
+              autoFocus
+              className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted outline-none"
+            />
           </div>
-        </>
-      )}
+        </div>
+
+        <div className="overflow-y-auto max-h-[300px] py-1">
+          {/* Clear button */}
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { onClear(); }}
+              className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              Clear selection
+            </button>
+          )}
+
+          {/* Selected sprints not in the standard list */}
+          {filtered(selectedNotVisible).map((s) => renderItem(s))}
+          {filtered(selectedNotVisible).length > 0 && (filtered(current).length > 0 || filtered(closed).length > 0) && (
+            <div className="mx-3 my-1 border-t border-border-default" />
+          )}
+
+          {/* Active / future */}
+          {filtered(current).map((s) => renderItem(s))}
+
+          {/* Closed */}
+          {filtered(closed).length > 0 && (
+            <>
+              <div className="mx-3 my-1 border-t border-border-default" />
+              <span className="block px-3 py-1 text-caption font-medium text-text-muted uppercase tracking-wider">Recent</span>
+              {filtered(closed).map((s) => renderItem(s, true))}
+            </>
+          )}
+        </div>
+      </Popover>
     </div>
   );
 }

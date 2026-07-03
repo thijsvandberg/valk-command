@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { AnchoredPanel } from "@/components/shared/AnchoredPanel";
 import { Checkbox } from "@/components/shared/Checkbox";
-import { createPortal } from "react-dom";
 import { ChevronDown, X, Search } from "lucide-react";
 
 export interface FilterDropdownProps {
@@ -45,12 +44,8 @@ export function FilterDropdown({
 }: FilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left?: number; right?: number }>({ top: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-
-  useOutsideClick([triggerRef, dropdownRef], () => { setOpen(false); setSearch(""); }, { enabled: open, escapeClose: false });
 
   useEffect(() => {
     if (open && searchable) {
@@ -60,14 +55,6 @@ export function FilterDropdown({
 
   function toggleOpen() {
     const next = !open;
-    if (next && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setDropdownPos(
-        align === "right"
-          ? { top: rect.bottom + 6, right: window.innerWidth - rect.right }
-          : { top: rect.bottom + 6, left: rect.left },
-      );
-    }
     setOpen(next);
     if (!next) setSearch("");
   }
@@ -83,16 +70,19 @@ export function FilterDropdown({
 
   const isActive = selected.size > 0;
 
+  // Positioning, scroll tracking, Escape and outside-click come from the
+  // shared AnchoredPanel primitive (BRDG-429). Escape-close is normalized on:
+  // this dropdown was the only anchored panel that opted out.
   const dropdownPanel = (
-    <div
-      ref={dropdownRef}
-      className={`fixed ${widthClass} rounded-xl border border-border-strong bg-surface-floating shadow-xl`}
-      style={{
-        zIndex: "var(--z-notification)",
-        top: dropdownPos.top,
-        left: dropdownPos.left,
-        right: dropdownPos.right,
-      }}
+    <AnchoredPanel
+      open={open}
+      onClose={() => { setOpen(false); setSearch(""); }}
+      anchorRef={triggerRef}
+      placement={align === "right" ? "bottom-end" : "bottom-start"}
+      gap={6}
+      insideRefs={[triggerRef]}
+      unstyled
+      className={`${widthClass} rounded-xl border border-border-strong bg-surface-floating shadow-xl`}
     >
       {/* Search + clear header */}
       {searchable && (
@@ -207,7 +197,7 @@ export function FilterDropdown({
           );
         })}
       </div>
-    </div>
+    </AnchoredPanel>
   );
 
   return (
@@ -238,7 +228,7 @@ export function FilterDropdown({
         />
       </button>
 
-      {open && typeof document !== "undefined" && createPortal(dropdownPanel, document.body)}
+      {dropdownPanel}
     </div>
   );
 }

@@ -5,7 +5,6 @@ import {
   useContext,
   useState,
   useRef,
-  useEffect,
   useCallback,
   type ReactNode,
   type RefObject,
@@ -13,7 +12,7 @@ import {
 } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom";
+import { useAnchoredPosition } from "@/components/shared/AnchoredPanel";
 import { Check, Search } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -56,52 +55,27 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
   } = opts;
 
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<PickerPosition | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const popoverRef = useRef<HTMLDivElement | null>(null);
-  // True once the trigger has been measured with a real layout box. A trigger
-  // inside a hover-reveal slot (HoverRevealSlot) collapses to a 0x0 box when its
-  // row loses :hover - which happens the moment the cursor moves onto the open
-  // popover. Repositioning against a 0x0 reference snaps the popover to the
-  // top-left corner, so once measured we stop repositioning while collapsed and
-  // hold the last good position (BRDG-303). Before the first real measurement
-  // (e.g. jsdom, which never lays out) we always compute.
-  const hasMeasuredRef = useRef(false);
 
-  // start/end anchor the popover to the trigger's matching edge; flip() handles
-  // the vertical axis (top vs bottom) and shift() clamps it back into the
-  // viewport on the horizontal axis, so a trigger near any edge stays visible.
-  const placement = align === "left" ? "bottom-start" : "bottom-end";
-
-  const updatePosition = useCallback(() => {
-    const trigger = triggerRef.current;
-    const popover = popoverRef.current;
-    if (!trigger || !popover) return;
-    const rect = trigger.getBoundingClientRect();
-    const collapsed = rect.width === 0 && rect.height === 0;
-    if (collapsed && hasMeasuredRef.current) return;
-    if (!collapsed) hasMeasuredRef.current = true;
-    void computePosition(trigger, popover, {
-      strategy: "fixed",
-      placement,
-      middleware: [offset(4), flip(), shift({ padding: 4 })],
-    }).then(({ x, y }) => {
-      // Ignore a resolution that lands after the popover has unmounted.
-      if (popoverRef.current) setPos({ x, y });
-    });
-  }, [placement]);
+  // Positioning (floating-ui: flip/shift collision, scroll tracking, and the
+  // collapsed-trigger hold for hover-reveal slots) lives in the shared
+  // anchored-panel primitive (BRDG-429).
+  const { panelRef: popoverRef, pos, seed } = useAnchoredPosition({
+    anchorRef: triggerRef,
+    placement: align === "left" ? "bottom-start" : "bottom-end",
+    gap: 4,
+    shiftPadding: 4,
+    enabled: open && portal,
+  });
 
   const handleOpen = useCallback(() => {
     // Seed a provisional position from the trigger rect so the portal popover
     // mounts immediately (render is gated on `pos`); autoUpdate then corrects it
     // to the collision-aware position once the element can be measured.
-    if (portal && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setPos({ x: rect.left, y: rect.bottom + 4 });
-    }
+    if (portal) seed();
     setOpen(true);
     onOpen?.();
-  }, [portal, onOpen]);
+  }, [portal, seed, onOpen]);
 
   const handleClose = useCallback(() => {
     setOpen(false);
@@ -109,16 +83,6 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
   }, [onClose]);
 
   useOutsideClick([triggerRef, popoverRef], () => { setOpen(false); onClose?.(); }, { enabled: open });
-
-  // Keep the popover anchored on scroll, resize, and trigger/popover resize
-  // (portal mode only). autoUpdate fires the first measured pass immediately.
-  useEffect(() => {
-    if (!open || !portal) return;
-    const trigger = triggerRef.current;
-    const popover = popoverRef.current;
-    if (!trigger || !popover) return;
-    return autoUpdate(trigger, popover, updatePosition);
-  }, [open, portal, updatePosition]);
 
   const getPopoverStyle = useCallback((): CSSProperties => {
     if (!pos) return {};
@@ -268,7 +232,7 @@ function PickerPopover({ children, width = "w-[240px]", className, style, header
   const content = (
     <div
       ref={popoverRef}
-      className={`${portal ? "fixed z-[9999]" : `absolute top-full ${align === "left" ? "left-0" : "right-0"} z-50 mt-1.5`} ${width} rounded-xl border border-border-default bg-surface-floating${className ? ` ${className}` : ""}`}
+      className={`${portal ? "fixed z-popover" : `absolute top-full ${align === "left" ? "left-0" : "right-0"} z-dropdown mt-1.5`} ${width} rounded-xl border border-border-default bg-surface-floating${className ? ` ${className}` : ""}`}
       style={portal ? { ...getPopoverStyle(), ...style } : style}
     >
       {header}

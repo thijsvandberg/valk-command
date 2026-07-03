@@ -5,13 +5,17 @@
 // The composer and the row-action consumers import these from here.
 
 import { useState, useRef, useLayoutEffect, type ReactNode, type RefObject } from "react";
-import { createPortal } from "react-dom";
 import type { QuickMoveOption } from "@/lib/quick-moves";
 import { ArrowRight, Inbox, ChevronRight } from "lucide-react";
-import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { AnchoredPanel } from "@/components/shared/AnchoredPanel";
 import { Card } from "@/components/shared/Card";
 import { MenuItem } from "@/components/shared/MenuItem";
 
+/**
+ * Trigger-anchored portal menu. Positioning/collision comes from the shared
+ * AnchoredPanel primitive (BRDG-429); dismissal stays with the caller, which
+ * owns the open state and outside-click via the passed `menuRef`.
+ */
 export function AnchoredMenu({
   anchorRef,
   menuRef,
@@ -23,45 +27,24 @@ export function AnchoredMenu({
   width: string;
   children: ReactNode;
 }) {
-  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number; maxHeight: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const el = anchorRef.current;
-    if (!el) return;
-    const update = () => {
-      const r = el.getBoundingClientRect();
-      const spaceAbove = r.top;
-      const spaceBelow = window.innerHeight - r.bottom;
-      const flipUp = spaceAbove >= spaceBelow;
-      // Clamp horizontally so the panel never runs off the right edge (the bar's
-      // right-most dropdowns would otherwise overflow). Nested flyouts then flip
-      // their own side from the clamped position.
-      const menuWidth = parseInt(/\d+/.exec(width)?.[0] ?? "300", 10);
-      const margin = 8;
-      const left = Math.max(margin, Math.min(r.left, window.innerWidth - menuWidth - margin));
-      setPos({
-        left,
-        ...(flipUp ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
-        maxHeight: (flipUp ? spaceAbove : spaceBelow) - 16,
-      });
-    };
-    update();
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-    };
-  }, [anchorRef, width]);
-
-  if (!pos) return null;
-  return createPortal(
-    <div ref={menuRef} role="menu" className="fixed z-[9999]" style={{ left: pos.left, top: pos.top, bottom: pos.bottom }}>
-      <Card variant="floating" className={`${width} overflow-visible py-1`} style={{ maxHeight: pos.maxHeight }}>
-        {children}
-      </Card>
-    </div>,
-    document.body,
+  return (
+    <AnchoredPanel
+      open
+      anchorRef={anchorRef}
+      placement="bottom-start"
+      gap={6}
+      fitViewport
+      dismissable={false}
+      panelRef={menuRef}
+      role="menu"
+      unstyled
+    >
+      {({ maxHeight }) => (
+        <Card variant="floating" className={`${width} overflow-visible py-1`} style={{ maxHeight: maxHeight ?? undefined }}>
+          {children}
+        </Card>
+      )}
+    </AnchoredPanel>
   );
 }
 
@@ -70,10 +53,10 @@ export function AnchoredMenu({
 // ---------------------------------------------------------------------------
 
 /**
- * Renders menu content in a portal at a fixed cursor position. Clamps within
- * the viewport, flipping left/up when the menu would overflow the right/bottom
- * edge. Closes on outside mousedown and Escape. Same floating-card styling as
- * AnchoredMenu so both menu surfaces look identical.
+ * Renders menu content in a portal at a fixed cursor position. Viewport
+ * clamping/flip and dismissal (outside mousedown + Escape) come from the
+ * shared AnchoredPanel primitive. Same floating-card styling as AnchoredMenu
+ * so both menu surfaces look identical.
  */
 export function CursorMenu({
   x,
@@ -88,47 +71,23 @@ export function CursorMenu({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
-
-  useOutsideClick(ref, onClose);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => {
-      const rect = el.getBoundingClientRect();
-      const margin = 8;
-      const left = x + rect.width + margin > window.innerWidth ? Math.max(margin, x - rect.width) : x;
-      const spaceBelow = window.innerHeight - y;
-      const flipUp = rect.height + margin > spaceBelow && y > spaceBelow;
-      const top = flipUp ? Math.max(margin, y - rect.height) : y;
-      const maxHeight = (flipUp ? y : spaceBelow) - margin * 2;
-      setPos({ left, top, maxHeight });
-    };
-    update();
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-    };
-  }, [x, y]);
-
-  // Render at the raw cursor point first (invisible) so the effect can measure
-  // the menu's own size, then reposition with viewport clamping/flip applied.
-  return createPortal(
-    <div
-      ref={ref}
+  return (
+    <AnchoredPanel
+      open
+      onClose={onClose}
+      point={{ x, y }}
+      placement="bottom-start"
+      gap={0}
+      fitViewport
       role="menu"
-      className="fixed z-[9999]"
-      style={{ left: pos?.left ?? x, top: pos?.top ?? y, visibility: pos ? "visible" : "hidden" }}
+      unstyled
     >
-      <Card variant="floating" className={`${width} overflow-visible py-1`} style={{ maxHeight: pos?.maxHeight }}>
-        {children}
-      </Card>
-    </div>,
-    document.body,
+      {({ maxHeight }) => (
+        <Card variant="floating" className={`${width} overflow-visible py-1`} style={{ maxHeight: maxHeight ?? undefined }}>
+          {children}
+        </Card>
+      )}
+    </AnchoredPanel>
   );
 }
 
