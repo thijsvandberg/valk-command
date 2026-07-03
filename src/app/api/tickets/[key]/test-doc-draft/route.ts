@@ -7,7 +7,7 @@ import { ticket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
-import { isDraftKey } from "@/lib/draft-key";
+import { guardTestDocDraftKey } from "@/lib/test-doc-routes";
 import { coerceClassification } from "@/lib/parse-test-doc";
 import { writeTestDocDraft } from "@/lib/test-doc-background";
 
@@ -30,9 +30,8 @@ export async function PUT(
   const invalid = validatePathParam(rawKey);
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
-  if (isDraftKey(key)) {
-    return errorResponse("Cannot cache test documentation for a draft ticket", 409);
-  }
+  const draftBlocked = guardTestDocDraftKey(key, "cache");
+  if (draftBlocked) return draftBlocked;
 
   const parsed = await parseJsonBody(request);
   if ("error" in parsed) return parsed.error;

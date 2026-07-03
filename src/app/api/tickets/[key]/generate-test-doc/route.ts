@@ -6,7 +6,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { agentFetch } from "@/lib/agent-fetch";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
-import { isDraftKey } from "@/lib/draft-key";
+import { guardTestDocDraftKey } from "@/lib/test-doc-routes";
 import { logger } from "@/lib/logger";
 import { persistTestDocDraftWhenDone } from "@/lib/test-doc-background";
 
@@ -31,9 +31,8 @@ export async function POST(
 
   const { key: rawKey } = await params;
   const key = resolveDraftKey(rawKey);
-  if (isDraftKey(key)) {
-    return errorResponse("Cannot generate test documentation for a draft ticket", 409);
-  }
+  const draftBlocked = guardTestDocDraftKey(key, "generate");
+  if (draftBlocked) return draftBlocked;
 
   const ticketRow = await db
     .select({
