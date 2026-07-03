@@ -5,6 +5,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 // makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
 import { useSWRConfig } from "swr";
 import { Modal } from "@/components/shared/Modal";
+import { Field } from "@/components/shared/Field";
+import { TextInput } from "@/components/shared/TextInput";
+import { TextArea } from "@/components/shared/TextArea";
 import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
 import { jira } from "@/lib/api-client";
@@ -120,23 +123,16 @@ export function CreateSprintModal({
         {/* Body */}
         <div className="space-y-3.5 px-5 py-4">
           {/* Sprint name */}
-          <label className="block space-y-1">
-            <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-              <Type size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-              Sprint name
-            </span>
-            <input
+          <Field label="Sprint name" icon={<Type size={11} strokeWidth={1.5} />}>
+            <TextInput
               ref={nameRef}
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setError(null); }}
               onKeyDown={(e) => { if (e.key === "Enter" && name.trim() && !creating) handleCreate(); }}
               placeholder="e.g. Sprint 42"
-              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm text-text-primary
-                placeholder:text-text-muted
-                focus:border-[var(--color-brand-500)]/50 focus:outline-none transition-colors duration-100"
             />
-          </label>
+          </Field>
 
           {/* Context: the regular sprint this one follows (BRDG-305 follow-up) */}
           {previousSprintName && (
@@ -151,11 +147,7 @@ export function CreateSprintModal({
 
           {/* Date fields */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-                Start date
-              </span>
+            <Field as="div" label="Start date" icon={<Calendar size={11} strokeWidth={1.5} />}>
               <DateTimePicker
                 value={startDate}
                 onChange={setStartDate}
@@ -163,19 +155,15 @@ export function CreateSprintModal({
                 placeholder="Pick a date"
                 closeOnSelect
               />
-            </div>
-            <div className="space-y-1">
-              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-                End date
-              </span>
+            </Field>
+            <Field as="div" label="End date" icon={<Calendar size={11} strokeWidth={1.5} />}>
               <DateTimePicker
                 value={endDate}
                 onChange={setEndDate}
                 ariaLabel="End date"
                 placeholder="Pick a date"
               />
-            </div>
+            </Field>
           </div>
 
           {/* Sprint length + the conventional end suggestion when the end diverges */}
@@ -207,21 +195,15 @@ export function CreateSprintModal({
           )}
 
           {/* Goal field */}
-          <label className="block space-y-1">
-            <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-              <Target size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-              Sprint goal
-            </span>
-            <textarea
+          <Field label="Sprint goal" icon={<Target size={11} strokeWidth={1.5} />}>
+            <TextArea
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               placeholder="Describe the sprint's primary objective..."
               rows={3}
-              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm leading-relaxed text-text-primary
-                placeholder:text-text-muted resize-none
-                focus:border-[var(--color-brand-500)]/50 focus:outline-none transition-colors duration-100"
+              className="resize-none"
             />
-          </label>
+          </Field>
 
           {/* Inline error */}
           {error && (

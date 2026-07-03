@@ -1,6 +1,6 @@
 # BRDG-427: Migrate hand-rolled form fields onto the shared primitives + a Field wrapper
 
-**Status:** Not Started
+**Status:** Done (2026-07-03, branch ui-wave-427-431)
 **Priority:** Medium
 **Type:** Consistency — form controls (follow-up of BRDG-420)
 
@@ -58,15 +58,32 @@ Other drift to finish:
 
 ## Acceptance Criteria
 
-- [ ] The listed modal/settings fields render via `TextInput`/`TextArea`/`Select`.
-- [ ] A shared `Field` wrapper exists (label + error + disabled) and is used by the migrated forms.
-- [ ] One placeholder syntax and one disabled-opacity value across the migrated forms.
-- [ ] The specialized SP number inputs and the borderless-search inputs are deliberately left as-is.
+- [x] The listed modal/settings fields render via `TextInput`/`TextArea`/`Select`.
+- [x] A shared `Field` wrapper exists (label + error + disabled) and is used by the migrated forms.
+- [x] One placeholder syntax and one disabled-opacity value across the migrated forms.
+- [x] The specialized SP number inputs and the borderless-search inputs are deliberately left as-is.
 
 ## Tests
 
-- [ ] Render test for `Field` (label, error text, disabled).
-- [ ] Existing modal/form tests stay green (update className assertions where the recipe changed).
+- [x] Render test for `Field` (label, error text, disabled).
+- [x] Existing modal/form tests stay green (update className assertions where the recipe changed).
+
+## Implementation notes (2026-07-03)
+
+Evidence drift found at pickup and resolved as follows:
+- `CreateSessionModal.tsx` already used shared `TextInput` (done earlier) — dropped from scope.
+- `DateTimePicker.tsx:220` is a button trigger with correct focus-visible treatment, not a
+  text field — dropped. Its internal time input (`:347`) was normalized to the canonical
+  values (`focus:border .../40`, `disabled:opacity-50`) without changing its specialized layout.
+- Migrated: `CreateEpicModal`, `CreateSprintModal`, `SprintEditModal`, `SubFlowForm`
+  (palette sub-form; its labels now use the standard Field label style instead of the
+  smaller tertiary variant — judgment call, one look).
+- `Field` supports `icon`, `hint`, `labelEnd` (right-aligned action; forces a div container
+  because interactive content inside a label misfires activation) and `as="div"` for
+  button-based controls like `DateTimePicker`.
+- Placeholder sweep: the six files still on the dead v2 syntax `placeholder-text-muted`
+  (no effect in Tailwind v4) now use `placeholder:text-text-muted` — placeholders in
+  palette/search inputs pick up the intended muted color as a side effect.
 
 ## Related
 

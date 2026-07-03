@@ -346,7 +346,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
                 }}
                 className="w-20 rounded-md border border-border-default bg-surface-elevated px-2 py-1 text-center text-body-sm tabular-nums text-text-primary
                   placeholder:text-text-muted
-                  focus:border-[var(--color-brand-500)]/50 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed
+                  focus:border-[var(--color-brand-500)]/40 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed
                   transition-colors duration-100"
               />
               {timeDraft && (

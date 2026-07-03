@@ -1,8 +1,11 @@
 "use client";
 
 import React from "react";
-import { Plus, Link, ChevronDown, ArrowRight } from "lucide-react";
+import { Plus, Link, ArrowRight } from "lucide-react";
 
+import { Field } from "@/components/shared/Field";
+import { TextInput } from "@/components/shared/TextInput";
+import { Select } from "@/components/shared/Select";
 import type { SubFlowState } from "./types";
 
 export interface SubFlowFormProps {
@@ -59,66 +62,51 @@ export function SubFlowForm({
       {/* Create new form */}
       {subFlow.mode === "create" && (
         <div className="mb-4 space-y-3">
-          <div>
-            <label className="mb-1.5 block text-label font-medium text-text-tertiary">
-              Story title
-            </label>
-            <input
+          <Field label="Story title">
+            <TextInput
               ref={subFlowInputRef}
               type="text"
               value={subFlow.title}
               onChange={(e) => onTitleChange(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-floating px-3 py-2 text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="Story title (optional, AI will suggest)"
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-label font-medium text-text-tertiary">
-              Sprint
-            </label>
-            <div className="relative">
-              <select
-                aria-label="Sprint"
-                value={subFlow.sprintId}
-                onChange={(e) => onSprintChange(e.target.value)}
-                className="w-full appearance-none rounded-md border border-border-strong bg-surface-floating px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
-              >
-                {subFlow.loadingSprints ? (
-                  <option value="">Loading sprints...</option>
-                ) : subFlow.sprints.length === 0 ? (
-                  <option value="">No sprints configured</option>
-                ) : (
-                  subFlow.sprints.map((s) => (
-                    <option key={s.sprintId} value={s.sprintId}>
-                      {s.sprintName}
-                    </option>
-                  ))
-                )}
-              </select>
-              <ChevronDown
-                size={13}
-                strokeWidth={1.5}
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
-              />
-            </div>
-          </div>
+          </Field>
+          <Field label="Sprint">
+            <Select
+              aria-label="Sprint"
+              value={subFlow.sprintId}
+              onChange={(e) => onSprintChange(e.target.value)}
+              className="cursor-pointer"
+            >
+              {subFlow.loadingSprints ? (
+                <option value="">Loading sprints...</option>
+              ) : subFlow.sprints.length === 0 ? (
+                <option value="">No sprints configured</option>
+              ) : (
+                subFlow.sprints.map((s) => (
+                  <option key={s.sprintId} value={s.sprintId}>
+                    {s.sprintName}
+                  </option>
+                ))
+              )}
+            </Select>
+          </Field>
         </div>
       )}
 
       {/* Use existing form */}
       {subFlow.mode === "existing" && (
         <div className="mb-4">
-          <label className="mb-1.5 block text-label font-medium text-text-tertiary">
-            Ticket key
-          </label>
-          <input
-            ref={subFlowInputRef}
-            type="text"
-            value={subFlow.existingKey}
-            onChange={(e) => onExistingKeyChange(e.target.value.toUpperCase())}
-            className="w-full rounded-md border border-border-strong bg-surface-floating px-3 py-2 font-mono text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
-            placeholder="VPL-123"
-          />
+          <Field label="Ticket key">
+            <TextInput
+              ref={subFlowInputRef}
+              type="text"
+              value={subFlow.existingKey}
+              onChange={(e) => onExistingKeyChange(e.target.value.toUpperCase())}
+              className="font-mono"
+              placeholder="VPL-123"
+            />
+          </Field>
           <p className="mt-1.5 text-label text-text-tertiary">
             The ticket must be synced locally.
           </p>

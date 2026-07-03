@@ -6,6 +6,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useSWRConfig } from "swr";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/shared/Modal";
+import { Field } from "@/components/shared/Field";
+import { TextInput } from "@/components/shared/TextInput";
+import { TextArea } from "@/components/shared/TextArea";
 import { Button } from "@/components/ui/Button";
 import { epics } from "@/lib/api-client";
 import { Type, AlignLeft, X, AlertTriangle } from "lucide-react";
@@ -75,41 +78,31 @@ export function CreateEpicModal({ onClose, showToast }: CreateEpicModalProps) {
         {/* Body */}
         <div className="space-y-3.5 px-5 py-4">
           {/* Epic title */}
-          <label className="block space-y-1">
-            <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-              <Type size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-              Epic title
-            </span>
-            <input
+          <Field label="Epic title" icon={<Type size={11} strokeWidth={1.5} />}>
+            <TextInput
               ref={titleRef}
               type="text"
               value={title}
               onChange={(e) => { setTitle(e.target.value); setError(null); }}
               onKeyDown={(e) => { if (e.key === "Enter" && title.trim() && !creating) handleCreate(); }}
               placeholder="e.g. Booking calendar revamp"
-              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm text-text-primary
-                placeholder:text-text-muted
-                focus:border-[var(--color-brand-500)]/50 focus:outline-none transition-colors duration-100"
             />
-          </label>
+          </Field>
 
           {/* Optional description */}
-          <label className="block space-y-1">
-            <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-              <AlignLeft size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-              Description
-              <span className="font-normal text-text-muted">(optional)</span>
-            </span>
-            <textarea
+          <Field
+            label="Description"
+            icon={<AlignLeft size={11} strokeWidth={1.5} />}
+            hint="(optional)"
+          >
+            <TextArea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this epic about? You can flesh this out later..."
               rows={4}
-              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm leading-relaxed text-text-primary
-                placeholder:text-text-muted resize-none
-                focus:border-[var(--color-brand-500)]/50 focus:outline-none transition-colors duration-100"
+              className="resize-none"
             />
-          </label>
+          </Field>
 
           {/* Inline error */}
           {error && (

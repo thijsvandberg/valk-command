@@ -163,7 +163,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         {mode === "jira" && (
           <div className="border-b border-border-default px-6 py-2.5 flex items-center gap-3">
             <button type="button" onClick={() => setShowJqlOverride((v) => !v)} className="text-body-sm text-text-tertiary hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]">{showJqlOverride ? "Hide JQL" : "JQL override"}</button>
-            {showJqlOverride && <input type="text" value={jiraJql} onChange={(e) => setJiraJql(e.target.value)} placeholder="project = VPL AND ..." className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder-text-muted focus:outline-none font-mono" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runJiraSearch(); } }} />}
+            {showJqlOverride && <input type="text" value={jiraJql} onChange={(e) => setJiraJql(e.target.value)} placeholder="project = VPL AND ..." className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none font-mono" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runJiraSearch(); } }} />}
             <Button variant="secondary" size="sm" onClick={runJiraSearch} disabled={loadingJira} className="ml-auto">{loadingJira ? "Searching..." : "Search"}</Button>
           </div>
         )}

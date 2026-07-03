@@ -130,7 +130,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                 type="text"
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                className="w-full rounded-md border border-border-strong bg-surface-floating px-3 py-2 text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+                className="w-full rounded-md border border-border-strong bg-surface-floating px-3 py-2 text-body-lg text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
                 placeholder="Story title..."
               />
             </div>
@@ -194,7 +194,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               type="text"
               value={existingKey}
               onChange={(e) => setExistingKey(e.target.value.toUpperCase())}
-              className="w-full rounded-md border border-border-strong bg-surface-floating px-3 py-2 font-mono text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-strong bg-surface-floating px-3 py-2 font-mono text-body-lg text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="VPL-123"
             />
             <p className="mt-1.5 text-label text-text-tertiary">

@@ -124,7 +124,7 @@ function SaveSearchInput({
           onChange={(e) => setSaveLabel(e.target.value)}
           placeholder="Name this search..."
           maxLength={200}
-          className="bg-transparent text-body-sm text-text-primary placeholder-text-muted focus:outline-none"
+          className="bg-transparent text-body-sm text-text-primary placeholder:text-text-muted focus:outline-none"
           style={{ width: 160 }}
         />
         <button

@@ -6,6 +6,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useSWRConfig } from "swr";
 import type { Sprint, Ticket } from "@/types/ticket";
 import { Modal } from "@/components/shared/Modal";
+import { Field } from "@/components/shared/Field";
+import { TextInput } from "@/components/shared/TextInput";
+import { TextArea } from "@/components/shared/TextArea";
 import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
 import { jira, workspaceTasks } from "@/lib/api-client";
@@ -356,26 +359,18 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
         {/* Body */}
         <div className="space-y-4 px-5 py-4">
           {/* Sprint name */}
-          <label className="block space-y-1.5">
-            <span className="text-body-sm font-medium text-text-secondary">Sprint name</span>
-            <input
+          <Field label="Sprint name">
+            <TextInput
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Sprint name"
-              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm text-text-primary
-                placeholder:text-text-muted
-                focus:border-[var(--color-brand-500)]/50 focus:outline-none transition-colors duration-100"
             />
-          </label>
+          </Field>
 
           {/* Date fields */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
-                Start date
-              </span>
+            <Field as="div" label="Start date" icon={<Calendar size={11} strokeWidth={1.5} />}>
               <DateTimePicker
                 value={startDate}
                 onChange={setStartDate}
@@ -383,19 +378,15 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                 placeholder="Pick a date"
                 closeOnSelect
               />
-            </div>
-            <div className="space-y-1.5">
-              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
-                End date
-              </span>
+            </Field>
+            <Field as="div" label="End date" icon={<Calendar size={11} strokeWidth={1.5} />}>
               <DateTimePicker
                 value={endDate}
                 onChange={setEndDate}
                 ariaLabel="End date"
                 placeholder="Pick a date"
               />
-            </div>
+            </Field>
           </div>
 
           {/* Conventional sprint-end suggestion (first Thursday after +1 week, 17:00) */}
@@ -418,12 +409,10 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
           )}
 
           {/* Goal field */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                <Target size={11} strokeWidth={1.5} className="text-text-muted" />
-                Sprint goal
-              </span>
+          <Field
+            label="Sprint goal"
+            icon={<Target size={11} strokeWidth={1.5} />}
+            labelEnd={
               <button
                 type="button"
                 onClick={handleSuggestGoal}
@@ -443,18 +432,17 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                 )}
                 <span>{suggesting ? "Generating..." : "Suggest with AI"}</span>
               </button>
-            </div>
-            <textarea
+            }
+          >
+            <TextArea
               ref={textareaRef}
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               placeholder="Describe the sprint's primary objective..."
               rows={3}
-              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm leading-relaxed text-text-primary
-                placeholder:text-text-muted resize-none
-                focus:border-[var(--color-brand-500)]/50 focus:outline-none transition-colors duration-100"
+              className="resize-none"
             />
-          </div>
+          </Field>
 
           {/* AI suggestion inline */}
           {(suggestion || suggesting) && (
