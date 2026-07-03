@@ -28,3 +28,4 @@ PO Command Center for Valk Platform.
 - [Optimistic Updates](architecture/optimistic-updates.md) - Pending-edits overlay; read before adding any editable board field
 - [Client Data & Memory](architecture/client-data-and-memory.md) - SWR cache cap, no whole-backlog fetches, virtualize growable lists; read before adding a fetch, a list view, or a ticket-payload field
 - [Filter Persistence](architecture/filter-persistence.md) - Board/view filter persistence via localStorage + recently-viewed store
+- [UI Primitives](architecture/ui-primitives.md) - Shared component layer: form recipe + Field, AnchoredPanel engine, z-index tokens, Modal nesting, ToastCard/Tooltip; read before building any overlay, form field, or toast
