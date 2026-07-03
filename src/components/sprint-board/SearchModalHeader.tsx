@@ -28,6 +28,7 @@ export function SearchModalHeader({
       <Search className="h-5 w-5 shrink-0 text-text-tertiary" strokeWidth={1.5} />
       <input
         ref={inputRef}
+        data-autofocus
         type="text"
         role="combobox"
         aria-autocomplete="list"

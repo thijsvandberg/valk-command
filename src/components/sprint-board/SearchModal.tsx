@@ -15,6 +15,7 @@ import { useSearchActions } from "@/components/sprint-board/useSearchActions";
 import { SearchModalFooter } from "@/components/sprint-board/SearchModalFooter";
 import { LocalResultSections, JiraResultList, SavedSearchesPanel, SearchHistoryPanel } from "@/components/sprint-board/SearchModalSections";
 import { SearchModalHeader } from "@/components/sprint-board/SearchModalHeader";
+import { Modal } from "@/components/shared/Modal";
 
 const TICKET_SECTION_LIMIT = 10;
 const SECTION_LIMIT = 5;
@@ -92,13 +93,6 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
     }
   }, [open, initialQuery, resetSearchState]);
 
-  useEffect(() => {
-    if (!open) return;
-    function onKeyDown(e: KeyboardEvent) { if (e.key === "Escape") { e.stopPropagation(); onClose(); } }
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [open, onClose]);
-
   const visibleRows = useMemo<VisibleRow[]>(() => {
     if (mode !== "local") return [];
     const rows: VisibleRow[] = [];
@@ -154,9 +148,10 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const showSavedSearches = mode === "local" && query.trim().length < 2 && savedSearches.length > 0;
   const isCurrentSearchSaved = mode === "local" && query.trim().length >= 2 && savedSearches.some((s) => s.query === query.trim() && JSON.stringify(serializeFilters(s.filters)) === JSON.stringify(serializeFilters(filters)));
 
+  // Hosted in the shared Modal (BRDG-431) for the focus trap + restore and the
+  // topmost-only Escape handling; the custom blurred backdrop layer stays.
   return (
-    <div className="fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh]" style={{ backgroundColor: "color-mix(in srgb, black 55%, transparent)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} role="dialog" aria-modal="true" aria-label="Search">
-
+    <Modal open onClose={onClose} position="top" unstyledBackdrop backdropClassName="bg-black/55" aria-label="Search">
       <div className="pointer-events-none absolute inset-0 backdrop-blur-sm" />
       <div className="relative z-10 w-full max-w-[1200px] overflow-hidden rounded-xl" style={{ backgroundColor: "var(--color-surface-floating)", boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px var(--color-overlay-default)", animation: "searchModalIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)" }} onKeyDown={handleKeyDown}>
         <SearchModalHeader mode={mode} query={query} jiraQuery={jiraQuery} setQuery={setQuery} setJiraQuery={setJiraQuery} setMode={setMode} setActiveIdx={setActiveIdx} showFilters={showFilters} openFilters={handleOpenFilters} filters={filters} onClose={onClose} inputRef={inputRef} />
@@ -200,6 +195,6 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
         @keyframes searchModalIn { from { opacity: 0; transform: scale(0.96) translateY(-4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         @keyframes saveInputIn { from { opacity: 0; transform: scaleX(0.85) translateX(6px); } to { opacity: 1; transform: scaleX(1) translateX(0); } }
       `}</style>
-    </div>
+    </Modal>
   );
 }

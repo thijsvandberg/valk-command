@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 const FOCUSABLE_SELECTORS =
   "a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+// Stack of open modals (BRDG-431): with nested dialogs (e.g. the Story Writer
+// launcher plus its ConfirmDialog) only the TOPMOST modal may trap Tab and
+// handle Escape, otherwise the traps fight over focus.
+const modalStack: symbol[] = [];
 
 interface ModalProps {
   open: boolean;
@@ -14,6 +19,20 @@ interface ModalProps {
   position?: "center" | "top";
   /** Extra classes on the backdrop element */
   backdropClassName?: string;
+  /** Replaces the default alignment classes (e.g. a palette's custom top offset). */
+  alignClassName?: string;
+  /**
+   * Drop the default dim + blur so the caller can animate its own backdrop
+   * (entrance/exit). For an exit animation, keep `open` true while playing the
+   * closing transition and flip it false afterwards - the command palette's
+   * `closing` state is the reference implementation.
+   */
+  unstyledBackdrop?: boolean;
+  /**
+   * Let the caller own Escape (e.g. the palette, where Escape means "back"
+   * inside a sub-flow). Default true: topmost modal closes on Escape.
+   */
+  closeOnEscape?: boolean;
   /** Accessible label for the dialog */
   "aria-label"?: string;
 }
@@ -24,23 +43,38 @@ export function Modal({
   children,
   position = "center",
   backdropClassName,
+  alignClassName,
+  unstyledBackdrop = false,
+  closeOnEscape = true,
   "aria-label": ariaLabel,
 }: ModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  // Stable identity on the modal stack (lazy state: refs must not be written in render).
+  const [modalId] = useState(() => Symbol("modal"));
 
-  // Escape key
+  // Register on the modal stack while open.
   useEffect(() => {
     if (!open) return;
+    modalStack.push(modalId);
+    return () => {
+      const i = modalStack.indexOf(modalId);
+      if (i >= 0) modalStack.splice(i, 1);
+    };
+  }, [open, modalId]);
+
+  // Escape key (topmost modal only)
+  useEffect(() => {
+    if (!open || !closeOnEscape) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
+      if (e.key !== "Escape") return;
+      if (modalStack[modalStack.length - 1] !== modalId) return;
+      e.stopPropagation();
+      onClose();
     }
     document.addEventListener("keydown", handleKey, { capture: true });
     return () => document.removeEventListener("keydown", handleKey, { capture: true });
-  }, [open, onClose]);
+  }, [open, closeOnEscape, onClose, modalId]);
 
   // Focus trap: save previous focus, auto-focus first element, restore on close
   useEffect(() => {
@@ -67,12 +101,13 @@ export function Modal({
     };
   }, [open]);
 
-  // Tab trap
+  // Tab trap (topmost modal only)
   useEffect(() => {
     if (!open) return;
 
     function handleTab(e: KeyboardEvent) {
       if (e.key !== "Tab") return;
+      if (modalStack[modalStack.length - 1] !== modalId) return;
       const container = containerRef.current;
       if (!container) return;
 
@@ -103,15 +138,17 @@ export function Modal({
 
     document.addEventListener("keydown", handleTab);
     return () => document.removeEventListener("keydown", handleTab);
-  }, [open]);
+  }, [open, modalId]);
 
   if (!open) return null;
 
-  const alignClass = position === "top" ? "items-start pt-[12vh]" : "items-center";
+  const alignClass =
+    alignClassName ?? (position === "top" ? "items-start pt-[12vh]" : "items-center");
+  const backdropSkin = unstyledBackdrop ? "" : " bg-black/55 backdrop-blur-[3px]";
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-modal flex justify-center px-4 ${alignClass} bg-black/55 backdrop-blur-[3px]${backdropClassName ? ` ${backdropClassName}` : ""}`}
+      className={`fixed inset-0 z-modal flex justify-center px-4 ${alignClass}${backdropSkin}${backdropClassName ? ` ${backdropClassName}` : ""}`}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

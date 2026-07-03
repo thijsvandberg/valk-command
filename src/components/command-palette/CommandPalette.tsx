@@ -1,7 +1,7 @@
 "use client";
 
-import { createPortal } from "react-dom";
 import { Search, ArrowRight, ChevronLeft } from "lucide-react";
+import { Modal } from "@/components/shared/Modal";
 
 import { CATEGORY_LABELS } from "./palette-data";
 import { SubFlowForm } from "./SubFlowForm";
@@ -51,12 +51,17 @@ export function CommandPalette() {
   const isLoading = loadingTickets || loadingConversations;
   const isSubFlow = subFlow.kind === "new-story";
 
-  return createPortal(
-    <div
-      className={`fixed inset-0 z-modal flex items-start justify-center px-4 pt-[15vh] ${closing ? "cmd-palette-backdrop-out" : "cmd-palette-backdrop-in"}`}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      role="dialog"
-      aria-modal="true"
+  // Hosted in the shared Modal (BRDG-431) for the focus trap + restore; the
+  // palette keeps its own Escape handling (Escape means "back" in a sub-flow)
+  // and plays its exit animation via `closing` before flipping `open`.
+  return (
+    <Modal
+      open
+      onClose={handleClose}
+      closeOnEscape={false}
+      unstyledBackdrop
+      alignClassName="items-start pt-[15vh]"
+      backdropClassName={closing ? "cmd-palette-backdrop-out" : "cmd-palette-backdrop-in"}
       aria-label="Command palette"
     >
       {/* Backdrop blur layer */}
@@ -98,6 +103,7 @@ export function CommandPalette() {
             )}
             <input
               ref={inputRef}
+              data-autofocus
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -267,7 +273,6 @@ export function CommandPalette() {
           animation: cmdPaletteOut 0.12s ease-in forwards;
         }
       `}</style>
-    </div>,
-    document.body,
+    </Modal>
   );
 }

@@ -1,6 +1,6 @@
 # BRDG-431: Migrate the command/search palettes + Story Writer launcher fully onto Modal
 
-**Status:** Not Started
+**Status:** Done (2026-07-03, branch ui-wave-427-431)
 **Priority:** Low
 **Type:** Accessibility — dialogs (follow-up of BRDG-422)
 
@@ -40,16 +40,38 @@ able to host them and migrates them.
 
 ## Acceptance Criteria
 
-- [ ] CommandPalette, SearchModal and StoryWriterLauncherModal route through `Modal` with focus
+- [x] CommandPalette, SearchModal and StoryWriterLauncherModal route through `Modal` with focus
       trap + restore, while keeping their entrance/exit animation and arrow-key navigation.
-- [ ] `Modal` supports an exit animation and nesting-safe focus trapping (verified with the
+- [x] `Modal` supports an exit animation and nesting-safe focus trapping (verified with the
       launcher's nested ConfirmDialog).
 
 ## Tests
 
-- [ ] Behaviour tests: focus is trapped + restored to the trigger, arrow-key nav still works,
+- [x] Behaviour tests: focus is trapped + restored to the trigger, arrow-key nav still works,
       exit animation runs, nested ConfirmDialog doesn't break the launcher's trap.
-- [ ] Existing command-palette / search / launcher tests stay green.
+- [x] Existing command-palette / search / launcher tests stay green.
+
+## Implementation notes (2026-07-03)
+
+- Evidence drift at pickup: `StoryWriterLauncherModal` already routed through
+  `Modal` (with its nested Modal-based `ConfirmDialog`); its remaining gap was
+  the nesting-unsafe focus trap, fixed in `Modal` itself.
+- `Modal` gained: a module-level modal stack so only the TOPMOST open modal
+  traps Tab and handles Escape (launcher + nested ConfirmDialog no longer
+  fight); `closeOnEscape={false}` for callers that own Escape (the palette,
+  where Escape means "back" inside a sub-flow); `unstyledBackdrop` +
+  `alignClassName` so palettes keep their animated backdrops and offsets.
+- Exit-animation contract: the caller keeps `open` true while playing its
+  closing transition and flips it afterwards; the palette's existing `closing`
+  state is the reference implementation and now runs inside Modal.
+- `CommandPalette` and `SearchModal` are hosted in `Modal` (gaining focus trap
+  + restore); their entrance/exit animations, arrow-key navigation and
+  combobox/listbox semantics are unchanged. SearchModal's own document-level
+  Escape listener was removed (Modal owns it, topmost-gated).
+- Browser-verified end-to-end (headless Chrome): palette opens focused,
+  entrance/exit animation classes play, ArrowDown moves aria-activedescendant,
+  Escape unmounts after the exit transition, focus returns to the trigger,
+  Tab stays trapped; search modal opens/closes on the same contract.
 
 ## Related
 

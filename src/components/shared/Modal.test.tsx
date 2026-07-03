@@ -146,3 +146,96 @@ describe("Modal", () => {
     document.body.removeChild(trigger);
   });
 });
+
+describe("Modal nesting + palette hosting (BRDG-431)", () => {
+  it("does not close on Escape when closeOnEscape is off (caller owns Escape)", () => {
+    const onClose = vi.fn();
+    render(
+      <Modal open onClose={onClose} closeOnEscape={false}>
+        <div>Palette</div>
+      </Modal>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("Escape only closes the topmost of two stacked modals", () => {
+    const closeOuter = vi.fn();
+    const closeInner = vi.fn();
+    render(
+      <>
+        <Modal open onClose={closeOuter} aria-label="Outer">
+          <button>Outer content</button>
+        </Modal>
+        <Modal open onClose={closeInner} aria-label="Inner">
+          <button>Inner content</button>
+        </Modal>
+      </>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(closeInner).toHaveBeenCalledTimes(1);
+    expect(closeOuter).not.toHaveBeenCalled();
+  });
+
+  it("only the topmost modal traps Tab (nested ConfirmDialog scenario)", () => {
+    render(
+      <>
+        <Modal open onClose={() => {}} aria-label="Outer">
+          <button>Outer first</button>
+          <button>Outer last</button>
+        </Modal>
+        <Modal open onClose={() => {}} aria-label="Inner">
+          <button>Inner first</button>
+          <button>Inner last</button>
+        </Modal>
+      </>,
+    );
+    const innerLast = screen.getByText("Inner last");
+    innerLast.focus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    // The inner (topmost) trap wraps focus to its own first element; the outer
+    // trap must not hijack it.
+    expect(document.activeElement).toBe(screen.getByText("Inner first"));
+  });
+
+  it("after the topmost modal closes, the remaining modal handles Escape again", () => {
+    const closeOuter = vi.fn();
+    const { rerender } = render(
+      <>
+        <Modal open onClose={closeOuter} aria-label="Outer">
+          <button>Outer content</button>
+        </Modal>
+        <Modal open onClose={() => {}} aria-label="Inner">
+          <button>Inner content</button>
+        </Modal>
+      </>,
+    );
+    rerender(
+      <>
+        <Modal open onClose={closeOuter} aria-label="Outer">
+          <button>Outer content</button>
+        </Modal>
+        <Modal open={false} onClose={() => {}} aria-label="Inner">
+          <button>Inner content</button>
+        </Modal>
+      </>,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(closeOuter).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves arrow keys untouched for the palette's own result navigation", () => {
+    const onClose = vi.fn();
+    const onArrow = vi.fn();
+    render(
+      <Modal open onClose={onClose}>
+        <div onKeyDown={(e) => { if (e.key === "ArrowDown") onArrow(); }}>
+          <button>Row</button>
+        </div>
+      </Modal>,
+    );
+    fireEvent.keyDown(screen.getByText("Row"), { key: "ArrowDown" });
+    expect(onArrow).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

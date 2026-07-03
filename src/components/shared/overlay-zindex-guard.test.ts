@@ -24,9 +24,11 @@ function walk(dir: string): string[] {
 }
 
 describe("BRDG-422: z-index inversions are fixed", () => {
-  it("CommandPalette sits on the modal layer, not above it (was z-tooltip)", () => {
+  it("CommandPalette sits on the modal layer via the shared Modal (was z-tooltip)", () => {
     const src = read("src/components/command-palette/CommandPalette.tsx");
-    expect(src).toContain("z-modal");
+    // Hosted in Modal since BRDG-431; Modal owns the z-modal backdrop.
+    expect(src).toContain('import { Modal }');
+    expect(src).toContain("<Modal");
     expect(src).not.toContain("z-tooltip");
   });
 
@@ -60,11 +62,10 @@ describe("BRDG-422: z-index inversions are fixed", () => {
   });
 });
 
-describe("BRDG-422: hand-rolled overlays expose dialog semantics", () => {
+describe("BRDG-422/431: overlays expose dialog semantics", () => {
+  // Hand-rolled dialogs that still declare their own role/aria.
   const dialogs = [
     "src/components/shared/StoryWriterLauncherModal.tsx",
-    "src/components/sprint-board/SearchModal.tsx",
-    "src/components/command-palette/CommandPalette.tsx",
     "src/components/sprint-board/SprintStatsPopover.tsx",
   ];
   for (const rel of dialogs) {
@@ -72,6 +73,20 @@ describe("BRDG-422: hand-rolled overlays expose dialog semantics", () => {
       const src = read(rel);
       expect(src).toContain('role="dialog"');
       expect(src).toContain('aria-modal="true"');
+    });
+  }
+
+  // Fully migrated onto the shared Modal in BRDG-431 (role/aria/z + focus trap
+  // come from Modal).
+  const modalHosted = [
+    "src/components/sprint-board/SearchModal.tsx",
+    "src/components/command-palette/CommandPalette.tsx",
+  ];
+  for (const rel of modalHosted) {
+    it(`${rel} routes through the shared Modal`, () => {
+      const src = read(rel);
+      expect(src).toContain('import { Modal }');
+      expect(src).toContain("<Modal");
     });
   }
 
