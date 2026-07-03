@@ -8,6 +8,14 @@ vi.mock("swr", () => ({
   default: () => ({ data: mockData, error: mockError }),
 }));
 
+vi.mock("@/components/shared/TicketRefPill", () => ({
+  TicketRefPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="ticket-pill">{ticketKey}</span>,
+}));
+
+vi.mock("@/components/shared/IssueMetaBadges", () => ({
+  EpicBadge: ({ epic }: { epic: string }) => <span data-testid="epic-badge">{epic}</span>,
+}));
+
 vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
   renderMarkdown: (text: string) => [text],
 }));
@@ -17,20 +25,20 @@ import { SprintTestDocsModal, buildTestDocDocument } from "./SprintTestDocsModal
 const BASE: SprintTestDocs = {
   sprintName: "BT: 139",
   documented: [
-    { key: "VPL-2", title: "Big story", status: "DONE", storyPoints: 8, doc: "**Big feature**\n\n- Confirm A" },
-    { key: "VPL-1", title: "Flagged story", status: "TEST", storyPoints: 3, doc: "**Flagged**\n\n- Confirm B", needsInput: true },
+    { key: "VPL-2", title: "Big story", status: "DONE", storyPoints: 8, epic: "Payments", doc: "**Big feature**\n\n- Confirm A" },
+    { key: "VPL-1", title: "Flagged story", status: "TEST", storyPoints: 3, epic: null, doc: "**Flagged**\n\n- Confirm B", needsInput: true },
   ],
   internal: [
-    { key: "VPL-3", title: "Sync groundwork", status: "DONE", storyPoints: null, doc: "Internal: sync groundwork" },
+    { key: "VPL-3", title: "Sync groundwork", status: "DONE", storyPoints: null, epic: null, doc: "Internal: sync groundwork" },
   ],
   notNeeded: [
-    { key: "VPL-7", title: "DB partitions chore", status: "DONE", storyPoints: null, doc: null },
+    { key: "VPL-7", title: "DB partitions chore", status: "DONE", storyPoints: null, epic: null, doc: null },
   ],
   missing: [
-    { key: "VPL-4", title: "Missing one", status: "DONE", storyPoints: 5, doc: null },
-    { key: "VPL-5", title: "Missing two", status: "TEST", storyPoints: null, doc: null },
+    { key: "VPL-4", title: "Missing one", status: "DONE", storyPoints: 5, epic: "Payments", doc: null },
+    { key: "VPL-5", title: "Missing two", status: "TEST", storyPoints: null, epic: null, doc: null, hasDraft: true },
   ],
-  other: [{ key: "VPL-6", title: "Still open", status: "IN PROGRESS", storyPoints: null, doc: null }],
+  other: [{ key: "VPL-6", title: "Still open", status: "IN PROGRESS", storyPoints: null, epic: null, doc: null }],
 };
 
 function renderModal(overrides: Partial<Parameters<typeof SprintTestDocsModal>[0]> = {}) {
@@ -125,6 +133,23 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(section).toHaveTextContent("VPL-7");
     expect(buildTestDocDocument(BASE)).not.toContain("DB partitions chore");
     expect(screen.getByTestId("test-docs-missing")).not.toHaveTextContent("VPL-7");
+  });
+
+  it("plain lists render regular ticket rows: pill + title + epic", () => {
+    renderModal();
+    const missing = screen.getByTestId("test-docs-missing");
+    expect(within(missing).getAllByTestId("ticket-pill").map((p) => p.textContent)).toEqual(["VPL-4", "VPL-5"]);
+    expect(within(missing).getByTestId("epic-badge")).toHaveTextContent("Payments");
+    expect(within(screen.getByTestId("test-docs-not-needed")).getAllByTestId("ticket-pill")).toHaveLength(1);
+    expect(within(screen.getByTestId("test-docs-other")).getAllByTestId("ticket-pill")).toHaveLength(1);
+  });
+
+  it("missing rows with an unreviewed draft show a badge and a Review jump", () => {
+    const props = renderModal();
+    const missing = screen.getByTestId("test-docs-missing");
+    expect(within(missing).getByText("draft ready")).toBeInTheDocument();
+    fireEvent.click(within(missing).getByText("Review"));
+    expect(props.onEditItem).toHaveBeenCalledWith("VPL-5");
   });
 
   it("per-block Edit jumps into the single-story review", () => {

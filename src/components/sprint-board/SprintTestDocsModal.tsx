@@ -9,6 +9,8 @@ import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import Link from "next/link";
 import { swrFetcher, sprints, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
+import { TicketRefPill } from "@/components/shared/TicketRefPill";
+import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import type { ShowToast } from "@/hooks/useToast";
 import { ClipboardCopy, FileCheck2, Loader2, X } from "lucide-react";
 
@@ -55,6 +57,20 @@ export function buildTestDocDocument(data: SprintTestDocs): string {
     parts.push(`**Misc**\n\n${internal.join("\n\n")}`);
   }
   return parts.join("\n\n");
+}
+
+/** Regular ticket list row (issue pill + title + epic), used by the plain lists. */
+function TicketListRow({ item, trailing }: { item: SprintTestDocItem; trailing?: React.ReactNode }) {
+  return (
+    <li className="flex min-w-0 items-center gap-2 py-0.5">
+      <TicketRefPill ticketKey={item.key} />
+      <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary" title={item.title}>
+        {item.title}
+      </span>
+      {item.epic && <EpicBadge epic={item.epic} className="max-w-[140px] shrink-0" />}
+      {trailing}
+    </li>
+  );
 }
 
 /** In-Bridge key link behind a block title; the COPY uses Jira links instead. */
@@ -111,7 +127,7 @@ export function SprintTestDocsModal({
 
   return (
     <Modal open onClose={onClose} aria-label="Sprint test documentation">
-      <div className="flex h-[min(720px,86vh)] w-[min(860px,92vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
+      <div className="flex h-[min(880px,90vh)] w-[min(1080px,94vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -164,10 +180,22 @@ export function SprintTestDocsModal({
                   </div>
                   <ul className="mt-2 flex flex-col gap-1">
                     {data.missing.map((m) => (
-                      <li key={m.key} className="flex items-baseline gap-2 text-body-sm text-text-secondary">
-                        <span className="font-mono text-caption text-text-muted">{m.key}</span>
-                        <span className="truncate">{m.title}</span>
-                      </li>
+                      <TicketListRow
+                        key={m.key}
+                        item={m}
+                        trailing={
+                          m.hasDraft ? (
+                            <>
+                              <span className="shrink-0 rounded bg-[var(--color-status-warning-subtle)] px-1.5 py-px text-caption font-medium text-[var(--color-status-warning)]">
+                                draft ready
+                              </span>
+                              <Button variant="ghost" size="sm" onClick={() => onEditItem(m.key)}>
+                                Review
+                              </Button>
+                            </>
+                          ) : undefined
+                        }
+                      />
                     ))}
                   </ul>
                 </div>
@@ -208,22 +236,26 @@ export function SprintTestDocsModal({
                 <div data-testid="test-docs-misc" className="rounded-xl border border-border-subtle bg-surface-base p-4">
                   <p className="mb-2 text-body font-semibold text-text-primary">Misc</p>
                   <div className="flex flex-col gap-3">
-                    {data.internal.map((item) => (
-                      <div key={item.key}>
-                        <div className="flex items-baseline gap-2">
-                          <BridgeKeyLink item={item} />
-                          <button
-                            type="button"
-                            onClick={() => onEditItem(item.key)}
-                            className="ml-auto cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-                            title="Open this doc in the review modal; you return here when done"
-                          >
-                            Edit
-                          </button>
+                    {data.internal.map((item) => {
+                      const { title, body } = splitDocTitle(item.doc ?? "");
+                      return (
+                        <div key={item.key}>
+                          <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                            <span className="font-semibold text-text-primary">{title ?? item.title}</span>
+                            <BridgeKeyLink item={item} />
+                            <button
+                              type="button"
+                              onClick={() => onEditItem(item.key)}
+                              className="ml-auto cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                              title="Open this doc in the review modal; you return here when done"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                          <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
                         </div>
-                        <div className="description-content mt-1">{renderMarkdown(item.doc ?? "")}</div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -235,10 +267,7 @@ export function SprintTestDocsModal({
                   </p>
                   <ul className="mt-2 flex flex-col gap-1">
                     {data.notNeeded.map((m) => (
-                      <li key={m.key} className="flex items-baseline gap-2 text-body-sm text-text-tertiary">
-                        <span className="font-mono text-caption text-text-muted">{m.key}</span>
-                        <span className="truncate">{m.title}</span>
-                      </li>
+                      <TicketListRow key={m.key} item={m} />
                     ))}
                   </ul>
                 </div>
@@ -254,13 +283,15 @@ export function SprintTestDocsModal({
                   </p>
                   <ul className="mt-2 flex flex-col gap-1">
                     {data.other.map((m) => (
-                      <li key={m.key} className="flex items-center gap-2 text-body-sm text-text-secondary">
-                        <span className="font-mono text-caption text-text-muted">{m.key}</span>
-                        <span className="min-w-0 flex-1 truncate">{m.title}</span>
-                        <Button variant="ghost" size="sm" onClick={() => onGenerateMissing([m.key])}>
-                          Generate
-                        </Button>
-                      </li>
+                      <TicketListRow
+                        key={m.key}
+                        item={m}
+                        trailing={
+                          <Button variant="ghost" size="sm" onClick={() => onGenerateMissing([m.key])}>
+                            Generate
+                          </Button>
+                        }
+                      />
                     ))}
                   </ul>
                 </div>

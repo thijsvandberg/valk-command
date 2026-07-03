@@ -40,6 +40,12 @@ vi.mock("@/hooks/useTaskStream", () => ({
   },
 }));
 
+vi.mock("@/lib/test-doc-prefetch", () => ({
+  getCachedTestDoc: () => null,
+  primeTestDocCache: vi.fn(),
+  invalidateTestDocCache: vi.fn(),
+}));
+
 vi.mock("@/components/shared/TicketRefPill", () => ({
   TicketRefPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="ticket-pill">{ticketKey}</span>,
 }));

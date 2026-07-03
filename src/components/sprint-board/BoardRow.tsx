@@ -799,6 +799,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   opens the centered review modal. */}
               {tags.has("testDoc") && (
                 <TestDocMarker
+                  ticketKey={ticket.key}
                   state={ticket.testDocState ?? null}
                   onOpenReview={
                     onStatusChangeViewTestDoc

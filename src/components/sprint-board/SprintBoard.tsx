@@ -1280,6 +1280,7 @@ export default function SprintBoard() {
         <TestDocReviewModal
           keys={testDocQueue.keys}
           autoGenerate={testDocQueue.autoGenerate}
+          returnsToBundle={!!testDocQueue.returnToSprintId}
           onClose={() => {
             // A queue opened FROM the sprint bundle returns there (refreshed on
             // remount), so edit round-trips land back in the full document.

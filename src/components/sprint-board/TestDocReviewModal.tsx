@@ -12,8 +12,9 @@ import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { friendlyStreamError } from "@/lib/agent-errors";
 import { parseTestDoc, coerceClassification, type TestDocClassification } from "@/lib/parse-test-doc";
+import { getCachedTestDoc, primeTestDocCache, invalidateTestDocCache } from "@/lib/test-doc-prefetch";
 import { tickets as ticketsApi, workspaceTasks, ApiError } from "@/lib/api-client";
-import { ClipboardCheck, Loader2, RefreshCw, X } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Loader2, RefreshCw, X } from "lucide-react";
 
 // Generations run ahead of the PO's review so the queue never waits (bulk
 // prefetch). Capped: each generation is a full agent task on the workspace,
@@ -94,6 +95,9 @@ function TaskStreamWatcher({
 interface TestDocReviewModalProps {
   /** Queue of ticket keys to generate + validate; a single key is the non-bulk case. */
   keys: string[];
+  /** Set when opened FROM the sprint bundle: closing returns there, and the
+   *  footer says so instead of a bare Cancel. */
+  returnsToBundle?: boolean;
   /**
    * When false (the "view" entry points: row marker, status line), a key
    * without any cached doc opens IDLE with an explicit Generate button —
@@ -113,7 +117,7 @@ interface TestDocReviewModalProps {
  * the first result shows as soon as it lands, and the rest generate while the
  * PO reviews — advancing to an already-finished doc is instant.
  */
-export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestDocReviewModalProps) {
+export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle = false, onClose }: TestDocReviewModalProps) {
   const [index, setIndex] = useState(0);
   const [entries, setEntries] = useState<Record<string, EntryState>>(() =>
     Object.fromEntries(keys.map((k) => [k, makeEntry("checking")])),
@@ -145,14 +149,13 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
     const onMove = (ev: PointerEvent) => {
       const pct = Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, ((ev.clientX - rect.left) / rect.width) * 100));
       setSplitPct(pct);
+      // Persist per browser (localStorage) DURING the drag: a missed pointerup
+      // (released outside the window) must not lose the chosen width.
+      try { localStorage.setItem(SPLIT_STORAGE_KEY, String(Math.round(pct))); } catch { /* in-memory only */ }
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      setSplitPct((v) => {
-        try { localStorage.setItem(SPLIT_STORAGE_KEY, String(Math.round(v))); } catch { /* in-memory only */ }
-        return v;
-      });
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -206,9 +209,12 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
     for (const key of keys) {
       if (checkedRef.current.has(key)) continue;
       checkedRef.current.add(key);
-      ticketsApi
-        .getTestDoc(key)
+      // Hover-prefetched (or recently fetched) docs resolve without a round
+      // trip, so opening the modal shows the doc immediately.
+      const prefetched = getCachedTestDoc(key);
+      (prefetched ? Promise.resolve(prefetched) : ticketsApi.getTestDoc(key))
         .then((data) => {
+          if (!prefetched) primeTestDocCache(key, data);
           const cached = data.draft ?? data.saved;
           if (cached) {
             // Both a saved doc AND a newer draft become versions the PO can
@@ -323,6 +329,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
       // modal or revisiting later must never cost a regeneration. Refresh the
       // board lists after: the row's test-doc marker derives from this state.
       if (doc) {
+        invalidateTestDocCache(key);
         ticketsApi
           .saveTestDocDraft(key, { markdown: doc, classification })
           .then(() => mutate((k) => typeof k === "string" && k.startsWith("/api/tickets")))
@@ -374,6 +381,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
         markdown: entry.doc.trim(),
         classification: entry.classification,
       });
+      invalidateTestDocCache(currentKey);
       // Refresh an open detail panel and the board lists (the row's test-doc
       // marker flips to accepted); the server cache is already invalidated.
       void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
@@ -407,6 +415,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
         workspaceTasks.cancel(entry.taskId).catch(() => {});
       }
       await ticketsApi.markTestDocNotNeeded(currentKey);
+      invalidateTestDocCache(currentKey);
       void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
       void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
       setSaving(false);
@@ -725,8 +734,13 @@ export function TestDocReviewModal({ keys, autoGenerate = true, onClose }: TestD
 
         {/* Footer */}
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-5 py-3.5">
-          <Button variant="ghost" size="md" onClick={handleClose}>
-            Cancel
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={handleClose}
+            icon={returnsToBundle ? <ArrowLeft size={12} strokeWidth={2} /> : undefined}
+          >
+            {returnsToBundle ? "Back to sprint doc" : "Cancel"}
           </Button>
           <Button
             variant="ghost"

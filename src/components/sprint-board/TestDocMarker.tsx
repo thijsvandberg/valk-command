@@ -1,6 +1,7 @@
 "use client";
 
 import { FileCheck2, FileX2 } from "lucide-react";
+import { prefetchTestDoc } from "@/lib/test-doc-prefetch";
 
 export type TestDocMarkerState = "accepted" | "draft" | "not_needed" | null;
 
@@ -11,9 +12,11 @@ export type TestDocMarkerState = "accepted" | "draft" | "not_needed" | null;
  * always opens centered and never clips against the viewport (PO feedback).
  */
 export function TestDocMarker({
+  ticketKey,
   state,
   onOpenReview,
 }: {
+  ticketKey: string;
   state: TestDocMarkerState;
   onOpenReview?: () => void;
 }) {
@@ -60,6 +63,7 @@ export function TestDocMarker({
         e.stopPropagation();
         onOpenReview();
       }}
+      onMouseEnter={() => prefetchTestDoc(ticketKey)}
       onPointerDown={(e) => e.stopPropagation()}
       className="grid h-6 w-6 -my-0.5 shrink-0 cursor-pointer place-items-center rounded-md outline-none transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
     >

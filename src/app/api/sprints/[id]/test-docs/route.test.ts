@@ -90,8 +90,16 @@ describe("GET /api/sprints/[id]/test-docs", () => {
       testDocClassification: "not_stakeholder_relevant",
     }).run();
 
+    // A missing ticket with an unreviewed draft is flagged (review beats regenerate).
+    testDb.insert(ticketMetadata).values({
+      jiraKey: "VPL-3",
+      testDocDraft: "unreviewed draft",
+    }).run();
+
     const data = await fetchBuckets();
     expect(data.sprintName).toBe("BT: 139");
+    expect(data.missing.find((d: { key: string }) => d.key === "VPL-3")?.hasDraft).toBe(true);
+    expect(data.missing.find((d: { key: string }) => d.key === "VPL-4")?.hasDraft).toBe(false);
     expect(data.documented.map((d: { key: string }) => d.key)).toEqual(["VPL-1"]);
     expect(data.internal.map((d: { key: string }) => d.key)).toEqual(["VPL-2"]);
     expect(data.notNeeded.map((d: { key: string }) => d.key)).toEqual(["VPL-6"]);
