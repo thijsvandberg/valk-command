@@ -64,7 +64,9 @@ export async function GET(
         ),
         isNull(ticket.removedFromJiraAt),
         notInArray(ticket.type, ["subtask", "epic"]),
-        notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"]),
+        // Deprecated work never needs delivery documentation: excluded from
+        // every bucket, so it neither counts as missing nor shows as "other".
+        notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED", "DEPRECATED"]),
       ),
     )
     .all();

@@ -40,6 +40,10 @@ vi.mock("@/hooks/useTaskStream", () => ({
   },
 }));
 
+vi.mock("@/components/shared/TicketRefPill", () => ({
+  TicketRefPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="ticket-pill">{ticketKey}</span>,
+}));
+
 vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
   renderMarkdown: (text: string) => [text],
 }));
@@ -51,6 +55,10 @@ vi.mock("swr", () => ({
 import { TestDocReviewModal } from "./TestDocReviewModal";
 
 const DOC = "**Title**\n\n- Confirm the thing";
+
+function openEditor() {
+  fireEvent.click(screen.getByText("Edit", { selector: "button" }));
+}
 
 function docPayload(markdown: string, classification = "ok") {
   return `<test-doc>${JSON.stringify({ classification, markdown })}</test-doc>`;
@@ -102,9 +110,13 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     expect(screen.getByTestId("test-doc-progress")).toBeInTheDocument();
     await emitResult("VPL-1", DOC);
 
+    // Rendered markdown is the default reading mode; Edit opens the textarea.
+    expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Confirm the thing");
+    openEditor();
     const editor = screen.getByTestId("test-doc-editor") as HTMLTextAreaElement;
     expect(editor.value).toBe(DOC);
     expect(screen.getByTestId("test-doc-story-pane")).toHaveTextContent("Description of VPL-1");
+    expect(screen.getByTestId("ticket-pill")).toHaveTextContent("VPL-1");
     expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1");
   });
 
@@ -153,9 +165,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(screen.getByTestId("test-doc-queue-position")).toHaveTextContent("2 / 2"),
       );
       expect(screen.queryByTestId("test-doc-progress")).not.toBeInTheDocument();
-      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe(
-        "**Second**\n\n- B",
-      );
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("**Second**");
     });
 
     it("Skip advances without saving", async () => {
@@ -226,9 +236,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
 
       await waitFor(() =>
-        expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe(
-          "**Cached**\n\n- From last time",
-        ),
+        expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("From last time"),
       );
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
       expect(screen.getByText(/generated earlier/)).toBeInTheDocument();
@@ -242,9 +250,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
 
       await waitFor(() =>
-        expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe(
-          "**Accepted**\n\n- Saved doc",
-        ),
+        expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
       );
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
       expect(screen.getByText(/saved test documentation/)).toBeInTheDocument();
@@ -257,15 +263,13 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         draft: { markdown: "**Cached**", classification: "ok", generatedAt: null },
       });
       render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
-      await waitFor(() => expect(screen.getByTestId("test-doc-editor")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByTestId("test-doc-preview")).toBeInTheDocument());
 
       fireEvent.click(screen.getByText("Regenerate"));
 
       await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1"));
       await emitResult("VPL-1", "**Fresh**\n\n- New");
-      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe(
-        "**Fresh**\n\n- New",
-      );
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("**Fresh**");
     });
 
     it("bulk: cached keys skip generation, uncached keys still generate", async () => {
@@ -278,7 +282,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       );
       render(<TestDocReviewModal keys={["VPL-1", "VPL-2"]} onClose={() => {}} />);
 
-      await waitFor(() => expect(screen.getByTestId("test-doc-editor")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByTestId("test-doc-preview")).toBeInTheDocument());
       await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-2"));
       expect(mockGenerateTestDoc).not.toHaveBeenCalledWith("VPL-1");
     });
@@ -371,10 +375,10 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       const chips = screen.getByTestId("test-doc-versions");
       expect(chips).toHaveTextContent("New");
       expect(chips).toHaveTextContent("New 2");
-      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe("**Fresh**\n\n- B");
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("**Fresh**");
 
       fireEvent.click(screen.getByText("New", { selector: "button" }));
-      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe("**Old**\n\n- A");
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("**Old**");
     });
 
     it("seeds Saved + Draft as two versions when both exist in the cache", async () => {
@@ -388,7 +392,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       expect(screen.getByTestId("test-doc-versions")).toHaveTextContent("Saved");
       expect(screen.getByTestId("test-doc-versions")).toHaveTextContent("Draft");
       // The newest (draft) starts active.
-      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe("**Newer draft**");
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("**Newer draft**");
     });
 
     it("compare shows the versions side by side; Use this one switches the active version", async () => {
@@ -405,7 +409,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       expect(compare).toHaveTextContent("**Newer draft**");
 
       fireEvent.click(screen.getByText("Use this one"));
-      fireEvent.click(screen.getByText("Edit"));
+      fireEvent.click(screen.getByText("Edit", { selector: "button" }));
       expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe("**Accepted**");
     });
 
@@ -438,9 +442,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledTimes(2));
     expect(screen.getByTestId("test-doc-progress")).toBeInTheDocument();
     await emitResult("VPL-1", "**Regenerated**\n\n- New");
-    expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe(
-      "**Regenerated**\n\n- New",
-    );
+    expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("**Regenerated**");
   });
 
   it("unstructured output degrades to the raw text with a warning", async () => {

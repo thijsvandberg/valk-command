@@ -125,12 +125,13 @@ describe("GET /api/sprints/[id]/test-docs", () => {
     expect(byKey["VPL-2"]).toBe(false);
   });
 
-  it("excludes subtasks, epics, removed tickets, draft statuses and other sprints", async () => {
+  it("excludes subtasks, epics, removed tickets, draft statuses, deprecated and other sprints", async () => {
     seedTicket("VPL-1", { type: "subtask" });
     seedTicket("VPL-2", { type: "epic" });
     seedTicket("VPL-3", { removed: true });
     seedTicket("VPL-4", { status: "DRAFTING" });
     seedTicket("VPL-5", { sprintId: "9999" });
+    seedTicket("VPL-7", { status: "DEPRECATED" });
     seedTicket("VPL-6", {});
 
     const data = await fetchBuckets();

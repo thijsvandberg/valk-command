@@ -195,17 +195,17 @@ describe("StatusChangeLine (BRDG-414)", () => {
     const { rerender } = render(
       <StatusChangeLine change={makeChange({ toStatus: "DONE" })} onSeen={noop} onMoveToBottom={noop} />,
     );
-    expect(screen.getByText("Move to bottom")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move to bottom" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
 
     rerender(<StatusChangeLine change={makeChange({ toStatus: "IN PROGRESS" })} onSeen={noop} onMoveToBottom={noop} />);
-    expect(screen.queryByText("Move to bottom")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Move to bottom" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
   });
 
   it("hides Move to bottom when the ticket is already filed at the bottom", () => {
     render(<StatusChangeLine change={makeChange({ toStatus: "DONE" })} atBottom onSeen={noop} onMoveToBottom={noop} />);
-    expect(screen.queryByText("Move to bottom")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Move to bottom" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
   });
 
@@ -272,7 +272,7 @@ describe("StatusChangeLine (BRDG-414)", () => {
       expect(screen.getByText("UAT2")).toBeInTheDocument();
       // No status transition copy and no status-only affordances.
       expect(screen.queryByText(/Updated from/)).not.toBeInTheDocument();
-      expect(screen.queryByText("Move to bottom")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Move to bottom" })).not.toBeInTheDocument();
       expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
       // Dismiss check is still offered.
       expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();

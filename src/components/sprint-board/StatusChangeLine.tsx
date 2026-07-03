@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, Rocket } from "lucide-react";
+import { ArrowDownToLine, Check, Rocket } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo } from "@/hooks/usePipelines";
@@ -226,13 +226,6 @@ export function StatusChangeLine({
         )}
 
         <span className="flex items-center gap-1.5">
-          {isFinished && !atBottom && (
-            <Tooltip content="Move to bottom — files it just below the Finished work divider. Nothing auto-moves; this is your confirmation it's done.">
-              <button type="button" onClick={onMoveToBottom} className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}>
-                Move to bottom
-              </button>
-            </Tooltip>
-          )}
           {showsTestDoc && onGenerateTestDoc && (
             <Tooltip
               content={
@@ -247,6 +240,20 @@ export function StatusChangeLine({
                 className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
                 {testDocState === "accepted" || testDocState === "draft" ? "View test doc" : "Generate test doc"}
+              </button>
+            </Tooltip>
+          )}
+          {/* Icon-only, parked next to the dismiss check (PO feedback): filing
+              a finished row is the same kind of ack as marking the line seen. */}
+          {isFinished && !atBottom && (
+            <Tooltip content="Move to bottom — files it just below the Finished work divider. Nothing auto-moves; this is your confirmation it's done.">
+              <button
+                type="button"
+                onClick={onMoveToBottom}
+                aria-label="Move to bottom"
+                className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-md text-text-muted transition-colors duration-150 hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5" strokeWidth={2} />
               </button>
             </Tooltip>
           )}

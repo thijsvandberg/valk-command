@@ -5,8 +5,8 @@ import { useSWRConfig } from "swr";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TicketRefPill } from "@/components/shared/TicketRefPill";
+import { stripTestDocBlock } from "@/lib/test-doc";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { useTaskStream } from "@/hooks/useTaskStream";
@@ -109,6 +109,10 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   // Side-by-side read-only view of all versions (only offered when there are >1).
   const [compare, setCompare] = useState(false);
+  // The doc shows RENDERED by default (it is validated by reading, not by
+  // editing); the textarea is one Edit click away. Auto-opens for results
+  // that require hand-work (unstructured output, needs_input).
+  const [editing, setEditing] = useState(false);
   const { mutate } = useSWRConfig();
 
   const currentKey = keys[index] ?? null;
@@ -256,6 +260,8 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
           },
         };
       });
+      // Results that need hand-work open straight into the editor.
+      setEditing(!parsed || classification === "needs_input");
       // Cache the raw generation immediately (fire-and-forget): closing the
       // modal or revisiting later must never cost a regeneration. Refresh the
       // board lists after: the row's test-doc marker derives from this state.
@@ -295,6 +301,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
     }
     setConflictMessage(null);
     setCompare(false);
+    setEditing(false);
     setIndex((i) => i + 1);
   }, [isLast, handleClose]);
 
@@ -359,6 +366,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
     if (!currentKey) return;
     setConflictMessage(null);
     setCompare(false);
+    setEditing(false);
     patchEntry(currentKey, { status: "queued", taskId: null, error: null });
     startedRef.current.add(currentKey);
     startGeneration(currentKey);
@@ -446,8 +454,9 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                 Test documentation
               </p>
               <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
-                for <span className="font-mono text-text-secondary">{currentKey}</span>
-                {detail?.title ? <span className="text-text-secondary"> &middot; {detail.title}</span> : null}
+                {/* The key lives ONCE in the story pane as the regular ticket pill;
+                    the header only carries the title for context. */}
+                for <span className="text-text-secondary">{detail?.title ?? currentKey}</span>
               </p>
             </div>
           </div>
@@ -515,32 +524,47 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                 from the ticket&apos;s description editor.
               </InlineAlert>
             )}
-            {/* Version chips: regenerations pile up next to the older doc; the
-                PO switches, compares side by side, then accepts ONE (Save
-                discards the rest). Hidden with a single version. */}
-            {!generating && entry.versions.length > 1 && (
-              <div className="flex shrink-0 items-center gap-1.5" data-testid="test-doc-versions">
-                {entry.versions.map((v, i) => (
+            {/* Toolbar: version chips (regenerations pile up next to the older
+                doc; the PO switches, compares, then accepts ONE — Save discards
+                the rest) plus the rendered/edit toggle. */}
+            {!generating && (
+              <div className="flex shrink-0 items-center gap-1.5" data-testid="test-doc-toolbar">
+                {entry.versions.length > 1 && (
+                  <span className="flex items-center gap-1.5" data-testid="test-doc-versions">
+                    {entry.versions.map((v, i) => (
+                      <button
+                        key={`${i}-${v.label}`}
+                        type="button"
+                        onClick={() => handleSwitchVersion(i)}
+                        className={`cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                          i === entry.activeVersion
+                            ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] ring-1 ring-[var(--color-brand-500)]/30"
+                            : "bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary"
+                        }`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </span>
+                )}
+                <span className="ml-auto flex items-center gap-1.5">
+                  {entry.versions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => { setCompare((c) => !c); setEditing(false); }}
+                      className="cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                    >
+                      {compare ? "Close compare" : "Compare"}
+                    </button>
+                  )}
                   <button
-                    key={`${i}-${v.label}`}
                     type="button"
-                    onClick={() => handleSwitchVersion(i)}
-                    className={`cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-                      i === entry.activeVersion
-                        ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] ring-1 ring-[var(--color-brand-500)]/30"
-                        : "bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary"
-                    }`}
+                    onClick={() => { setEditing((e) => !e); setCompare(false); }}
+                    className="cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                   >
-                    {v.label}
+                    {editing ? "Preview" : "Edit"}
                   </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setCompare((c) => !c)}
-                  className="ml-auto cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-                >
-                  {compare ? "Edit" : "Compare"}
-                </button>
+                </span>
               </div>
             )}
             {generating ? (
@@ -577,7 +601,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : editing ? (
               <textarea
                 value={entry.doc}
                 onChange={(e) => handleDocChange(e.target.value)}
@@ -586,19 +610,27 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                 data-testid="test-doc-editor"
                 className="min-h-0 flex-1 resize-none rounded-xl border border-border-default bg-surface-base p-3 font-mono text-body-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted focus:border-[var(--color-brand-500)]/45 [transition:border-color_.15s_ease]"
               />
+            ) : (
+              // Rendered markdown is the default reading mode; clicking it (or
+              // the Edit toggle) switches to the raw editor.
+              <div
+                data-testid="test-doc-preview"
+                onClick={() => setEditing(true)}
+                title="Click to edit"
+                className="description-content min-h-0 flex-1 cursor-pointer overflow-y-auto rounded-xl border border-border-subtle bg-surface-base p-3 text-body-sm"
+              >
+                {entry.doc.trim()
+                  ? renderMarkdown(entry.doc)
+                  : <p className="text-body-sm text-text-muted">Empty — click to write the checks yourself.</p>}
+              </div>
             )}
           </div>
 
           <div className="flex min-h-0 flex-col p-4">
+            {/* The regular ticket pill (status + hover card + open in new tab) —
+                the single place the key shows in this modal. */}
             <div className="mb-3 flex shrink-0 items-center gap-2">
-              {detail && <IssueTypeIcon type={detail.type} size={14} strokeWidth={2} />}
-              <span className="font-mono text-body-sm text-text-tertiary">{currentKey}</span>
-              {detail && (
-                <StatusBadge
-                  status={detail.jiraStatus}
-                  className="rounded-[5px] px-1.5 text-caption tracking-wide"
-                />
-              )}
+              <TicketRefPill ticketKey={currentKey} />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border-subtle bg-surface-base p-4" data-testid="test-doc-story-pane">
               {detail ? (
@@ -606,9 +638,31 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                   <h3 className="mb-3 text-body-lg font-semibold text-text-primary">{detail.title}</h3>
                   <div className="description-content">
                     {detail.description?.trim()
-                      ? renderMarkdown(detail.description, { linkifyRefs: true })
+                      ? // The doc under review IS the expand block; repeating it
+                        // inside the story rendering is pure noise.
+                        renderMarkdown(stripTestDocBlock(detail.description), { linkifyRefs: true })
                       : <p className="text-body-lg text-text-muted">No description.</p>}
                   </div>
+                  {detail.jiraComments && detail.jiraComments.length > 0 && (
+                    <div className="mt-5 border-t border-border-subtle pt-3" data-testid="test-doc-story-comments">
+                      <p className="mb-2 text-caption font-medium uppercase tracking-wide text-text-tertiary">
+                        Comments ({detail.jiraComments.length})
+                      </p>
+                      <div className="flex flex-col gap-3">
+                        {detail.jiraComments.map((c) => (
+                          <div key={c.id}>
+                            <p className="text-caption text-text-muted">
+                              {c.authorName}
+                              {!Number.isNaN(new Date(c.createdAt).getTime()) && (
+                                <> &middot; {new Date(c.createdAt).toLocaleString()}</>
+                              )}
+                            </p>
+                            <div className="description-content text-body-sm">{renderMarkdown(c.content)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="flex h-full items-center justify-center text-text-muted">

@@ -789,11 +789,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               {/* Test-documentation state (BRDG-426): opt-in signal for the sprint
                   delivery check. When toggled on, EVERY row shows one of the four
                   states — the whole point is spotting the gaps, so "nothing yet"
-                  renders as a faint icon rather than nothing at all. Hover/click
-                  opens the doc itself with a jump into the review flow. */}
+                  renders as a faint icon rather than nothing at all. Clicking
+                  opens the centered review modal. */}
               {tags.has("testDoc") && (
                 <TestDocMarker
-                  ticketKey={ticket.key}
                   state={ticket.testDocState ?? null}
                   onOpenReview={
                     onStatusChangeGenerateTestDoc
