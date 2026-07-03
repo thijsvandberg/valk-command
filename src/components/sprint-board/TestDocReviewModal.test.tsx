@@ -359,6 +359,75 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     expect(screen.getByText("Regenerate").closest("button")).not.toBeDisabled();
   });
 
+  describe("versioning on regenerate (BRDG-426)", () => {
+    it("keeps the old version next to the new one; switching restores the old doc", async () => {
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await emitResult("VPL-1", "**Old**\n\n- A");
+
+      delete streamsByTask[taskIdFor("VPL-1")];
+      fireEvent.click(screen.getByText("Regenerate"));
+      await emitResult("VPL-1", "**Fresh**\n\n- B");
+
+      const chips = screen.getByTestId("test-doc-versions");
+      expect(chips).toHaveTextContent("New");
+      expect(chips).toHaveTextContent("New 2");
+      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe("**Fresh**\n\n- B");
+
+      fireEvent.click(screen.getByText("New", { selector: "button" }));
+      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe("**Old**\n\n- A");
+    });
+
+    it("seeds Saved + Draft as two versions when both exist in the cache", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        saved: { markdown: "**Accepted**", classification: "ok", updatedAt: null },
+        draft: { markdown: "**Newer draft**", classification: "ok", generatedAt: null },
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+
+      await waitFor(() => expect(screen.getByTestId("test-doc-versions")).toBeInTheDocument());
+      expect(screen.getByTestId("test-doc-versions")).toHaveTextContent("Saved");
+      expect(screen.getByTestId("test-doc-versions")).toHaveTextContent("Draft");
+      // The newest (draft) starts active.
+      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe("**Newer draft**");
+    });
+
+    it("compare shows the versions side by side; Use this one switches the active version", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        saved: { markdown: "**Accepted**", classification: "ok", updatedAt: null },
+        draft: { markdown: "**Newer draft**", classification: "ok", generatedAt: null },
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await waitFor(() => expect(screen.getByTestId("test-doc-versions")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText("Compare"));
+      const compare = screen.getByTestId("test-doc-compare");
+      expect(compare).toHaveTextContent("**Accepted**");
+      expect(compare).toHaveTextContent("**Newer draft**");
+
+      fireEvent.click(screen.getByText("Use this one"));
+      fireEvent.click(screen.getByText("Edit"));
+      expect((screen.getByTestId("test-doc-editor") as HTMLTextAreaElement).value).toBe("**Accepted**");
+    });
+
+    it("Save accepts the ACTIVE version after switching back to the old one", async () => {
+      const onClose = vi.fn();
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={onClose} />);
+      await emitResult("VPL-1", "**Old**\n\n- A");
+      delete streamsByTask[taskIdFor("VPL-1")];
+      fireEvent.click(screen.getByText("Regenerate"));
+      await emitResult("VPL-1", "**Fresh**\n\n- B");
+
+      fireEvent.click(screen.getByText("New", { selector: "button" }));
+      fireEvent.click(screen.getByText("Save"));
+
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+      expect(mockSaveTestDoc).toHaveBeenCalledWith("VPL-1", {
+        markdown: "**Old**\n\n- A",
+        classification: "ok",
+      });
+    });
+  });
+
   it("Regenerate restarts generation for the current key immediately", async () => {
     render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
     await emitResult("VPL-1", DOC);

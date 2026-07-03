@@ -208,6 +208,11 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   agent task and the workspace rate tier allows 10 req/min), the first result shows as soon as
   it lands, and the rest generate during review, so Save/Skip advances to an already-finished
   doc ("N ready" in the queue indicator). Closing mid-queue cancels in-flight tasks.
+  Regeneration is versioned: the new result lands NEXT to the existing doc (chips + a
+  side-by-side Compare view); Save accepts the active version and discards the rest. A
+  reopened ticket with both a saved doc and a newer draft seeds those as two versions.
+  The status-change line offers the flow on Test AND Done lines ("Generate test doc" →
+  "View test doc" once a doc/draft exists; hidden when marked not-needed).
 - **Draft cache**: every completed generation is stored immediately in
   `ticket_metadata.test_doc_draft*` (PUT `test-doc-draft`, fire-and-forget from the modal), so
   an unreviewed doc survives closing the modal. On open the modal first checks GET `test-doc`:
@@ -234,8 +239,10 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   (amber), not-needed (muted FileX), none (faint) — derived server-side into
   `Ticket.testDocState` on the list payload. Hover/click opens `TestDocMarker`'s card with
   the actual doc (lazy GET), an "Open review"/"Generate" jump into the review flow, and a
-  "Not needed" quick-mark for missing/draft states. The marker auto-reveals once per sprint
-  when the active sprint enters its last working day (`shouldAutoEnableTestDocTag`,
+  "Not needed" quick-mark for missing/draft states. The marker visibility is PER SPRINT
+  (`bridge:test-doc-tag-sprints` id set; the Display checkbox toggles the current sprint and
+  is disabled on the All view), so the next sprint always starts with markers off. It
+  auto-reveals once per sprint on the last working day (`shouldAutoEnableTestDocTag`,
   localStorage flag `bridge:test-doc-tag-auto:<sprintId>`), so switching it off sticks.
 
 ### already-built topic (BRDG-287)

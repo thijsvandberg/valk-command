@@ -21,10 +21,19 @@ import { ClipboardCheck, Loader2, RefreshCw, X } from "lucide-react";
 // starts stay well under both.
 const MAX_CONCURRENT_GENERATIONS = 3;
 
+/** One reviewable doc variant; regeneration adds versions instead of replacing (PO compares, then accepts one). */
+interface DocVersion {
+  label: string;
+  doc: string;
+  classification: TestDocClassification;
+  unstructured: boolean;
+}
+
 interface EntryState {
   /** checking (cache lookup) → queued → generating (task streaming) → ready | error */
   status: "checking" | "queued" | "generating" | "ready" | "error";
   taskId: string | null;
+  /** The ACTIVE working copy (editable); versions[activeVersion] holds its last snapshot. */
   doc: string;
   classification: TestDocClassification;
   unstructured: boolean;
@@ -33,6 +42,8 @@ interface EntryState {
   source: "fresh" | "draft" | "saved" | null;
   /** ISO timestamp of the cached draft / accepted save, for the provenance banner. */
   cachedAt: string | null;
+  versions: DocVersion[];
+  activeVersion: number;
 }
 
 function makeEntry(status: EntryState["status"]): EntryState {
@@ -45,6 +56,8 @@ function makeEntry(status: EntryState["status"]): EntryState {
     error: null,
     source: null,
     cachedAt: null,
+    versions: [],
+    activeVersion: 0,
   };
 }
 
@@ -94,6 +107,8 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   const [progressByKey, setProgressByKey] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
+  // Side-by-side read-only view of all versions (only offered when there are >1).
+  const [compare, setCompare] = useState(false);
   const { mutate } = useSWRConfig();
 
   const currentKey = keys[index] ?? null;
@@ -140,12 +155,33 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
         .then((data) => {
           const cached = data.draft ?? data.saved;
           if (cached) {
+            // Both a saved doc AND a newer draft become versions the PO can
+            // switch between/compare; the draft (latest) starts active.
+            const versions: DocVersion[] = [];
+            if (data.saved) {
+              versions.push({
+                label: "Saved",
+                doc: data.saved.markdown,
+                classification: (data.saved.classification as TestDocClassification) ?? "ok",
+                unstructured: false,
+              });
+            }
+            if (data.draft) {
+              versions.push({
+                label: "Draft",
+                doc: data.draft.markdown,
+                classification: (data.draft.classification as TestDocClassification) ?? "ok",
+                unstructured: false,
+              });
+            }
             patchEntry(key, {
               status: "ready",
               doc: cached.markdown,
               classification: (cached.classification as TestDocClassification) ?? "ok",
               source: data.draft ? "draft" : "saved",
               cachedAt: data.draft ? data.draft.generatedAt : data.saved?.updatedAt ?? null,
+              versions,
+              activeVersion: versions.length - 1,
             });
           } else {
             patchEntry(key, { status: "queued" });
@@ -184,13 +220,41 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
       // Degrade gracefully on unstructured output: let the PO salvage it by hand.
       const doc = parsed ? parsed.markdown : output.trim();
       const classification = parsed ? parsed.classification : "ok";
-      patchEntry(key, {
-        status: "ready",
-        doc,
-        classification,
-        unstructured: !parsed,
-        source: "fresh",
-        cachedAt: null,
+      // A regeneration ADDS a version next to the existing ones (the PO
+      // compares and accepts one); it never overwrites the older doc.
+      setEntries((prev) => {
+        const e = prev[key];
+        if (!e) return prev;
+        const versions = [...e.versions];
+        if (versions[e.activeVersion]) {
+          // Preserve any edits the PO made to the previously active version.
+          versions[e.activeVersion] = {
+            ...versions[e.activeVersion],
+            doc: e.doc,
+            classification: e.classification,
+          };
+        }
+        const newCount = versions.filter((v) => v.label.startsWith("New")).length;
+        versions.push({
+          label: newCount === 0 ? "New" : `New ${newCount + 1}`,
+          doc,
+          classification,
+          unstructured: !parsed,
+        });
+        return {
+          ...prev,
+          [key]: {
+            ...e,
+            status: "ready",
+            doc,
+            classification,
+            unstructured: !parsed,
+            source: "fresh",
+            cachedAt: null,
+            versions,
+            activeVersion: versions.length - 1,
+          },
+        };
       });
       // Cache the raw generation immediately (fire-and-forget): closing the
       // modal or revisiting later must never cost a regeneration. Refresh the
@@ -202,7 +266,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
           .catch(() => {});
       }
     },
-    [mutate, patchEntry],
+    [mutate],
   );
 
   const handleTaskError = useCallback(
@@ -230,6 +294,7 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
       return;
     }
     setConflictMessage(null);
+    setCompare(false);
     setIndex((i) => i + 1);
   }, [isLast, handleClose]);
 
@@ -288,15 +353,47 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
   }, [advance, currentKey, entry, mutate, patchEntry]);
 
   // Regenerate bypasses the concurrency cap: the PO is actively waiting on
-  // this one, unlike the background prefetch. Also the escape hatch from a
-  // cached draft/saved doc that turned out stale.
+  // this one, unlike the background prefetch. Existing versions are KEPT —
+  // the new result lands next to them for comparison, never over them.
   const handleRegenerate = useCallback(() => {
     if (!currentKey) return;
     setConflictMessage(null);
-    patchEntry(currentKey, makeEntry("queued"));
+    setCompare(false);
+    patchEntry(currentKey, { status: "queued", taskId: null, error: null });
     startedRef.current.add(currentKey);
     startGeneration(currentKey);
   }, [currentKey, patchEntry, startGeneration]);
+
+  // Switch the working copy to another version, preserving edits made to the
+  // one being left.
+  const handleSwitchVersion = useCallback(
+    (index: number) => {
+      if (!currentKey) return;
+      setEntries((prev) => {
+        const e = prev[currentKey];
+        if (!e || index === e.activeVersion || !e.versions[index]) return prev;
+        const versions = [...e.versions];
+        versions[e.activeVersion] = {
+          ...versions[e.activeVersion],
+          doc: e.doc,
+          classification: e.classification,
+        };
+        const target = versions[index];
+        return {
+          ...prev,
+          [currentKey]: {
+            ...e,
+            versions,
+            activeVersion: index,
+            doc: target.doc,
+            classification: target.classification,
+            unstructured: target.unstructured,
+          },
+        };
+      });
+    },
+    [currentKey],
+  );
 
   const handleDocChange = useCallback(
     (value: string) => {
@@ -418,12 +515,67 @@ export function TestDocReviewModal({ keys, onClose }: TestDocReviewModalProps) {
                 from the ticket&apos;s description editor.
               </InlineAlert>
             )}
+            {/* Version chips: regenerations pile up next to the older doc; the
+                PO switches, compares side by side, then accepts ONE (Save
+                discards the rest). Hidden with a single version. */}
+            {!generating && entry.versions.length > 1 && (
+              <div className="flex shrink-0 items-center gap-1.5" data-testid="test-doc-versions">
+                {entry.versions.map((v, i) => (
+                  <button
+                    key={`${i}-${v.label}`}
+                    type="button"
+                    onClick={() => handleSwitchVersion(i)}
+                    className={`cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                      i === entry.activeVersion
+                        ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] ring-1 ring-[var(--color-brand-500)]/30"
+                        : "bg-overlay-subtle text-text-tertiary hover:bg-overlay-default hover:text-text-secondary"
+                    }`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCompare((c) => !c)}
+                  className="ml-auto cursor-pointer rounded-md px-2 py-0.5 text-caption font-medium text-text-tertiary hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                >
+                  {compare ? "Edit" : "Compare"}
+                </button>
+              </div>
+            )}
             {generating ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-text-tertiary">
                 <Loader2 size={20} strokeWidth={1.75} className="animate-spin text-[var(--color-brand-400)]" />
                 <p className="max-w-[320px] truncate text-body-sm" data-testid="test-doc-progress">
                   {progressByKey[currentKey] ?? "Starting..."}
                 </p>
+              </div>
+            ) : compare && entry.versions.length > 1 ? (
+              <div className="flex min-h-0 flex-1 gap-2 overflow-x-auto" data-testid="test-doc-compare">
+                {entry.versions.map((v, i) => (
+                  <div
+                    key={`${i}-${v.label}`}
+                    className={`flex min-w-[260px] flex-1 flex-col overflow-hidden rounded-xl border ${
+                      i === entry.activeVersion ? "border-[var(--color-brand-500)]/45" : "border-border-subtle"
+                    } bg-surface-base`}
+                  >
+                    <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-3 py-1.5">
+                      <span className="text-caption font-medium text-text-tertiary">{v.label}</span>
+                      {i !== entry.activeVersion && (
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchVersion(i)}
+                          className="cursor-pointer text-caption font-medium text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                        >
+                          Use this one
+                        </button>
+                      )}
+                    </div>
+                    <div className="description-content min-h-0 flex-1 overflow-y-auto p-3 text-body-sm">
+                      {renderMarkdown(i === entry.activeVersion ? entry.doc : v.doc)}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <textarea
