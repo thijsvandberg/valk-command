@@ -7,6 +7,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 export interface SprintTestDocItem {
   key: string;
   title: string;
+  type: string;
   status: string;
   storyPoints: number | null;
   epic: string | null;
@@ -49,6 +50,7 @@ export async function GET(
     .select({
       key: ticket.jiraKey,
       title: ticket.title,
+      type: ticket.type,
       status: ticket.status,
       storyPoints: ticket.storyPoints,
       epic: ticket.epic,
@@ -86,6 +88,7 @@ export async function GET(
     const item: SprintTestDocItem = {
       key: row.key,
       title: row.title,
+      type: row.type ?? "task",
       status: row.status,
       storyPoints: row.storyPoints,
       epic: row.epic ?? null,

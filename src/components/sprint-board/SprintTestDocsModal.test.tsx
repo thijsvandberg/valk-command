@@ -8,6 +8,12 @@ vi.mock("swr", () => ({
   default: () => ({ data: mockData, error: mockError }),
 }));
 
+vi.mock("@/components/shared/TicketStatusPill", () => ({
+  TicketStatusPill: ({ ticketKey, jiraStatus }: { ticketKey: string; jiraStatus: string }) => (
+    <span data-testid="ticket-pill">{ticketKey} {jiraStatus}</span>
+  ),
+}));
+
 vi.mock("@/components/shared/TicketRefPill", () => ({
   TicketRefPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="ticket-pill">{ticketKey}</span>,
 }));
@@ -25,20 +31,20 @@ import { SprintTestDocsModal, buildTestDocDocument } from "./SprintTestDocsModal
 const BASE: SprintTestDocs = {
   sprintName: "BT: 139",
   documented: [
-    { key: "VPL-2", title: "Big story", status: "DONE", storyPoints: 8, epic: "Payments", doc: "**Big feature**\n\n- Confirm A" },
-    { key: "VPL-1", title: "Flagged story", status: "TEST", storyPoints: 3, epic: null, doc: "**Flagged**\n\n- Confirm B", needsInput: true },
+    { key: "VPL-2", type: "story", title: "Big story", status: "DONE", storyPoints: 8, epic: "Payments", doc: "**Big feature**\n\n- Confirm A" },
+    { key: "VPL-1", type: "story", title: "Flagged story", status: "TEST", storyPoints: 3, epic: null, doc: "**Flagged**\n\n- Confirm B", needsInput: true },
   ],
   internal: [
-    { key: "VPL-3", title: "Sync groundwork", status: "DONE", storyPoints: null, epic: null, doc: "Internal: sync groundwork" },
+    { key: "VPL-3", type: "story", title: "Sync groundwork", status: "DONE", storyPoints: null, epic: null, doc: "Internal: sync groundwork" },
   ],
   notNeeded: [
-    { key: "VPL-7", title: "DB partitions chore", status: "DONE", storyPoints: null, epic: null, doc: null },
+    { key: "VPL-7", type: "story", title: "DB partitions chore", status: "DONE", storyPoints: null, epic: null, doc: null },
   ],
   missing: [
-    { key: "VPL-4", title: "Missing one", status: "DONE", storyPoints: 5, epic: "Payments", doc: null },
-    { key: "VPL-5", title: "Missing two", status: "TEST", storyPoints: null, epic: null, doc: null, hasDraft: true },
+    { key: "VPL-4", type: "story", title: "Missing one", status: "DONE", storyPoints: 5, epic: "Payments", doc: null },
+    { key: "VPL-5", type: "story", title: "Missing two", status: "TEST", storyPoints: null, epic: null, doc: null, hasDraft: true },
   ],
-  other: [{ key: "VPL-6", title: "Still open", status: "IN PROGRESS", storyPoints: null, epic: null, doc: null }],
+  other: [{ key: "VPL-6", type: "story", title: "Still open", status: "IN PROGRESS", storyPoints: null, epic: null, doc: null }],
 };
 
 function renderModal(overrides: Partial<Parameters<typeof SprintTestDocsModal>[0]> = {}) {
@@ -138,7 +144,8 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
   it("plain lists render regular ticket rows: pill + title + epic", () => {
     renderModal();
     const missing = screen.getByTestId("test-docs-missing");
-    expect(within(missing).getAllByTestId("ticket-pill").map((p) => p.textContent)).toEqual(["VPL-4", "VPL-5"]);
+    // The board-style pill carries key + status.
+    expect(within(missing).getAllByTestId("ticket-pill").map((p) => p.textContent)).toEqual(["VPL-4 DONE", "VPL-5 TEST"]);
     expect(within(missing).getByTestId("epic-badge")).toHaveTextContent("Payments");
     expect(within(screen.getByTestId("test-docs-not-needed")).getAllByTestId("ticket-pill")).toHaveLength(1);
     expect(within(screen.getByTestId("test-docs-other")).getAllByTestId("ticket-pill")).toHaveLength(1);

@@ -1090,6 +1090,7 @@ export const confluence = {
 export interface SprintTestDocItem {
   key: string;
   title: string;
+  type: string;
   status: string;
   storyPoints: number | null;
   epic: string | null;

@@ -9,8 +9,9 @@ import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import Link from "next/link";
 import { swrFetcher, sprints, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
-import { TicketRefPill } from "@/components/shared/TicketRefPill";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
+import type { IssueType, JiraStatus } from "@/types/ticket";
 import type { ShowToast } from "@/hooks/useToast";
 import { ClipboardCopy, FileCheck2, Loader2, X } from "lucide-react";
 
@@ -59,12 +60,21 @@ export function buildTestDocDocument(data: SprintTestDocs): string {
   return parts.join("\n\n");
 }
 
-/** Regular ticket list row (issue pill + title + epic), used by the plain lists. */
+/** Regular ticket list row, mirroring the sprint board's flat pill (icon +
+ *  key + status chip) + title + epic chip. */
 function TicketListRow({ item, trailing }: { item: SprintTestDocItem; trailing?: React.ReactNode }) {
   return (
-    <li className="flex min-w-0 items-center gap-2 py-0.5">
-      <TicketRefPill ticketKey={item.key} />
-      <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary" title={item.title}>
+    <li className="flex min-w-0 items-center gap-2.5 py-1">
+      <TicketStatusPill
+        ticketKey={item.key}
+        jiraStatus={item.status as JiraStatus}
+        issueType={item.type as IssueType}
+        title={item.title}
+        variant="list"
+        size="lg"
+        showReadiness={false}
+      />
+      <span className="min-w-0 flex-1 truncate text-body-lg text-text-primary" title={item.title}>
         {item.title}
       </span>
       {item.epic && <EpicBadge epic={item.epic} className="max-w-[140px] shrink-0" />}
