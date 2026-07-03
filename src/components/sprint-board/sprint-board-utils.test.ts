@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { saveTicketMetadata, saveStoryPoints, scopePlaceholdersToSprintFilter } from "./sprint-board-utils";
+import { saveTicketMetadata, saveStoryPoints, scopePlaceholdersToSprintFilter, shouldAutoEnableTestDocTag } from "./sprint-board-utils";
 
 const globalMutate = vi.fn();
 const updateMetadata = vi.fn();
@@ -135,5 +135,38 @@ describe("scopePlaceholdersToSprintFilter (BRDG-304)", () => {
       sprintStateMap: stateMap,
     });
     expect(out.map((p) => p.id)).toEqual(["p1"]);
+  });
+});
+
+describe("shouldAutoEnableTestDocTag (BRDG-426)", () => {
+  function fakeStorage(initial: Record<string, string> = {}) {
+    const store = { ...initial };
+    return {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => { store[k] = v; },
+      store,
+    };
+  }
+
+  it("fires once when the last working day is reached, then never again", () => {
+    const storage = fakeStorage();
+    expect(shouldAutoEnableTestDocTag("6361", 1, storage)).toBe(true);
+    expect(storage.store["bridge:test-doc-tag-auto:6361"]).toBe("1");
+    expect(shouldAutoEnableTestDocTag("6361", 1, storage)).toBe(false);
+    expect(shouldAutoEnableTestDocTag("6361", 0, storage)).toBe(false);
+  });
+
+  it("also covers opening the board after the end date (remaining 0)", () => {
+    expect(shouldAutoEnableTestDocTag("6361", 0, fakeStorage())).toBe(true);
+  });
+
+  it("stays quiet mid-sprint, without a sprint, and per sprint independently", () => {
+    const storage = fakeStorage();
+    expect(shouldAutoEnableTestDocTag("6361", 5, storage)).toBe(false);
+    expect(shouldAutoEnableTestDocTag(null, 1, storage)).toBe(false);
+    expect(shouldAutoEnableTestDocTag("6361", null, storage)).toBe(false);
+    // A new sprint gets its own once-only flag.
+    expect(shouldAutoEnableTestDocTag("6361", 1, storage)).toBe(true);
+    expect(shouldAutoEnableTestDocTag("6394", 1, storage)).toBe(true);
   });
 });

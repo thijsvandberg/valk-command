@@ -232,7 +232,11 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
 - **Board marker**: the toggleable "Test documentation" row field (off by default,
   `filter-bar-types` tag `testDoc`) shows the per-ticket state — accepted (green), draft
   (amber), not-needed (muted FileX), none (faint) — derived server-side into
-  `Ticket.testDocState` on the list payload.
+  `Ticket.testDocState` on the list payload. Hover/click opens `TestDocMarker`'s card with
+  the actual doc (lazy GET), an "Open review"/"Generate" jump into the review flow, and a
+  "Not needed" quick-mark for missing/draft states. The marker auto-reveals once per sprint
+  when the active sprint enters its last working day (`shouldAutoEnableTestDocTag`,
+  localStorage flag `bridge:test-doc-tag-auto:<sprintId>`), so switching it off sticks.
 
 ### already-built topic (BRDG-287)
 

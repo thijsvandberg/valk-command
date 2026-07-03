@@ -32,7 +32,7 @@ import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
 import { usePlaceholders } from "@/hooks/usePlaceholders";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays, scopePlaceholdersToSprintFilter } from "@/components/sprint-board/sprint-board-utils";
+import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays, scopePlaceholdersToSprintFilter, shouldAutoEnableTestDocTag } from "@/components/sprint-board/sprint-board-utils";
 import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint, isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
 import type { SavedView, InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { cycleMetricSort, DEFAULT_SORT } from "@/components/sprint-board/filter-bar-types";
@@ -578,6 +578,16 @@ export default function SprintBoard() {
   const stats = useMemo(() => computeSprintStats(allTickets), [allTickets]);
   const sprintWorkDays = useMemo(() => computeSprintWorkDays(activeSprint), [activeSprint]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
+
+  // BRDG-426: reveal the test-doc row marker automatically once the active sprint
+  // enters its last working day — the moment the delivery check matters. Applied
+  // ONCE per sprint (localStorage flag inside the helper), so switching it off
+  // afterwards sticks. toggleColumn persists via the regular column-config path,
+  // exactly as if the PO ticked it in the Display menu.
+  useEffect(() => {
+    if (!shouldAutoEnableTestDocTag(activeSprint?.id, sprintWorkDays.remaining)) return;
+    if (!f.visibleTags.has("testDoc")) toggleColumn("testDoc", true);
+  }, [activeSprint, sprintWorkDays, f.visibleTags, toggleColumn]);
 
   // The flat (ungrouped) list creates into one concrete target: the open sprint, or
   // the backlog. Suppressed for the All view and saved views, where the flat list spans

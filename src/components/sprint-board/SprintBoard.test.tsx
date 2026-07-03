@@ -82,6 +82,7 @@ vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
   computeSprintStats: () => ({ totalPoints: 10, donePoints: 3, todoPoints: 7 }),
   computeSprintWorkDays: () => ({ elapsed: 5, total: 10 }),
   scopePlaceholdersToSprintFilter: (placeholders: unknown[]) => placeholders,
+  shouldAutoEnableTestDocTag: () => false,
 }));
 
 vi.mock("@/components/sprint-board/SprintSlots", () => ({

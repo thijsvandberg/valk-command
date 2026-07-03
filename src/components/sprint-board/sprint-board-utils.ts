@@ -261,3 +261,24 @@ export function computeSprintWorkDays(sprint: Sprint | null | undefined): { rema
   }
   return { remaining, total };
 }
+
+// BRDG-426: decide (once per sprint) whether the board should auto-reveal the
+// test-doc row marker. Fires when the active sprint has entered its last
+// working day (remaining <= 1, which also covers opening Bridge after the end
+// date while the sprint is still open). The localStorage flag makes it
+// once-only: switching the marker off afterwards sticks.
+export function shouldAutoEnableTestDocTag(
+  sprintId: string | null | undefined,
+  remainingWorkDays: number | null,
+  storage: Pick<Storage, "getItem" | "setItem"> = localStorage,
+): boolean {
+  if (!sprintId || remainingWorkDays === null || remainingWorkDays > 1) return false;
+  const flagKey = `bridge:test-doc-tag-auto:${sprintId}`;
+  try {
+    if (storage.getItem(flagKey)) return false;
+    storage.setItem(flagKey, "1");
+    return true;
+  } catch {
+    return false;
+  }
+}
