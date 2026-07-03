@@ -134,6 +134,11 @@ working tree carries unrelated untracked parallel work (`src/components/sprint-b
 imported by `BoardRow.tsx`) with a pre-existing typecheck error, which would dominate the build.
 Run the build once that parallel work settles or in a clean worktree before promoting.
 
+**Post-ship round (2026-07-03):** clicking Snooze now shows a short "Snoozed for 1 hour"
+confirmation toast (shared `useToast` + `Toast`, bottom-right, auto-hides after 3s). The toast
+renders outside the banner's `if (!active)` branch because the optimistic mutate unmounts the
+banner section on the same click. Covered by a fake-timers test in `InboxDigestBanner.test.tsx`.
+
 ## Related
 
 - [[BRDG-413-inbox-new-ticket-digest]] — the digest banner this modifies.

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ActiveInboxDigest } from "@/lib/api-client";
 import { InboxDigestBanner } from "./InboxDigestBanner";
@@ -124,6 +124,28 @@ describe("InboxDigestBanner (BRDG-413)", () => {
     expect(h.mutate).toHaveBeenCalledWith({ active: null }, { revalidate: false });
     await waitFor(() => expect(h.snooze).toHaveBeenCalledTimes(1));
     expect(h.dismiss).not.toHaveBeenCalled();
+  });
+
+  it("shows a short confirmation toast after snoozing that auto-hides (BRDG-462)", async () => {
+    vi.useFakeTimers();
+    try {
+      h.active = { id: "x", generatedAt: "x", baselineAt: null, total: 3, buckets: [] };
+      render(<InboxDigestBanner />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Snooze for 1 hour" }));
+      // The toast shows after the awaited optimistic mutate resolves.
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(screen.getByText("Snoozed for 1 hour")).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(screen.queryByText("Snoozed for 1 hour")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("no longer renders a minimize control or corner bubble (BRDG-462)", () => {

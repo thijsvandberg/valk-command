@@ -5,6 +5,8 @@ import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { Inbox, ArrowRight, AlarmClock } from "lucide-react";
 import { inboxDigest, swrFetcher, type InboxDigestResponse } from "@/lib/api-client";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 
 // Mirrors useInboxGroupBy's session key so "Open inbox" lands in Relevance
 // grouping regardless of a previously persisted choice (BRDG-413 AC).
@@ -25,6 +27,7 @@ export function InboxDigestBanner() {
   });
 
   const active = data?.active ?? null;
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
 
   // Optimistically hide, then clear on the server (next poll reconciles if the
   // request fails). Both Open inbox and Dismiss clear the active digest.
@@ -38,15 +41,17 @@ export function InboxDigestBanner() {
   }, [mutate]);
 
   // Snooze hides the banner for an hour (server-backed), then it resurfaces on a
-  // later poll. Optimistically hide so the click feels instant.
+  // later poll. Optimistically hide so the click feels instant, and confirm with
+  // a short toast since the banner itself disappears.
   const snooze = useCallback(async () => {
     await mutate({ active: null }, { revalidate: false });
+    showToast("Snoozed for 1 hour");
     try {
       await inboxDigest.snooze();
     } catch {
       // Best-effort; the 60s poll will resurface it if the snooze didn't land.
     }
-  }, [mutate]);
+  }, [mutate, showToast]);
 
   const handleOpen = useCallback(() => {
     try {
@@ -60,11 +65,17 @@ export function InboxDigestBanner() {
     router.push("/inbox?new=1");
   }, [clear, router]);
 
-  if (!active) return null;
+  // The snooze confirmation must outlive the banner (which unmounts its section
+  // the moment the optimistic mutate clears `active`), so it renders outside it.
+  const snoozeToast = <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />;
+
+  if (!active) return snoozeToast;
 
   const ticketWord = active.total === 1 ? "ticket" : "tickets";
 
   return (
+    <>
+    {snoozeToast}
     <section
       role="status"
       aria-live="polite"
@@ -149,5 +160,6 @@ export function InboxDigestBanner() {
         </button>
       </div>
     </section>
+    </>
   );
 }
