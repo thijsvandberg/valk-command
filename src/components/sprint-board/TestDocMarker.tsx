@@ -9,8 +9,10 @@ import { tickets as ticketsApi } from "@/lib/api-client";
 
 export type TestDocMarkerState = "accepted" | "draft" | "not_needed" | null;
 
-const CARD_WIDTH = 400;
+// Sized so a typical 3-8 line doc fits without scrolling (PO feedback).
+const CARD_WIDTH = 520;
 const CARD_MARGIN = 8;
+const CARD_MAX_ESTIMATE = 560;
 
 function stop(e: React.SyntheticEvent) {
   e.stopPropagation();
@@ -47,8 +49,8 @@ function TestDocHoverCard({
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const left = Math.min(Math.max(CARD_MARGIN, rect.left - CARD_WIDTH / 2), window.innerWidth - CARD_WIDTH - CARD_MARGIN);
-    // Open below unless that would clip near the viewport bottom (card ~360px max).
-    const openUp = rect.bottom + 380 > window.innerHeight && rect.top > 380;
+    // Open below unless that would clip near the viewport bottom.
+    const openUp = rect.bottom + CARD_MAX_ESTIMATE > window.innerHeight && rect.top > CARD_MAX_ESTIMATE;
     setPos({ left, top: openUp ? rect.top - 6 : rect.bottom + 6, openUp });
   }, [triggerRef]);
 
@@ -115,7 +117,7 @@ function TestDocHoverCard({
         </span>
       </div>
 
-      <div className="max-h-[300px] overflow-y-auto px-3.5 py-3">
+      <div className="max-h-[min(480px,55vh)] overflow-y-auto px-3.5 py-3">
         {state === "not_needed" && (
           <p className="text-body-sm text-text-secondary">
             Marked as not needing test documentation. It is listed separately in the sprint
