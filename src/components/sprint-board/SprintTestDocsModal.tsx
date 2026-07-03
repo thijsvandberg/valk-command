@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from "react";
 import useSWR from "swr";
 import { Modal } from "@/components/shared/Modal";
+import { ModalHeader } from "@/components/shared/ModalHeader";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
@@ -13,7 +14,7 @@ import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import type { IssueType, JiraStatus } from "@/types/ticket";
 import type { ShowToast } from "@/hooks/useToast";
-import { ClipboardCopy, FileCheck2, Loader2, X } from "lucide-react";
+import { ClipboardCopy, FileCheck2, Loader2 } from "lucide-react";
 
 interface SprintTestDocsModalProps {
   sprintId: string;
@@ -138,31 +139,16 @@ export function SprintTestDocsModal({
   return (
     <Modal open onClose={onClose} aria-label="Sprint test documentation">
       <div className="flex h-[min(880px,90vh)] w-[min(1080px,94vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
-        {/* Header */}
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-500)]/12 ring-1 ring-[var(--color-brand-500)]/20 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_15%,transparent)]">
-              <FileCheck2 size={16} strokeWidth={1.75} className="text-[var(--color-brand-400)]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-body font-semibold leading-tight text-text-primary">
-                Test documentation
-              </p>
-              <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
-                {data?.sprintName ?? "…"}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            icon={<X size={14} strokeWidth={1.5} />}
-            onClick={onClose}
-            className="shrink-0 text-text-muted"
-            aria-label="Close"
-          />
-        </div>
+        <ModalHeader
+          icon={<FileCheck2 size={16} strokeWidth={1.75} className="text-[var(--color-brand-400)]" />}
+          title="Test documentation"
+          subtitle={
+            <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
+              {data?.sprintName ?? "…"}
+            </p>
+          }
+          onClose={onClose}
+        />
 
         {/* Body */}
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">

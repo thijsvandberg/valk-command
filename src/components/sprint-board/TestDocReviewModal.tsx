@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { Modal } from "@/components/shared/Modal";
+import { ModalHeader } from "@/components/shared/ModalHeader";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
@@ -14,7 +15,7 @@ import { friendlyStreamError } from "@/lib/agent-errors";
 import { parseTestDoc, coerceClassification, type TestDocClassification } from "@/lib/parse-test-doc";
 import { getCachedTestDoc, primeTestDocCache, invalidateTestDocCache } from "@/lib/test-doc-prefetch";
 import { tickets as ticketsApi, workspaceTasks, ApiError } from "@/lib/api-client";
-import { ArrowLeft, ClipboardCheck, Loader2, RefreshCw, X } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Loader2, RefreshCw } from "lucide-react";
 
 // Generations run ahead of the PO's review so the queue never waits (bulk
 // prefetch). Capped: each generation is a full agent task on the workspace,
@@ -525,26 +526,19 @@ export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle 
         tabIndex={-1}
         className="flex h-[min(1040px,90vh)] w-[min(1680px,95vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl outline-none"
       >
-        {/* Header */}
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-500)]/12 ring-1 ring-[var(--color-brand-500)]/20 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_15%,transparent)]">
-              <ClipboardCheck size={16} strokeWidth={1.75} className="text-[var(--color-brand-400)]" />
+        <ModalHeader
+          icon={<ClipboardCheck size={16} strokeWidth={1.75} className="text-[var(--color-brand-400)]" />}
+          title="Test documentation"
+          // The key lives ONCE, here in the header, as the regular ticket pill
+          // (status + hover card + open in new tab).
+          subtitle={
+            <div className="mt-1 flex min-w-0 items-center gap-2">
+              <TicketRefPill ticketKey={currentKey} />
+              <span className="truncate text-body-sm text-text-tertiary">{detail?.title ?? ""}</span>
             </div>
-            <div className="min-w-0">
-              <p className="text-body font-semibold leading-tight text-text-primary">
-                Test documentation
-              </p>
-              {/* The key lives ONCE, here in the header, as the regular ticket
-                  pill (status + hover card + open in new tab). */}
-              <div className="mt-1 flex min-w-0 items-center gap-2">
-                <TicketRefPill ticketKey={currentKey} />
-                <span className="truncate text-body-sm text-text-tertiary">{detail?.title ?? ""}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            {isBulk && (
+          }
+          trailing={
+            isBulk ? (
               <span
                 data-testid="test-doc-queue-position"
                 className="rounded-md bg-overlay-subtle px-2 py-0.5 font-mono text-body-sm text-text-tertiary"
@@ -554,18 +548,10 @@ export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle 
                   <span className="text-text-muted"> &middot; {readyAhead} ready</span>
                 )}
               </span>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
-              icon={<X size={14} strokeWidth={1.5} />}
-              onClick={handleClose}
-              className="text-text-muted"
-              aria-label="Close"
-            />
-          </div>
-        </div>
+            ) : undefined
+          }
+          onClose={handleClose}
+        />
 
         {/* Body: doc left, story right; the divider drags to resize (persisted). */}
         <div ref={splitRef} className="flex min-h-0 flex-1">

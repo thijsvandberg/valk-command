@@ -2,10 +2,11 @@
 
 import { useState, useRef, useCallback } from "react";
 import { Modal } from "@/components/shared/Modal";
+import { ModalHeader } from "@/components/shared/ModalHeader";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { ListPlus, X, Loader2, CornerDownLeft } from "lucide-react";
+import { ListPlus, Loader2, CornerDownLeft } from "lucide-react";
 import type { Subtask } from "@/types/ticket";
 import { tickets as ticketsApi, ApiError } from "@/lib/api-client";
 
@@ -80,30 +81,17 @@ export function AddSubtasksModal({ open, ticketKey, ticketTitle, onClose, onCrea
   return (
     <Modal open={open} onClose={handleClose} aria-label={`Add subtasks to ${ticketKey}`}>
       <div className="w-full max-w-[540px] overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-500)]/12 ring-1 ring-[var(--color-brand-500)]/20 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_15%,transparent)]">
-              <ListPlus size={16} strokeWidth={1.75} className="text-[var(--color-brand-400)]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-body font-semibold text-text-primary leading-tight">Add subtasks</p>
-              <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
-                to <span className="font-mono text-text-secondary">{ticketKey}</span>
-                {ticketTitle ? <span className="text-text-secondary"> &middot; {ticketTitle}</span> : null}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            icon={<X size={14} strokeWidth={1.5} />}
-            onClick={handleClose}
-            className="shrink-0 text-text-muted"
-            aria-label="Close"
-          />
-        </div>
+        <ModalHeader
+          icon={<ListPlus size={16} strokeWidth={1.75} className="text-[var(--color-brand-400)]" />}
+          title="Add subtasks"
+          subtitle={
+            <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
+              to <span className="font-mono text-text-secondary">{ticketKey}</span>
+              {ticketTitle ? <span className="text-text-secondary"> &middot; {ticketTitle}</span> : null}
+            </p>
+          }
+          onClose={handleClose}
+        />
 
         {/* Body */}
         <div className="px-5 py-4">
