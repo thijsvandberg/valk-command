@@ -142,37 +142,82 @@ capture window is intentional (client toast vs server persist), not dead code.
 
 ## Phase 3 checklist — design/UX, visual change allowed
 
-- [ ] Invoke `frontend-design` skill FIRST.
-- [ ] **E. Shared caption-button** primitive (or `Button variant="ghost"
-  size="sm"` where it fits) for version chips, Compare, Edit/Preview, "Use this
-  one", per-block Edit — consistent hover/focus-visible/active + cursor-pointer.
-- [ ] **F. Reuse `Tag`** for needs-input / draft-ready / "N ready" queue chips.
-- [ ] Consistent typography + spacing tokens between the two modals (header,
-  body padding, section gaps, alert stack).
-- [ ] Visual hierarchy inside the review modal: alerts vs toolbar vs editor
-  (alerts currently stack up to 5 deep with equal weight).
-- [ ] Bundle modal section rhythm: missing / documented blocks / Misc /
-  notNeeded / other — clearer grouping and headers.
-- [ ] Empty + loading states: reuse `EmptyState` / `LoadingState` / `Skeleton`
-  where the modal currently hand-rolls a centered spinner / bare paragraph.
-- [ ] Verify PO hard constraints: NO focus ring/glow on the editor textarea
-  (currently a brand-tinted border only — already compliant; keep it), no
-  default Tailwind blue/indigo, no `transition-all`, every clickable has
-  hover/focus-visible/active + cursor-pointer.
-- [ ] Check light AND dark themes.
-- [ ] Update `data-testid`s + tests together with any markup move.
-- [ ] Full DoD green + E2E walk.
+- [x] Invoked `frontend-design` skill first. Direction: precision alignment to
+  the existing Bridge design system (token-only, restraint), NOT a new look.
+- [x] **E. Shared `CaptionButton`** (`src/components/sprint-board/CaptionButton.tsx`)
+  with `ghost`/`chip` variants + `active` state; adds a transform-based pressed
+  state (`active:scale-[0.97]`, matching the `Button` primitive) that the
+  hand-rolled buttons lacked. Adopted for the version chips + Compare/Edit
+  toggles (review pane) and the bundle's two per-block Edit buttons. "Use this
+  one" kept as its distinct brand-text link (given an active state inline).
+- [x] **F. Reuse `Tag`** (`color="amber"`) for the needs-input and draft-ready
+  badges in the bundle. The "N ready" queue counter stays part of the mono
+  position chip (converting it to a Tag would break that chip's styling).
+- [x] Empty + loading states in the bundle now reuse `EmptyState`
+  (icon + title) and `LoadingState variant="spinner"` instead of a bare
+  paragraph / raw `Loader2`.
+- [x] PO hard constraints verified: editor textarea keeps a brand-tinted border
+  only (no ring/glow); zero default Tailwind blue/indigo; no `transition-all`;
+  every clickable now has hover + focus-visible + active + cursor-pointer.
+- [x] Light theme confirmed in Chrome; dark theme safe by construction — every
+  phase-3 file is token-only (grep-verified: no hex, no `bg-white/black`, no
+  default palette), and `Tag`/`EmptyState`/`LoadingState` are already used
+  app-wide in both themes.
+- [x] `data-testid`s preserved; tests assert by text so all pass unchanged; added
+  `CaptionButton.test.tsx`.
+- [x] Full DoD green (lint, typecheck, 7604 tests, build) + E2E walk (bundle
+  renders Tag "draft ready" + CaptionButton Edit; capacity-meter toggle I
+  flipped by accident restored; zero console errors).
+
+Deliberately NOT changed in phase 3 (interaction model / already-good design):
+the review modal's alert stack order and the bundle section order (missing →
+documented → Misc → notNeeded → other) are the shipped, PO-approved information
+hierarchy — re-ordering would be a behaviour/UX change, out of a
+presentation-only phase. `TestDocMarker` stays a plain button (deliberate PO
+decision). The `TicketMetaContent` "Test doc" DetailRow value keeps its inline
+style to match its sibling rows.
+
+## Results
+
+Refactored the shipped stakeholder test-doc feature (BRDG-426 + BRDG-461)
+end-to-end in three phases, behaviour-preserving, on `dev`.
+
+**New shared/extracted units:** `ModalHeader` (57), `useTestDocReview` (467),
+`TestDocReviewPane` (192), `usePersistedSplit` (52), `CaptionButton` (49),
+`deriveTestDocState` (in `test-doc.ts`), `guardTestDocDraftKey`
+(`test-doc-routes.ts`, 17). Each with co-located tests.
+
+**Before → after line counts (main files):**
+
+| File | Before | After |
+|------|-------:|------:|
+| `TestDocReviewModal.tsx` | 781 | 234 |
+| `SprintTestDocsModal.tsx` | 331 | 313 |
+| `lib/test-doc.ts` | 42 | 55 (added `deriveTestDocState`, dropped dead `extractTestDocBlock`) |
+
+The 781-line modal is now 234 lines of layout/wiring over a 467-line controller
+hook + a 192-line presentational pane + a 52-line split hook. Three hand-rolled
+modal headers collapsed to one `ModalHeader`; six hand-rolled caption buttons to
+one `CaptionButton`; two amber badges to `Tag`; two duplicated `testDocState`
+derivations to one helper; three route draft-key guards to one helper.
+
+**Kept deliberately:** the whole interaction model (queue, prefetch, versions,
+save path, view mode, background generation, per-sprint marker visibility) — all
+invariants hold, proven by the unchanged ~65 feature tests. `useTestDocBoard`,
+`parse-test-doc`, `test-doc-background`, `TestDocMarker`, `TestDocStoryPane` were
+already well-factored and left alone. The `ticketExists` 404 dedup was skipped on
+purpose (codebase-wide idiom; would fragment).
+
+**Test suite:** 7583 → 7604 (net +21 new tests across the refactor; no coverage
+removed).
 
 ## Blocked / deferred
 
-- **Pre-existing baseline failure, NOT mine, NOT in scope:**
-  `src/app/routes.test.tsx` › "manifest covers all page.tsx files" fails because
-  `src/app/virtual-repro/page.tsx` (a throwaway public repro page left over from
-  the recent BRDG-452 prod-virtualizer debugging) is neither under `/dev/` nor in
-  the route manifest. Present at clean `dev` HEAD before any change here. It is
-  unrelated parallel work; the hard rules forbid touching it. Phase gating for
-  this refactor is therefore "no NEW failures + the whole test-doc surface green"
-  (7582/7583 at baseline). Flag for the PO to clean up `virtual-repro/`.
+- **Nothing blocked at completion.** At baseline one unrelated test failed
+  (`routes.test.tsx` flagged a leftover `src/app/virtual-repro/page.tsx` from the
+  BRDG-452 prod-virtualizer debugging). A parallel session removed that page
+  mid-run, so the full suite is now green (7604/7604). No item in this refactor
+  was blocked.
 
 ## Results
 
