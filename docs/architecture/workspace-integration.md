@@ -277,9 +277,15 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   `autoGenerate: false` — a key without any cached doc lands IDLE with an explicit Generate
   button; opening the modal never silently starts an agent task. Explicit generate entry
   points (bulk toolbar, context menu, generate-missing) keep auto-start.
-- **Single ticket view**: `TicketMetaContent` shows a "Test doc" row (Saved / Draft pending
-  review / Not needed, from `testDocState` on the detail payload) that opens the same
-  review modal in view mode.
+- **Single ticket view**: `TicketMetaContent` always shows a "Test doc" row for
+  non-subtask, non-epic tickets (BRDG-468): Saved / Draft pending review / Not needed /
+  a muted "No doc yet", from `testDocState` (ticket prop, with a passive same-key SWR
+  fallback to the detail payload). The chip opens the review modal in view mode; per-state
+  quick actions sit next to it — Generate (modal, auto-start), Mark not needed and Remove
+  marker (direct PUTs using the popup's overlay + cache choreography via the shared
+  `revalidateTestDocViews` in `test-doc-prefetch`), and Regenerate (modal with
+  `regenerateOnOpen`, which queues a fresh generation next to the cached versions; single-key
+  only, and a not-needed marker still suppresses it per BRDG-467).
 - **Review modal layout**: the doc renders as markdown by default (Edit toggles the raw
   textarea; hand-work results open in the editor directly); the story pane
   (`TestDocStoryPane`) mirrors the ticket sidebar's reading style incl. Jira comments and

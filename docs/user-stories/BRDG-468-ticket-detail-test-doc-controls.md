@@ -36,22 +36,33 @@ Decided behaviour:
 - No test-doc surfaces in Inbox, Epics, Refinement, or the Stakeholder view (explicitly declined).
 - No new API endpoints; everything uses the existing routes.
 
+## Implementation Plan
+
+Verified: `TicketMetaContent.tsx` (clean) hosts its own `TestDocReviewModal` and is rendered by the detail page (`TicketSidebar`) and the board SidePanel; the whole feature is deliverable inside it plus clean helper files, without touching the parallel session's dirty set. The committed detail payload carries `testDocState` (`ticket-detail-builder`), but the committed `useTicketDetailPage` does not map it onto the prop yet, so the row reads prop-first with a passive same-key SWR fallback (dedupes against the page's own detail fetch; goes dormant once the in-flight mapping lands). `autoGenerate: true` never regenerates a cached doc (cache lookup resolves to "ready"; only cache-misses queue), so Regenerate needs a real trigger: a new optional `regenerateOnOpen` prop on the modal/hook that fires the existing `handleRegenerate` once for single-key queues, never on `not_needed` (BRDG-467 invariant). `TestDocRegenerateConfirm` is bulk-only (gates sweeping in not-needed tickets); the single-ticket confirm/versions flow IS the versions flow.
+
+1. Extract `revalidateTestDocViews()` from `useTestDocReview` into `src/lib/test-doc-prefetch.ts` using `scopedMutate` (swr-scoped-mutate), verbatim matcher; unit tests for the key filter.
+2. `useTestDocReview.ts` + `TestDocReviewModal.tsx`: consume the lib helper; add `regenerateOnOpen` (fire-once, single-key, on ready/idle, never not_needed). Modal test: prop forwards, regenerates exactly once keeping the old version, refuses on not-needed.
+3. `TicketMetaContent.tsx`: `canHaveTestDoc` guard (no subtasks/epics); always-render the row with a muted "No doc yet" fourth state; per-state icon quick actions (Generate/Play, Mark not needed/FileX2, Remove marker/Undo2, Regenerate/RefreshCw) styled like TestDocMarker's button with the file's local conventions; direct PUTs use the popup's exact choreography (override + registerPendingEdit -> API -> confirmPendingEdit + patchTicketDetailCache + invalidateTestDocCache + revalidateTestDocViews + onMutate, failure -> clear + reportEditFailure); modal opens via intent (view/generate/regenerate).
+4. `TicketMetaContent.test.tsx`: extend lucide whitelist + api mocks; cases for all states, subtask/epic hidden, intents, PUT choreography incl. rollback.
+5. Docs: workspace-integration detail-view surface.
+6. DEFERRED until the parallel work lands: reconcile the in-flight more-menu items onto these intents (6a); bundle hover-pill eager-fetch check (6b).
+
 ## Acceptance Criteria
 
-- [ ] The "Test doc" row is always visible on the ticket detail meta sidebar for non-subtask, non-epic tickets, including a muted "No doc yet" state when no doc, draft, or marker exists.
-- [ ] From the row, a ticket without a doc can be generated (opens the review modal, auto-generating) or marked not needed, without opening the board.
-- [ ] From the row, a not-needed ticket shows its marker and offers removing it; removal returns the row to "No doc yet" without generating anything.
-- [ ] From the row, a ticket with a draft or accepted doc can be opened and regenerated; regeneration goes through the same confirm/versions flow as the popup.
-- [ ] Row actions update the detail view and the board marker without a hard refresh (pending-edit overlay + cache patches, per the optimistic-updates doc).
-- [ ] Subtasks and epics show no test-doc row.
-- [ ] The in-flight bundle hover pills do not eagerly fetch full ticket detail for every visible row (aligned with client-data-and-memory rules).
-- [ ] `docs/architecture/workspace-integration.md` (stakeholder test documentation section) documents the detail-view surface.
+- [x] The "Test doc" row is always visible on the ticket detail meta sidebar for non-subtask, non-epic tickets, including a muted "No doc yet" state when no doc, draft, or marker exists. <!-- canHaveTestDoc guard + fourth state; prop-first with passive SWR fallback (NOT useTicketDetail, whose per-instance Jira sync would double-fire) -->
+- [x] From the row, a ticket without a doc can be generated (opens the review modal, auto-generating) or marked not needed, without opening the board.
+- [x] From the row, a not-needed ticket shows its marker and offers removing it; removal returns the row to "No doc yet" without generating anything.
+- [x] From the row, a ticket with a draft or accepted doc can be opened and regenerated; regeneration goes through the same confirm/versions flow as the popup. <!-- new regenerateOnOpen modal intent: cached doc seeds versions, fresh result lands as a "New" version; single-key only, not-needed wins -->
+- [x] Row actions update the detail view and the board marker without a hard refresh (pending-edit overlay + cache patches, per the optimistic-updates doc). <!-- handleTestDocNotNeeded mirrors the popup's choreography; revalidateTestDocViews extracted to test-doc-prefetch and shared -->
+- [x] Subtasks and epics show no test-doc row.
+- [ ] The in-flight bundle hover pills do not eagerly fetch full ticket detail for every visible row (aligned with client-data-and-memory rules). <!-- DEFERRED: SprintTestDocsModal.tsx is uncommitted parallel-session work; apply this check when it lands -->
+- [x] `docs/architecture/workspace-integration.md` (stakeholder test documentation section) documents the detail-view surface.
 
 ## Tests
 
-- [ ] TicketMetaContent: renders all four states incl. "No doc yet"; hides the row for subtasks/epics.
-- [ ] Quick actions: generate opens the modal with autoGenerate; mark/remove not-needed call the PUT route and apply the overlay + cache patch; failure clears the pending edit.
-- [ ] Regenerate from the row lands in the popup's confirm/versions flow.
+- [x] TicketMetaContent: renders all four states incl. "No doc yet"; hides the row for subtasks/epics.
+- [x] Quick actions: generate opens the modal with autoGenerate; mark/remove not-needed call the PUT route and apply the overlay + cache patch; failure clears the pending edit.
+- [x] Regenerate from the row lands in the popup's confirm/versions flow. <!-- modal-level regenerateOnOpen tests in TestDocReviewModal.test.tsx + intent-prop test in TicketMetaContent.test.tsx -->
 
 ## Related
 

@@ -12,8 +12,32 @@ import { userInitials, userColor } from "@/lib/user-utils";
 
 vi.mock("lucide-react", () => {
   const stub = () => null;
-  return Object.fromEntries(["ChevronDown", "AlertTriangle", "Play", "Gem"].map((n) => [n, stub]));
+  return Object.fromEntries(
+    ["ChevronDown", "AlertTriangle", "Play", "Gem", "Boxes", "FileCheck2", "FileX2", "RefreshCw", "Undo2"].map((n) => [n, stub]),
+  );
 });
+
+// The test-doc row's fallback read (BRDG-468): key is non-null only when the
+// ticket prop carries no testDocState; tests set swrData to exercise it.
+let swrData: { testDocState?: Ticket["testDocState"] } | undefined;
+vi.mock("swr", () => ({
+  default: (key: string | null) => ({ data: key ? swrData : undefined }),
+}));
+
+const modalProps = vi.fn();
+vi.mock("@/components/sprint-board/TestDocReviewModal", () => ({
+  TestDocReviewModal: (props: Record<string, unknown>) => {
+    modalProps(props);
+    return <div data-testid="test-doc-review-modal" />;
+  },
+}));
+
+const invalidateTestDocCache = vi.fn();
+const revalidateTestDocViews = vi.fn();
+vi.mock("@/lib/test-doc-prefetch", () => ({
+  invalidateTestDocCache: (...args: unknown[]) => invalidateTestDocCache(...args),
+  revalidateTestDocViews: (...args: unknown[]) => revalidateTestDocViews(...args),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: Record<string, unknown>) => (
@@ -33,13 +57,18 @@ const updateLabels = vi.fn().mockResolvedValue({});
 const moveSprint = vi.fn().mockResolvedValue({});
 const assign = vi.fn().mockResolvedValue({});
 const apiFetch = vi.fn().mockResolvedValue({});
+const markTestDocNotNeeded = vi.fn().mockResolvedValue({});
+const unmarkTestDocNotNeeded = vi.fn().mockResolvedValue({});
 vi.mock("@/lib/api-client", () => ({
   apiFetch: (...args: unknown[]) => apiFetch(...args),
+  swrFetcher: vi.fn(),
   tickets: {
     updateStoryPoints: (...args: unknown[]) => updateStoryPoints(...args),
     updateMetadata: (...args: unknown[]) => updateMetadata(...args),
     updateEpic: (...args: unknown[]) => updateEpic(...args),
     updateLabels: (...args: unknown[]) => updateLabels(...args),
+    markTestDocNotNeeded: (...args: unknown[]) => markTestDocNotNeeded(...args),
+    unmarkTestDocNotNeeded: (...args: unknown[]) => unmarkTestDocNotNeeded(...args),
   },
   jira: { assign: (...args: unknown[]) => assign(...args), moveSprint: (...args: unknown[]) => moveSprint(...args) },
 }));
@@ -171,6 +200,14 @@ describe("TicketMetaContent", () => {
     moveSprint.mockResolvedValue({});
     assign.mockResolvedValue({});
     apiFetch.mockResolvedValue({});
+    markTestDocNotNeeded.mockClear();
+    markTestDocNotNeeded.mockResolvedValue({});
+    unmarkTestDocNotNeeded.mockClear();
+    unmarkTestDocNotNeeded.mockResolvedValue({});
+    invalidateTestDocCache.mockClear();
+    revalidateTestDocViews.mockClear();
+    modalProps.mockClear();
+    swrData = undefined;
   });
 
   it("renders story points and business value", () => {
@@ -500,5 +537,113 @@ describe("TicketMetaContent", () => {
 
     fireEvent.click(parentLink);
     expect(pushMock).toHaveBeenCalledWith("/tickets/PROJ-1");
+  });
+});
+
+describe("TicketMetaContent - test-doc row (BRDG-468)", () => {
+  beforeEach(() => {
+    __resetPendingEdits();
+    patchTicketDetailCache.mockClear();
+    reportClientError.mockClear();
+    showToast.mockClear();
+    lastToast = null;
+    markTestDocNotNeeded.mockClear();
+    markTestDocNotNeeded.mockResolvedValue({});
+    unmarkTestDocNotNeeded.mockClear();
+    unmarkTestDocNotNeeded.mockResolvedValue({});
+    invalidateTestDocCache.mockClear();
+    revalidateTestDocViews.mockClear();
+    modalProps.mockClear();
+    swrData = undefined;
+  });
+
+  function markerEdit() {
+    return [...__getPendingEdits().values()].find((e) => e.key === "PROJ-42" && e.field === "testDocState");
+  }
+
+  it("renders all four states, including 'No doc yet' for tickets without any state", () => {
+    const { rerender } = render(<TicketMetaContent ticket={makeTicket({ testDocState: null })} detail={detail} />);
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("No doc yet");
+
+    rerender(<TicketMetaContent ticket={makeTicket({ testDocState: "accepted" })} detail={detail} />);
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("Saved");
+
+    rerender(<TicketMetaContent ticket={makeTicket({ testDocState: "draft" })} detail={detail} />);
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("Draft pending review");
+
+    rerender(<TicketMetaContent ticket={makeTicket({ testDocState: "not_needed" })} detail={detail} />);
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("Not needed");
+  });
+
+  it("hides the row for subtasks and epics", () => {
+    const { rerender } = render(<TicketMetaContent ticket={makeTicket({ type: "subtask", testDocState: null })} detail={detail} />);
+    expect(screen.queryByTestId("meta-test-doc")).toBeNull();
+
+    rerender(<TicketMetaContent ticket={makeTicket({ type: "epic", testDocState: null })} detail={detail} />);
+    expect(screen.queryByTestId("meta-test-doc")).toBeNull();
+  });
+
+  it("falls back to the detail payload when the ticket prop carries no testDocState", () => {
+    swrData = { testDocState: "draft" };
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} />);
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("Draft pending review");
+  });
+
+  it("opens the review modal per intent: view (chip), generate, regenerate", () => {
+    const { rerender } = render(<TicketMetaContent ticket={makeTicket({ testDocState: null })} detail={detail} />);
+
+    fireEvent.click(screen.getByTestId("meta-test-doc"));
+    expect(modalProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keys: ["PROJ-42"], autoGenerate: false, regenerateOnOpen: false }),
+    );
+    fireEvent.click(screen.getByLabelText("Generate test doc"));
+    expect(modalProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keys: ["PROJ-42"], autoGenerate: true, regenerateOnOpen: false }),
+    );
+
+    rerender(<TicketMetaContent ticket={makeTicket({ testDocState: "accepted" })} detail={detail} />);
+    fireEvent.click(screen.getByLabelText("Regenerate test doc"));
+    expect(modalProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keys: ["PROJ-42"], autoGenerate: false, regenerateOnOpen: true }),
+    );
+  });
+
+  it("marks not needed with the full overlay + cache choreography", async () => {
+    render(<TicketMetaContent ticket={makeTicket({ testDocState: null })} detail={detail} />);
+
+    fireEvent.click(screen.getByLabelText("Mark as not needing test documentation"));
+
+    await waitFor(() => expect(markTestDocNotNeeded).toHaveBeenCalledWith("PROJ-42"));
+    await waitFor(() => expect(markerEdit()).toMatchObject({ value: "not_needed", confirmed: true }));
+    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { testDocState: "not_needed" });
+    expect(invalidateTestDocCache).toHaveBeenCalledWith("PROJ-42");
+    expect(revalidateTestDocViews).toHaveBeenCalled();
+    // The row flips optimistically to the marked state with its undo action.
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("Not needed");
+    expect(screen.getByLabelText("Remove the 'not needed' marker")).toBeInTheDocument();
+  });
+
+  it("removes the marker and returns the row to 'No doc yet'", async () => {
+    render(<TicketMetaContent ticket={makeTicket({ testDocState: "not_needed" })} detail={detail} />);
+
+    fireEvent.click(screen.getByLabelText("Remove the 'not needed' marker"));
+
+    await waitFor(() => expect(unmarkTestDocNotNeeded).toHaveBeenCalledWith("PROJ-42"));
+    await waitFor(() => expect(markerEdit()).toMatchObject({ value: null, confirmed: true }));
+    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { testDocState: null });
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("No doc yet");
+  });
+
+  it("rolls back and reports when the marker write fails", async () => {
+    markTestDocNotNeeded.mockRejectedValue(new Error("boom"));
+    render(<TicketMetaContent ticket={makeTicket({ testDocState: null })} detail={detail} />);
+
+    fireEvent.click(screen.getByLabelText("Mark as not needing test documentation"));
+
+    await waitFor(() => expect(reportClientError).toHaveBeenCalled());
+    expect(hasPendingEdit("PROJ-42", "testDocState")).toBe(false);
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("No doc yet");
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining("PROJ-42"));
+    expect(patchTicketDetailCache).not.toHaveBeenCalled();
   });
 });

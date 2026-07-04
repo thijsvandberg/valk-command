@@ -5,9 +5,11 @@ import type { Ticket, TicketReadiness, TicketDetail, JiraStatus } from "@/types/
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, AlertTriangle, Play, Boxes, FileCheck2, FileX2 } from "lucide-react";
+import { ChevronDown, AlertTriangle, Play, Boxes, FileCheck2, FileX2, RefreshCw, Undo2 } from "lucide-react";
+import useSWR from "swr";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
-import { tickets, jira, apiFetch } from "@/lib/api-client";
+import { tickets, jira, apiFetch, swrFetcher } from "@/lib/api-client";
+import { invalidateTestDocCache, revalidateTestDocViews } from "@/lib/test-doc-prefetch";
 import { patchTicketCaches, patchTicketDetailCache, moveTicketSprintCaches } from "@/lib/ticket-cache";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 import { reportClientError } from "@/lib/client-error";
@@ -34,6 +36,11 @@ import { DevPanel } from "@/components/ticket-detail/DevPanel";
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
+
+// Quick-action icon buttons on the test-doc row (BRDG-468), sized/styled like
+// the board's TestDocMarker button.
+const TEST_DOC_ACTION_CLASS =
+  "grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded-md text-text-muted hover:bg-overlay-default hover:text-text-secondary active:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-default disabled:opacity-40";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -125,8 +132,29 @@ export function TicketMetaContent({
   const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
   const [jiraStatus, setJiraStatus] = useState<JiraStatus>(ticket.jiraStatus);
-  // Test-doc review opened from the meta row (BRDG-426); view mode, no auto-generate.
-  const [testDocReviewOpen, setTestDocReviewOpen] = useState(false);
+  // Test-doc surface (BRDG-468): everything that can carry a doc shows the row,
+  // including the "No doc yet" state. The modal opens with an intent: view
+  // (read-only, BRDG-426), generate (auto-start), or regenerate (fresh version).
+  const canHaveTestDoc = ticket.type !== "subtask" && ticket.type !== "epic";
+  const [testDocIntent, setTestDocIntent] = useState<"view" | "generate" | "regenerate" | null>(null);
+  // Optimistic chip override while a skip/unskip PUT is in flight (undefined =
+  // no override; null is a real value: back to "No doc yet").
+  const [testDocOverride, setTestDocOverride] = useState<Ticket["testDocState"] | undefined>(undefined);
+  const [testDocBusy, setTestDocBusy] = useState(false);
+  // The detail-page host doesn't map testDocState onto the ticket prop (the
+  // board host does); read it from the detail payload then. Same SWR key as
+  // the page's own fetch, so this is a cache read, not an extra request — and
+  // deliberately NOT useTicketDetail, whose per-instance Jira sync would fire twice.
+  const { data: testDocFallback } = useSWR<{ testDocState?: Ticket["testDocState"] }>(
+    canHaveTestDoc && ticket.testDocState === undefined ? `/api/tickets/${encodeURIComponent(ticket.key)}` : null,
+    swrFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 },
+  );
+  const testDocState = testDocOverride !== undefined
+    ? testDocOverride
+    : ticket.testDocState !== undefined
+      ? ticket.testDocState
+      : testDocFallback?.testDocState ?? null;
   // Labels arrive async via detail; an override lets edits win until the host
   // remounts (keyed on ticket) without a state-sync effect.
   const [labelsOverride, setLabelsOverride] = useState<string[] | null>(null);
@@ -212,6 +240,32 @@ export function TicketMetaContent({
       reportEditFailure("business-value", err);
     }
   }, [ticket.key, businessValue, onMutate, reportEditFailure]);
+
+  // Direct skip/unskip from the test-doc row (BRDG-468): the review popup's
+  // exact choreography (overlay -> API -> confirm + cache patches + view
+  // revalidation), so the board marker and this row move together without a
+  // hard refresh (see optimistic-updates doc).
+  const handleTestDocNotNeeded = useCallback(async (on: boolean) => {
+    const next = on ? ("not_needed" as const) : null;
+    setTestDocBusy(true);
+    setTestDocOverride(next);
+    registerPendingEdit(ticket.key, "testDocState", next, Date.now());
+    try {
+      if (on) await tickets.markTestDocNotNeeded(ticket.key);
+      else await tickets.unmarkTestDocNotNeeded(ticket.key);
+      confirmPendingEdit(ticket.key, "testDocState");
+      patchTicketDetailCache(ticket.key, { testDocState: next });
+      invalidateTestDocCache(ticket.key);
+      revalidateTestDocViews();
+      onMutate?.();
+    } catch (err) {
+      setTestDocOverride(undefined);
+      clearPendingEdit(ticket.key, "testDocState");
+      reportEditFailure("test-doc-marker", err);
+    } finally {
+      setTestDocBusy(false);
+    }
+  }, [ticket.key, onMutate, reportEditFailure]);
 
   const handleStoryPointsChange = useCallback(async (v: number | null) => {
     const prev = storyPoints;
@@ -522,39 +576,104 @@ export function TicketMetaContent({
               </div>
             </DetailRow>
           )}
-          {ticket.testDocState != null && (
+          {canHaveTestDoc && (
             <DetailRow label="Test doc">
-              <button
-                type="button"
-                data-testid="meta-test-doc"
-                onClick={() => setTestDocReviewOpen(true)}
-                title="Open the test documentation review"
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 -mr-2 text-body-sm hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                style={{ transition: "background-color 0.15s ease" }}
-              >
-                {ticket.testDocState === "accepted" && (
-                  <span className="inline-flex items-center gap-1.5 text-[var(--color-status-success)]">
-                    <FileCheck2 size={13} strokeWidth={1.75} /> Saved
-                  </span>
+              <div className="flex items-center justify-end gap-0.5 -mr-2">
+                <button
+                  type="button"
+                  data-testid="meta-test-doc"
+                  onClick={() => setTestDocIntent("view")}
+                  title="Open the test documentation review"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-body-sm hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  style={{ transition: "background-color 0.15s ease" }}
+                >
+                  {testDocState === "accepted" && (
+                    <span className="inline-flex items-center gap-1.5 text-[var(--color-status-success)]">
+                      <FileCheck2 size={13} strokeWidth={1.75} /> Saved
+                    </span>
+                  )}
+                  {testDocState === "draft" && (
+                    <span className="inline-flex items-center gap-1.5 text-[var(--color-status-warning)]">
+                      <FileCheck2 size={13} strokeWidth={1.75} /> Draft pending review
+                    </span>
+                  )}
+                  {testDocState === "not_needed" && (
+                    <span className="inline-flex items-center gap-1.5 text-text-muted">
+                      <FileX2 size={13} strokeWidth={1.75} /> Not needed
+                    </span>
+                  )}
+                  {testDocState == null && (
+                    <span className="inline-flex items-center gap-1.5 text-text-muted">
+                      <FileCheck2 size={13} strokeWidth={1.75} className="opacity-40" /> No doc yet
+                    </span>
+                  )}
+                </button>
+                {testDocState == null && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Generate test doc"
+                      title="Generate test doc"
+                      disabled={testDocBusy}
+                      onClick={() => setTestDocIntent("generate")}
+                      className={TEST_DOC_ACTION_CLASS}
+                      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                    >
+                      <Play size={13} strokeWidth={1.75} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Mark as not needing test documentation"
+                      title="No test doc needed"
+                      disabled={testDocBusy}
+                      onClick={() => handleTestDocNotNeeded(true)}
+                      className={TEST_DOC_ACTION_CLASS}
+                      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                    >
+                      <FileX2 size={13} strokeWidth={1.75} />
+                    </button>
+                  </>
                 )}
-                {ticket.testDocState === "draft" && (
-                  <span className="inline-flex items-center gap-1.5 text-[var(--color-status-warning)]">
-                    <FileCheck2 size={13} strokeWidth={1.75} /> Draft pending review
-                  </span>
+                {testDocState === "not_needed" && (
+                  <button
+                    type="button"
+                    aria-label="Remove the 'not needed' marker"
+                    title="Remove 'not needed' marker"
+                    disabled={testDocBusy}
+                    onClick={() => handleTestDocNotNeeded(false)}
+                    className={TEST_DOC_ACTION_CLASS}
+                    style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                  >
+                    <Undo2 size={13} strokeWidth={1.75} />
+                  </button>
                 )}
-                {ticket.testDocState === "not_needed" && (
-                  <span className="inline-flex items-center gap-1.5 text-text-muted">
-                    <FileX2 size={13} strokeWidth={1.75} /> Not needed
-                  </span>
+                {(testDocState === "draft" || testDocState === "accepted") && (
+                  <button
+                    type="button"
+                    aria-label="Regenerate test doc"
+                    title="Regenerate test doc"
+                    disabled={testDocBusy}
+                    onClick={() => setTestDocIntent("regenerate")}
+                    className={TEST_DOC_ACTION_CLASS}
+                    style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                  >
+                    <RefreshCw size={13} strokeWidth={1.75} />
+                  </button>
                 )}
-              </button>
+              </div>
             </DetailRow>
           )}
-          {testDocReviewOpen && (
+          {testDocIntent && (
             <TestDocReviewModal
               keys={[ticket.key]}
-              autoGenerate={false}
-              onClose={() => setTestDocReviewOpen(false)}
+              autoGenerate={testDocIntent === "generate"}
+              regenerateOnOpen={testDocIntent === "regenerate"}
+              onClose={() => {
+                setTestDocIntent(null);
+                // Let modal-made transitions (save, mark, unset) show through
+                // the patched detail cache instead of a stale override.
+                setTestDocOverride(undefined);
+              }}
             />
           )}
           <DetailRow label="Assignee">
