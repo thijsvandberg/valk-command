@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type ReactNode } from "react";
 import { tickets as ticketsApi, type SprintTestDocs } from "@/lib/api-client";
 
 let mockData: SprintTestDocs | undefined;
@@ -21,6 +22,13 @@ vi.mock("@/components/shared/TicketRefPill", () => ({
 
 vi.mock("@/components/shared/IssueMetaBadges", () => ({
   EpicBadge: ({ epic }: { epic: string }) => <span data-testid="epic-badge">{epic}</span>,
+}));
+
+// Render the overflow menu's contents inline when open, so the portalled +
+// floating-ui-positioned panel doesn't need a real layout in jsdom.
+vi.mock("@/components/shared/AnchoredPanel", () => ({
+  AnchoredPanel: ({ open, children }: { open: boolean; children: ReactNode }) =>
+    open ? <>{children}</> : null,
 }));
 
 vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
@@ -109,9 +117,8 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(blocks[0]).toHaveTextContent("Big feature");
     expect(blocks[1]).toHaveTextContent("Flagged");
     expect(blocks[1]).toHaveTextContent("needs input");
-    // In-Bridge view links the key to the Bridge ticket page (the copy uses Jira links).
-    const link = within(blocks[0]).getByRole("link", { name: "VPL-2" });
-    expect(link).toHaveAttribute("href", "/tickets/VPL-2");
+    // The block title now carries the regular ticket pill (icon + key + status), not a plain link.
+    expect(within(blocks[0]).getByTestId("ticket-pill")).toHaveTextContent("VPL-2");
 
     expect(screen.getByTestId("test-docs-misc")).toHaveTextContent("Internal: sync groundwork");
     const missing = screen.getByTestId("test-docs-missing");
@@ -179,15 +186,37 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(within(screen.getByTestId("test-docs-other")).getAllByTestId("ticket-pill")).toHaveLength(1);
   });
 
-  it("missing rows offer Open / Generate / Skip, and flag an unreviewed draft", () => {
+  it("missing rows offer Open plus Generate / Skip in an overflow menu, and flag an unreviewed draft", () => {
     const props = renderModal();
     const missing = screen.getByTestId("test-docs-missing");
     expect(within(missing).getByText("draft ready")).toBeInTheDocument();
     const row = within(missing).getByText("VPL-5 TEST").closest("li") as HTMLElement;
+    // No doc yet, so the primary action reads "Open".
     fireEvent.click(within(row).getByText("Open"));
     expect(props.onEditItem).toHaveBeenCalledWith("VPL-5");
+    // Generate / Skip live behind the row's overflow menu.
+    expect(within(row).queryByText("Generate")).not.toBeInTheDocument();
+    fireEvent.click(within(row).getByRole("button", { name: "More actions for VPL-5" }));
     fireEvent.click(within(row).getByText("Generate"));
     expect(props.onGenerateMissing).toHaveBeenCalledWith(["VPL-5"]);
+  });
+
+  it("labels the primary action Edit when a doc exists and Open when it does not", () => {
+    mockData = {
+      ...BASE,
+      other: [
+        { key: "VPL-6", type: "story", title: "Still open", status: "IN PROGRESS", storyPoints: null, epic: null, doc: null },
+        { key: "VPL-8", type: "story", title: "Open with doc", status: "IN PROGRESS", storyPoints: null, epic: null, doc: "**Open feature**\n\n- Confirm C", internalDoc: false },
+      ],
+    };
+    renderModal();
+    const section = screen.getByTestId("test-docs-other");
+    const openRow = within(section).getByText("VPL-6 IN PROGRESS").closest("li") as HTMLElement;
+    const editRow = within(section).getByText("VPL-8 IN PROGRESS").closest("li") as HTMLElement;
+    expect(within(openRow).getByText("Open")).toBeInTheDocument();
+    expect(within(openRow).queryByText("Edit")).not.toBeInTheDocument();
+    expect(within(editRow).getByText("Edit")).toBeInTheDocument();
+    expect(within(editRow).queryByText("Open")).not.toBeInTheDocument();
   });
 
   it("Skip marks a missing story as no test documentation needed and refreshes", async () => {
@@ -197,6 +226,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     const props = renderModal();
     const missing = screen.getByTestId("test-docs-missing");
     const row = within(missing).getByText("VPL-4 DONE").closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: "More actions for VPL-4" }));
     fireEvent.click(within(row).getByText("Skip"));
     // The board-row marker flips through the pending-edits overlay so a stale
     // list refetch cannot show the old state; the write's success confirms it.
@@ -219,6 +249,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     const props = renderModal();
     const missing = screen.getByTestId("test-docs-missing");
     const row = within(missing).getByText("VPL-4 DONE").closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: "More actions for VPL-4" }));
     fireEvent.click(within(row).getByText("Skip"));
     await waitFor(() => expect(props.showToast).toHaveBeenCalledWith("Could not skip VPL-4"));
     expect(hasPendingEdit("VPL-4", "testDocState")).toBe(false);
@@ -235,10 +266,11 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(props.onEditItem).toHaveBeenCalledWith("VPL-3");
   });
 
-  it("offers per-row Generate on unfinished tickets so the PO decides what ships", () => {
+  it("offers per-row Generate (via the overflow menu) on unfinished tickets so the PO decides what ships", () => {
     const props = renderModal();
     const section = screen.getByTestId("test-docs-other");
     expect(section).toHaveTextContent("VPL-6");
+    fireEvent.click(within(section).getByRole("button", { name: "More actions for VPL-6" }));
     fireEvent.click(within(section).getByText("Generate"));
     expect(props.onGenerateMissing).toHaveBeenCalledWith(["VPL-6"]);
   });

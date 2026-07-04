@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { Modal } from "@/components/shared/Modal";
 import { ModalHeader } from "@/components/shared/ModalHeader";
@@ -12,7 +12,6 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { CaptionButton } from "@/components/sprint-board/CaptionButton";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
-import Link from "next/link";
 import { swrFetcher, sprints, tickets as ticketsApi, ApiError, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
 import { invalidateTestDocCache } from "@/lib/test-doc-prefetch";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
@@ -20,9 +19,14 @@ import { patchTicketDetailCache } from "@/lib/ticket-cache";
 import { getJiraUrl } from "@/lib/jira-url";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
+import { AnchoredPanel } from "@/components/shared/AnchoredPanel";
+import { MenuList, MenuItem } from "@/components/shared/MenuItem";
+import { useJiraSprints } from "@/hooks/useSprintBoard";
+import { buildTicketHoverData } from "@/lib/ticket-hover";
+import type { TicketDetailResponse } from "@/lib/ticket-detail-builder";
 import type { IssueType, JiraStatus } from "@/types/ticket";
 import type { ShowToast } from "@/hooks/useToast";
-import { ClipboardCopy, FileCheck2 } from "lucide-react";
+import { ClipboardCopy, FileCheck2, MoreHorizontal, Sparkles, CircleSlash } from "lucide-react";
 
 interface SprintTestDocsModalProps {
   sprintId: string;
@@ -72,20 +76,67 @@ export function buildTestDocDocument(
   return parts.join("\n\n");
 }
 
+/**
+ * The regular board pill (issue-type icon + key + status) with the standard
+ * hover card, used everywhere in this modal (block titles + gap-list rows) so a
+ * ticket reference behaves the same here as on the board. Status/type/title
+ * paint immediately from the bundle payload; each pill fetches its own ticket on
+ * demand — server-cached and deduped, mirroring TicketRefPill — so the hover
+ * card fills in without blocking the first render.
+ */
+function TestDocTicketPill({
+  item,
+  variant,
+  size = "lg",
+}: {
+  item: SprintTestDocItem;
+  variant?: "list";
+  size?: "sm" | "md" | "lg";
+}) {
+  const { data } = useSWR<TicketDetailResponse>(ticketsApi.detailUrl(item.key), swrFetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 30_000,
+    shouldRetryOnError: false,
+  });
+  const { sprints: jiraSprints } = useJiraSprints();
+  const sprintNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    jiraSprints.forEach((s) => {
+      m[s.id] = s.name;
+    });
+    return m;
+  }, [jiraSprints]);
+  const hoverData = data ? buildTicketHoverData(data, sprintNames) : undefined;
+  return (
+    <TicketStatusPill
+      ticketKey={item.key}
+      jiraStatus={(data?.jiraStatus ?? item.status) as JiraStatus}
+      issueType={(data?.type ?? item.type) as IssueType}
+      title={data?.title ?? item.title}
+      variant={variant}
+      size={size}
+      showReadiness={false}
+      hoverData={hoverData}
+    />
+  );
+}
+
 /** Regular ticket list row, mirroring the sprint board's flat pill (icon +
- *  key + status chip) + title + epic chip. */
-function TicketListRow({ item, trailing }: { item: SprintTestDocItem; trailing?: React.ReactNode }) {
+ *  key + status chip) + title + epic chip. A `leading` slot mirrors the board's
+ *  selection gutter so rows can carry a leading checkbox. */
+function TicketListRow({
+  item,
+  leading,
+  trailing,
+}: {
+  item: SprintTestDocItem;
+  leading?: React.ReactNode;
+  trailing?: React.ReactNode;
+}) {
   return (
     <li className="flex min-w-0 items-center gap-2.5 py-1">
-      <TicketStatusPill
-        ticketKey={item.key}
-        jiraStatus={item.status as JiraStatus}
-        issueType={item.type as IssueType}
-        title={item.title}
-        variant="list"
-        size="lg"
-        showReadiness={false}
-      />
+      {leading}
+      <TestDocTicketPill item={item} variant="list" size="lg" />
       <span className="min-w-0 flex-1 truncate text-body-lg text-text-primary" title={item.title}>
         {item.title}
       </span>
@@ -102,26 +153,85 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** In-Bridge key link behind a block title; the COPY uses Jira links instead. */
-function BridgeKeyLink({ item }: { item: SprintTestDocItem }) {
+/**
+ * Overflow menu holding the secondary row actions (Generate / Skip) so the
+ * gap-list rows stay uncluttered next to the primary Open/Edit action.
+ * Portalled via AnchoredPanel so the menu escapes the modal body's scroll clip.
+ */
+function RowOverflowMenu({
+  item,
+  onGenerate,
+  onSkip,
+  skipping,
+}: {
+  item: SprintTestDocItem;
+  onGenerate: (key: string) => void;
+  onSkip: (key: string) => void;
+  skipping: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpen(false), []);
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <Link
-        href={`/tickets/${encodeURIComponent(item.key)}`}
-        className="font-mono text-caption text-text-muted hover:text-[var(--color-brand-400)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-        title="Open in Bridge"
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`More actions for ${item.key}`}
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          open
+            ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+            : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+        }`}
+        style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
       >
-        {item.key}
-      </Link>
-      {item.needsInput && <Tag color="amber">needs input</Tag>}
-    </span>
+        <MoreHorizontal size={14} strokeWidth={1.75} />
+      </button>
+      <AnchoredPanel
+        open={open}
+        onClose={close}
+        anchorRef={triggerRef}
+        insideRefs={[triggerRef]}
+        placement="bottom-end"
+        gap={4}
+        unstyled
+      >
+        <MenuList>
+          <MenuItem
+            icon={<Sparkles size={12} strokeWidth={1.5} />}
+            onClick={() => {
+              close();
+              onGenerate(item.key);
+            }}
+            title="Generate the doc and review it"
+          >
+            Generate
+          </MenuItem>
+          <MenuItem
+            icon={<CircleSlash size={12} strokeWidth={1.5} />}
+            disabled={skipping}
+            onClick={() => {
+              close();
+              onSkip(item.key);
+            }}
+            title="Mark as needing no test documentation — moves it out of the delivery gap"
+          >
+            Skip
+          </MenuItem>
+        </MenuList>
+      </AnchoredPanel>
+    </>
   );
 }
 
 /**
- * Per-row actions on the gap lists (missing / not-finished): open the story in
- * the review popup, generate + review it, or skip it (mark "no test doc
- * needed") straight from the bundle, without opening the full-screen queue.
+ * Per-row actions on the gap lists (missing / not-finished): the primary action
+ * opens the story in the review popup — labelled "Edit" when a doc already
+ * exists, "Open" when it doesn't — with Generate / Skip tucked behind an
+ * overflow menu so the row stays readable.
  */
 function RowActions({
   item,
@@ -139,19 +249,13 @@ function RowActions({
   return (
     <span className="flex shrink-0 items-center gap-1">
       {item.hasDraft && <Tag color="amber" className="shrink-0">draft ready</Tag>}
-      <CaptionButton onClick={() => onOpen(item.key)} title="Open this story in the review popup">
-        Open
-      </CaptionButton>
-      <CaptionButton onClick={() => onGenerate(item.key)} title="Generate the doc and review it">
-        Generate
-      </CaptionButton>
       <CaptionButton
-        onClick={() => onSkip(item.key)}
-        disabled={skipping}
-        title="Mark as needing no test documentation — moves it out of the delivery gap"
+        onClick={() => onOpen(item.key)}
+        title={item.doc ? "Open this doc in the review popup to edit it" : "Open this story in the review popup"}
       >
-        Skip
+        {item.doc ? "Edit" : "Open"}
       </CaptionButton>
+      <RowOverflowMenu item={item} onGenerate={onGenerate} onSkip={onSkip} skipping={skipping} />
     </span>
   );
 }
@@ -180,14 +284,15 @@ function TestDocBlock({
     <div
       className={
         isCard
-          ? "mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border-subtle pb-2"
-          : "mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1"
+          ? "mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-subtle pb-2"
+          : "mb-1 flex flex-wrap items-center gap-x-2 gap-y-1"
       }
     >
       <span className={isCard ? "text-body-lg font-semibold text-text-primary" : "font-semibold text-text-primary"}>
         {title ?? item.title}
       </span>
-      <BridgeKeyLink item={item} />
+      <TestDocTicketPill item={item} size="sm" />
+      {item.needsInput && <Tag color="amber">needs input</Tag>}
       {provisional && <Tag color="neutral">not finished yet</Tag>}
       <CaptionButton
         onClick={() => onEditItem(item.key)}
@@ -346,10 +451,11 @@ export function SprintTestDocsModal({
               {data.missing.length > 0 && (
                 <div
                   data-testid="test-docs-missing"
-                  className="rounded-xl border border-[var(--color-status-warning)]/25 bg-[var(--color-status-warning-subtle)] p-3"
+                  className="rounded-xl border border-border-subtle bg-surface-base/60 p-3"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-body-sm font-medium text-[var(--color-status-warning)]">
+                    <p className="flex items-center gap-2 text-body-sm font-medium text-text-secondary">
+                      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-status-warning)]" />
                       {data.missing.length} finished {data.missing.length === 1 ? "story misses" : "stories miss"} test documentation
                     </p>
                     <Button variant="secondary" size="sm" onClick={handleGenerateMissing}>
@@ -429,9 +535,9 @@ export function SprintTestDocsModal({
                           <CaptionButton
                             className="shrink-0"
                             onClick={() => onEditItem(m.key)}
-                            title="Open this story in the review popup to still write a doc"
+                            title={m.doc ? "Open this doc in the review popup to edit it" : "Open this story in the review popup to still write a doc"}
                           >
-                            Open
+                            {m.doc ? "Edit" : "Open"}
                           </CaptionButton>
                         }
                       />
@@ -454,34 +560,38 @@ export function SprintTestDocsModal({
                       <TicketListRow
                         key={m.key}
                         item={m}
+                        leading={
+                          m.doc ? (
+                            <div
+                              role="checkbox"
+                              aria-checked={selectedUnfinished.has(m.key)}
+                              aria-label={`Include ${m.key} in the document`}
+                              tabIndex={0}
+                              onClick={() => toggleUnfinished(m.key)}
+                              onKeyDown={(e) => {
+                                if (e.key === " " || e.key === "Enter") {
+                                  e.preventDefault();
+                                  toggleUnfinished(m.key);
+                                }
+                              }}
+                              className="flex shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                            >
+                              <Checkbox checked={selectedUnfinished.has(m.key)} />
+                            </div>
+                          ) : (
+                            // Keep the checkbox gutter reserved so doc-less rows stay aligned
+                            // with the ticked ones, mirroring the board's selection column.
+                            <span aria-hidden className="w-3.5 shrink-0" />
+                          )
+                        }
                         trailing={
-                          <span className="flex shrink-0 items-center gap-1.5">
-                            {m.doc && (
-                              <div
-                                role="checkbox"
-                                aria-checked={selectedUnfinished.has(m.key)}
-                                aria-label={`Include ${m.key} in the document`}
-                                tabIndex={0}
-                                onClick={() => toggleUnfinished(m.key)}
-                                onKeyDown={(e) => {
-                                  if (e.key === " " || e.key === "Enter") {
-                                    e.preventDefault();
-                                    toggleUnfinished(m.key);
-                                  }
-                                }}
-                                className="flex cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                              >
-                                <Checkbox checked={selectedUnfinished.has(m.key)} />
-                              </div>
-                            )}
-                            <RowActions
-                              item={m}
-                              onOpen={onEditItem}
-                              onGenerate={(k) => onGenerateMissing([k])}
-                              onSkip={handleSkip}
-                              skipping={skippingKeys.has(m.key)}
-                            />
-                          </span>
+                          <RowActions
+                            item={m}
+                            onOpen={onEditItem}
+                            onGenerate={(k) => onGenerateMissing([k])}
+                            onSkip={handleSkip}
+                            skipping={skippingKeys.has(m.key)}
+                          />
                         }
                       />
                     ))}
