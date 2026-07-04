@@ -1,6 +1,6 @@
 # BRDG-467: Show and unset the "no test doc needed" marker in the review popup
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
