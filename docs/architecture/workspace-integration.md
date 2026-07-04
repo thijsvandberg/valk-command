@@ -243,9 +243,11 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   bundle's per-row **Skip**) stores a Bridge-only marker (`test_doc_classification =
   not_stakeholder_relevant` with no doc, no Jira write; cancels an in-flight generation).
   Marked tickets land in the bundle's separate `notNeeded` list and are never flagged as
-  missing again. Conversely, unfinished tickets (not DONE/TEST) list under "Not finished yet"
-  with the same per-row actions, so a story that ships with the delivery before it is Done
-  still gets its doc.
+  missing again. Skipping stays reversible: each `notNeeded` row carries an **Open** action
+  into the review popup (no Generate/Skip there), where regenerating asks the BRDG-463
+  confirm and saving a doc overwrites the marker. Conversely, unfinished tickets (not
+  DONE/TEST) list under "Not finished yet" with the same per-row actions, so a story that
+  ships with the delivery before it is Done still gets its doc.
 - **Board marker**: the toggleable "Test documentation" row field (off by default,
   `filter-bar-types` tag `testDoc`) shows the per-ticket state — accepted (green), draft
   (amber), not-needed (muted FileX), none (faint) — derived server-side into
