@@ -1,9 +1,11 @@
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange, ticketScopeChange, storyWriterSession, jiraUser } from "@/db/schema";
+import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, ticketLocalEdit, jiraComment, sprintNameCache, ticketStatusChange, ticketScopeChange, storyWriterSession, jiraUser } from "@/db/schema";
 import { eq, and, isNotNull, isNull, desc } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, extractLastStatusChangeAuthor, extractLastSprintChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment, type JiraUser } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
+import { extractTestDocBlock } from "@/lib/test-doc";
+import { cache } from "@/lib/cache";
 import { emitTicketEvent, type TicketChangeKind } from "@/lib/ticket-events";
 import { syncTicketSprints } from "@/lib/sprint-membership";
 import { safeJsonParse } from "@/lib/api-validation";
@@ -117,6 +119,9 @@ export async function upsertIssue(
   const descriptionMarkdown = typeof fields.description === "string"
     ? fields.description
     : adfToMarkdown(fields.description);
+
+  // BRDG-466: the accepted test doc as Jira currently sees it (null = no block).
+  const jiraTestDoc = extractTestDocBlock(descriptionMarkdown);
 
   const now = new Date().toISOString();
   const hash = contentHash(fields.description, ac);
@@ -426,12 +431,72 @@ export async function upsertIssue(
 
     // Metadata
     if (!meta) {
-      // New ticket: start in drafting state so the PO knows to prepare it
-      tx.insert(ticketMetadata).values({ jiraKey: issue.key, readiness: "drafting" }).run();
-    } else if (pointsChanged && meta.readiness !== "waiting_for_feedback") {
-      // Story points added/changed: clear readiness to signal it is ready for development.
-      // Skip if currently waiting for feedback — that state takes priority.
-      tx.update(ticketMetadata).set({ readiness: null }).where(eq(ticketMetadata.jiraKey, issue.key)).run();
+      // New ticket: start in drafting state so the PO knows to prepare it. A
+      // test-doc block already in Jira is adopted right away (BRDG-466).
+      tx.insert(ticketMetadata).values({
+        jiraKey: issue.key,
+        readiness: "drafting",
+        ...(jiraTestDoc !== null
+          ? { testDoc: jiraTestDoc, testDocUpdatedAt: fields.updated ?? now, testDocClassification: "ok" }
+          : {}),
+      }).run();
+    } else {
+      if (pointsChanged && meta.readiness !== "waiting_for_feedback") {
+        // Story points added/changed: clear readiness to signal it is ready for development.
+        // Skip if currently waiting for feedback — that state takes priority.
+        tx.update(ticketMetadata).set({ readiness: null }).where(eq(ticketMetadata.jiraKey, issue.key)).run();
+      }
+
+      // BRDG-466: the Jira description is the source of truth for ACCEPTED test
+      // docs — reconcile the local copy against the expand block. Drafts and the
+      // not_stakeholder_relevant marker are Bridge-only and never touched here.
+      if (jiraTestDoc !== null) {
+        if (!meta.testDoc) {
+          // Adopt: a block in Jira with no local accepted doc mirrors a normal
+          // accept, including consuming any pending draft.
+          tx.update(ticketMetadata).set({
+            testDoc: jiraTestDoc,
+            testDocUpdatedAt: fields.updated ?? now,
+            testDocClassification: meta.testDocClassification ?? "ok",
+            testDocDraft: null,
+            testDocDraftClassification: null,
+            testDocDraftGeneratedAt: null,
+          }).where(eq(ticketMetadata.jiraKey, issue.key)).run();
+          changedKinds.add("test_doc");
+        } else if (!markdownEqualIgnoringSpacing(jiraTestDoc, meta.testDoc)) {
+          // Spacing-tolerant compare: the accepted block round-trips through ADF
+          // on the push echo, so a strict compare would churn the timestamp (and
+          // weaken the clear guard below) on every accept.
+          tx.update(ticketMetadata).set({
+            testDoc: jiraTestDoc,
+            testDocUpdatedAt: fields.updated ?? now,
+          }).where(eq(ticketMetadata.jiraKey, issue.key)).run();
+          changedKinds.add("test_doc");
+        }
+      } else if (meta.testDoc) {
+        // Clear — unless the block simply has not reached Jira yet: an unpushed
+        // local description edit means the accept push is still in flight (or
+        // conflicted), and a Jira timestamp at or before the accept means this
+        // payload predates it. A null testDocUpdatedAt never blocks clearing.
+        const descriptionEdit = tx
+          .select({ id: ticketLocalEdit.id })
+          .from(ticketLocalEdit)
+          .where(and(eq(ticketLocalEdit.ticketKey, issue.key), eq(ticketLocalEdit.field, "description")))
+          .get();
+        const payloadPredatesAccept =
+          !fields.updated ||
+          (meta.testDocUpdatedAt != null &&
+            new Date(fields.updated).getTime() <= new Date(meta.testDocUpdatedAt).getTime());
+        if (!descriptionEdit && !payloadPredatesAccept) {
+          tx.update(ticketMetadata).set({
+            testDoc: null,
+            testDocUpdatedAt: null,
+            testDocClassification:
+              meta.testDocClassification === "not_stakeholder_relevant" ? meta.testDocClassification : null,
+          }).where(eq(ticketMetadata.jiraKey, issue.key)).run();
+          changedKinds.add("test_doc");
+        }
+      }
     }
 
     // Story version
@@ -603,6 +668,14 @@ export async function upsertIssue(
       .set({ baseVersionHash: hash, updatedAt: now })
       .where(and(eq(storyWriterSession.ticketKey, issue.key), eq(storyWriterSession.status, "active")))
       .run();
+  }
+
+  // Board list/detail responses embed testDocState behind a server-side TTL
+  // cache; drop them so the event-driven revalidation cannot read a stale
+  // marker state (mirrors the test-doc save route).
+  if (changedKinds.has("test_doc")) {
+    cache.invalidate(`/api/tickets/${issue.key}`);
+    cache.invalidate(/^\/api\/tickets(\?|$)/);
   }
 
   // One coalesced event per upsert: every open view subscribed to this ticket

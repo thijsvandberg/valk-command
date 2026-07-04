@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { appendTestDocBlock, deriveTestDocState, stripTestDocBlock } from "./test-doc";
+import {
+  appendTestDocBlock,
+  deriveTestDocState,
+  extractTestDocBlock,
+  stripTestDocBlock,
+} from "./test-doc";
 
 const DOC = "**Forgot password link**\n\n- Confirm the link navigates to the new portal";
 
@@ -52,6 +57,43 @@ describe("stripTestDocBlock", () => {
   it("removes the block and trailing whitespace", () => {
     const withBlock = appendTestDocBlock("Content", DOC);
     expect(stripTestDocBlock(withBlock)).toBe("Content");
+  });
+});
+
+describe("extractTestDocBlock", () => {
+  it("round-trips a doc appended with appendTestDocBlock", () => {
+    expect(extractTestDocBlock(appendTestDocBlock("### Story\n\nContent", DOC))).toBe(DOC);
+  });
+
+  it("finds the block at the start of a description", () => {
+    expect(extractTestDocBlock(`:::expand Test documentation\n${DOC}\n:::\n\nTrailing`)).toBe(DOC);
+  });
+
+  it("finds the block in the middle of a description", () => {
+    expect(extractTestDocBlock(`Intro\n\n:::expand Test documentation\n${DOC}\n:::\n\nOutro`)).toBe(
+      DOC,
+    );
+  });
+
+  it("returns null when there is no block", () => {
+    expect(extractTestDocBlock("plain description")).toBeNull();
+    expect(extractTestDocBlock("")).toBeNull();
+    expect(extractTestDocBlock(null)).toBeNull();
+    expect(extractTestDocBlock(undefined)).toBeNull();
+  });
+
+  it("ignores other expand blocks", () => {
+    expect(extractTestDocBlock(":::expand Screenshots\nimg\n:::\n\nMore text")).toBeNull();
+  });
+
+  it("trims surrounding whitespace inside the block", () => {
+    expect(extractTestDocBlock(`:::expand Test documentation\n\n${DOC}\n\n:::\n`)).toBe(DOC);
+  });
+
+  it("returns the same result on consecutive calls with the same input", () => {
+    const description = appendTestDocBlock("Content", DOC);
+    expect(extractTestDocBlock(description)).toBe(DOC);
+    expect(extractTestDocBlock(description)).toBe(DOC);
   });
 });
 

@@ -102,6 +102,7 @@ Extracted upsert function shared between sprint sync and incremental sync. Pre-r
 - Issue link sync (preserves locally-created links)
 - Inline comment sync
 - Story-points "-" preservation: "-" (Not Applicable) is a Bridge-only marker stored locally as `0`. Jira has no concept of `0`, so a "-" ticket pushes an empty value to Jira. To stop a sync from reverting "-" back to unestimated ("?"), an empty Jira story-points field does **not** overwrite a local `0`; a real (non-empty) Jira value still wins.
+- Test-doc reconciliation (BRDG-466): the Jira description is the source of truth for **accepted** test docs. Each upsert compares the `:::expand Test documentation` block (via `extractTestDocBlock`) against `ticket_metadata.test_doc`: block removed in Jira clears the local copy (marker/popup reset), an edited block updates it (spacing-tolerant compare so the ADF push echo does not churn), a block with no local doc is adopted as accepted (consuming any draft). Clearing is skipped while an unpushed `ticket_local_edit` description row exists or when `fields.updated` is not newer than `test_doc_updated_at` (accept push still in flight). Drafts and the `not_stakeholder_relevant` classification are Bridge-only and never touched. Changes emit a `test_doc` event kind and drop the `/api/tickets` server caches.
 
 #### Sprint membership (multi-sprint tickets)
 

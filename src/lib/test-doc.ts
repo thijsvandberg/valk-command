@@ -12,15 +12,28 @@ export const TEST_DOC_EXPAND_TITLE = "Test documentation";
 
 // Matches the whole panel: the fence open line, everything up to the FIRST
 // closing ":::" line. Generated docs contain no ::: fences themselves (the
-// skill emits plain bold + bullets), so non-greedy is safe.
-const TEST_DOC_BLOCK_RE = new RegExp(
-  `\\n*:::expand ${TEST_DOC_EXPAND_TITLE}\\n[\\s\\S]*?\\n:::[ \\t]*(\\n|$)`,
-  "g",
-);
+// skill emits plain bold + bullets), so non-greedy is safe. Shared source so
+// the strip regex and the extractor cannot drift apart.
+const TEST_DOC_BLOCK_SOURCE = `:::expand ${TEST_DOC_EXPAND_TITLE}\\n([\\s\\S]*?)\\n:::[ \\t]*(\\n|$)`;
+
+const TEST_DOC_BLOCK_RE = new RegExp(`\\n*${TEST_DOC_BLOCK_SOURCE}`, "g");
 
 /** Remove any existing Test documentation expand block(s) from a description. */
 export function stripTestDocBlock(description: string): string {
   return description.replace(TEST_DOC_BLOCK_RE, "\n").trimEnd();
+}
+
+/**
+ * Read the doc back out of a description's Test documentation expand block,
+ * or null when the description has none. Sync uses this to reconcile the
+ * local accepted copy against Jira (BRDG-466). Built fresh per call: the
+ * module-level regex is `g`-flagged, so reusing it for matching would carry
+ * `lastIndex` state between calls.
+ */
+export function extractTestDocBlock(description: string | null | undefined): string | null {
+  if (!description) return null;
+  const match = description.match(new RegExp(TEST_DOC_BLOCK_SOURCE));
+  return match ? match[1].trim() : null;
 }
 
 /**

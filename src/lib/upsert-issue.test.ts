@@ -4,7 +4,7 @@ import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation, ticketSprint, jiraUser, ticketStatusChange, ticketScopeChange } from "@/db/schema";
+import { ticket, ticketSubtask, ticketMetadata, ticketLocalEdit, storyVersion, storyWriterSession, conversation, ticketSprint, jiraUser, ticketStatusChange, ticketScopeChange } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -50,6 +50,7 @@ vi.mock("@/lib/ticket-events", () => ({
 import { normalizeIssueType, normalizeStatus, userColor, upsertIssue } from "./upsert-issue";
 import { extractSprints, extractStoryPoints, extractLastChangeAuthor, extractLastStatusChangeAuthor, extractLastSprintChangeAuthor } from "@/lib/jira-client";
 import { emitTicketEvent } from "@/lib/ticket-events";
+import { appendTestDocBlock } from "./test-doc";
 import type { JiraIssue, JiraSprint } from "@/lib/jira-client";
 
 function makeIssue(overrides: Partial<JiraIssue["fields"]> = {}): JiraIssue {
@@ -756,5 +757,166 @@ describe("sprint-add capture (BRDG-439)", () => {
   it("does not record an add for a ticket that is in no sprint", async () => {
     await upsertIssue(makeIssue(), "");
     expect(testDb.select().from(ticketScopeChange).all()).toHaveLength(0);
+  });
+});
+
+describe("test-doc reconciliation (BRDG-466)", () => {
+  const DOC = "**Forgot password**\n\n- Confirm the link navigates to the new portal";
+  const EDITED_DOC = "**Forgot password**\n\n- Confirm the link opens the NEW portal";
+
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.mocked(extractSprints).mockReturnValue([]);
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
+    vi.mocked(emitTicketEvent).mockClear();
+  });
+
+  const withBlock = (doc: string, updated: string) =>
+    makeIssue({ description: appendTestDocBlock("### Story\n\nBody", doc), updated });
+  const withoutBlock = (updated: string) =>
+    makeIssue({ description: "### Story\n\nBody", updated });
+
+  function meta() {
+    return testDb.select().from(ticketMetadata).where(eq(ticketMetadata.jiraKey, "VPL-1")).all()[0];
+  }
+
+  function setMeta(values: Partial<typeof ticketMetadata.$inferInsert>) {
+    testDb.update(ticketMetadata).set(values).where(eq(ticketMetadata.jiraKey, "VPL-1")).run();
+  }
+
+  function emittedKinds(): string[] {
+    return vi.mocked(emitTicketEvent).mock.calls.flatMap((c) => c[0].kinds);
+  }
+
+  it("adopts a block already in Jira on the first sync of a new ticket", async () => {
+    await upsertIssue(withBlock(DOC, "2024-01-01T00:00:00.000Z"), "");
+
+    const m = meta();
+    expect(m.testDoc).toBe(DOC);
+    expect(m.testDocUpdatedAt).toBe("2024-01-01T00:00:00.000Z");
+    expect(m.testDocClassification).toBe("ok");
+    // Brand-new ticket: no open view to notify.
+    expect(emitTicketEvent).not.toHaveBeenCalled();
+  });
+
+  it("adopts a block when Bridge has no accepted doc and consumes any draft", async () => {
+    await upsertIssue(withoutBlock("2024-01-01T00:00:00.000Z"), "");
+    setMeta({
+      testDocDraft: "draft doc",
+      testDocDraftClassification: "needs_input",
+      testDocDraftGeneratedAt: "2024-01-02T00:00:00.000Z",
+    });
+
+    await upsertIssue(withBlock(DOC, "2024-01-03T00:00:00.000Z"), "");
+
+    const m = meta();
+    expect(m.testDoc).toBe(DOC);
+    expect(m.testDocUpdatedAt).toBe("2024-01-03T00:00:00.000Z");
+    expect(m.testDocClassification).toBe("ok");
+    expect(m.testDocDraft).toBeNull();
+    expect(m.testDocDraftClassification).toBeNull();
+    expect(m.testDocDraftGeneratedAt).toBeNull();
+    expect(emittedKinds()).toContain("test_doc");
+  });
+
+  it("updates the local copy when the block was edited in Jira, keeping the classification", async () => {
+    await upsertIssue(withBlock(DOC, "2024-01-01T00:00:00.000Z"), "");
+    setMeta({ testDocClassification: "needs_input" });
+    vi.mocked(emitTicketEvent).mockClear();
+
+    await upsertIssue(withBlock(EDITED_DOC, "2024-02-01T00:00:00.000Z"), "");
+
+    const m = meta();
+    expect(m.testDoc).toBe(EDITED_DOC);
+    expect(m.testDocUpdatedAt).toBe("2024-02-01T00:00:00.000Z");
+    expect(m.testDocClassification).toBe("needs_input");
+    expect(emittedKinds()).toContain("test_doc");
+  });
+
+  it("does not churn the timestamp on a spacing-only round-trip echo", async () => {
+    await upsertIssue(withBlock(DOC, "2024-01-01T00:00:00.000Z"), "");
+    vi.mocked(emitTicketEvent).mockClear();
+
+    // Same doc with tight list spacing: the shape of an ADF round-trip echo.
+    const spacingOnly = DOC.replace("**\n\n-", "**\n-");
+    await upsertIssue(withBlock(spacingOnly, "2024-02-01T00:00:00.000Z"), "");
+
+    const m = meta();
+    expect(m.testDoc).toBe(DOC);
+    expect(m.testDocUpdatedAt).toBe("2024-01-01T00:00:00.000Z");
+    expect(emittedKinds()).not.toContain("test_doc");
+  });
+
+  it("clears the local accepted doc when the block is removed in Jira, keeping drafts", async () => {
+    await upsertIssue(withBlock(DOC, "2024-01-01T00:00:00.000Z"), "");
+    setMeta({ testDocDraft: "draft doc" });
+    vi.mocked(emitTicketEvent).mockClear();
+
+    await upsertIssue(withoutBlock("2024-02-01T00:00:00.000Z"), "");
+
+    const m = meta();
+    expect(m.testDoc).toBeNull();
+    expect(m.testDocUpdatedAt).toBeNull();
+    expect(m.testDocClassification).toBeNull();
+    expect(m.testDocDraft).toBe("draft doc");
+    expect(emittedKinds()).toContain("test_doc");
+  });
+
+  it("preserves the not_stakeholder_relevant marker when clearing", async () => {
+    await upsertIssue(withBlock(DOC, "2024-01-01T00:00:00.000Z"), "");
+    setMeta({ testDocClassification: "not_stakeholder_relevant" });
+
+    await upsertIssue(withoutBlock("2024-02-01T00:00:00.000Z"), "");
+
+    const m = meta();
+    expect(m.testDoc).toBeNull();
+    expect(m.testDocClassification).toBe("not_stakeholder_relevant");
+  });
+
+  it("self-heals an orphaned local doc even when the description mirror is already clean", async () => {
+    // The VPL-46294 shape: the block-less description synced earlier, so this
+    // upsert changes no ticket field at all — the event must still fire.
+    await upsertIssue(withoutBlock("2024-01-01T00:00:00.000Z"), "");
+    setMeta({ testDoc: DOC, testDocUpdatedAt: "2024-01-02T00:00:00.000Z", testDocClassification: "ok" });
+    vi.mocked(emitTicketEvent).mockClear();
+
+    await upsertIssue(withoutBlock("2024-02-01T00:00:00.000Z"), "");
+
+    expect(meta().testDoc).toBeNull();
+    expect(emittedKinds()).toContain("test_doc");
+  });
+
+  it("does not clear while an unpushed description edit exists", async () => {
+    await upsertIssue(withBlock(DOC, "2024-01-01T00:00:00.000Z"), "");
+    testDb.insert(ticketLocalEdit).values({
+      id: "le-1",
+      ticketKey: "VPL-1",
+      field: "description",
+      localValue: "pending merge",
+    }).run();
+    vi.mocked(emitTicketEvent).mockClear();
+
+    await upsertIssue(withoutBlock("2024-02-01T00:00:00.000Z"), "");
+
+    expect(meta().testDoc).toBe(DOC);
+    expect(emittedKinds()).not.toContain("test_doc");
+  });
+
+  it("does not clear when the sync payload predates the accept", async () => {
+    await upsertIssue(withoutBlock("2024-01-01T00:00:00.000Z"), "");
+    setMeta({ testDoc: DOC, testDocUpdatedAt: "2024-03-01T00:00:00.000Z" });
+
+    await upsertIssue(withoutBlock("2024-02-01T00:00:00.000Z"), "");
+
+    expect(meta().testDoc).toBe(DOC);
+  });
+
+  it("clears even when the local doc has no timestamp", async () => {
+    await upsertIssue(withoutBlock("2024-01-01T00:00:00.000Z"), "");
+    setMeta({ testDoc: DOC });
+
+    await upsertIssue(withoutBlock("2024-02-01T00:00:00.000Z"), "");
+
+    expect(meta().testDoc).toBeNull();
   });
 });

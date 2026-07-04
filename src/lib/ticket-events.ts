@@ -10,7 +10,8 @@ export type TicketChangeKind =
   | "labels"
   | "comment"
   | "subtasks"
-  | "links";
+  | "links"
+  | "test_doc";
 
 export interface TicketEvent {
   type: "ticket:changed";

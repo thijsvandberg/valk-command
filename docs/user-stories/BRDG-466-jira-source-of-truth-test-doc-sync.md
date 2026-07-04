@@ -46,27 +46,35 @@ Existing stale rows (like VPL-46294) self-heal the next time `upsertIssue` proce
 
 ## Implementation Plan
 
-1. `src/lib/test-doc.ts`: add `extractTestDocBlock` + unit tests in `src/lib/test-doc.test.ts`.
-2. `src/lib/upsert-issue.ts`: reconciliation step with the guards above; integration tests in `src/lib/upsert-issue.test.ts` (existing `createTestDb` fixtures).
-3. Verify popup/marker freshness end to end on VPL-1337 (accept → delete block in Jira → sync → marker grey, popup regenerates instead of showing old content).
+1. **`src/lib/test-doc.ts` — `extractTestDocBlock`.** Refactor the block pattern into a shared source string (with a capture group around the inner content) so `TEST_DOC_BLOCK_RE` and the extractor stay in lockstep; `TEST_DOC_BLOCK_RE` keeps its current behaviour. The extractor uses a fresh non-global regex per call (the module-level `g`-flagged regex carries `lastIndex` state and has no capture group). Unit tests in `src/lib/test-doc.test.ts`, incl. a round-trip with `appendTestDocBlock` and a repeated-call check.
+2. **`src/lib/ticket-events.ts` — add `"test_doc"` to `TicketChangeKind`.** Needed because the orphan self-heal case changes only metadata (description mirror already lost the block on an earlier sync), so no `content` kind fires and no event would be emitted. Consumers treat kinds as opaque, so the addition is safe.
+3. **`src/lib/upsert-issue.ts` — reconcile step** in the Metadata section of the existing transaction, next to the readiness-clearing pattern; reuse `meta`, `descriptionMarkdown`, `fields.updated`. Branches:
+   - Adopt (`jiraDoc` present, no `meta.testDoc`): set doc + `testDocUpdatedAt = fields.updated`, classification `meta.testDocClassification ?? "ok"`, clear `testDocDraft*`; emit `test_doc` kind. Also adopt on brand-new tickets in the `!meta` insert (no event, like other new-ticket fields).
+   - Update (`jiraDoc` present, differs from `meta.testDoc` per `markdownEqualIgnoringSpacing` — strict compare would churn on the markdown→ADF→markdown push echo): set doc + `testDocUpdatedAt`; classification and drafts untouched; emit `test_doc`.
+   - Clear (`jiraDoc` absent, `meta.testDoc` set): null `testDoc`/`testDocUpdatedAt`/`testDocClassification` (preserve `not_stakeholder_relevant`), drafts untouched; emit `test_doc`. Guards: skip when a `ticketLocalEdit` row for `field = "description"` exists (unpushed/conflicted accept, incl. Story Writer drafts), or when `fields.updated <= meta.testDocUpdatedAt` (stale payload); a null `testDocUpdatedAt` does not block clearing.
+4. **Cache freshness:** `GET /api/tickets/[key]/test-doc` reads the DB per request (no cache util) — nothing needed there. The board list/detail responses embed `testDocState` behind 30s/60s server TTL caches, so after the transaction, when a `test_doc` kind was added, invalidate `/api/tickets/{key}` and the `/api/tickets` list regex before `emitTicketEvent` (mirrors the save route).
+5. **Tests in `src/lib/upsert-issue.test.ts`** using the existing `createTestDb`/`makeIssue` fixtures (string description bypasses the mocked `adfToMarkdown`; build blocks with the real `appendTestDocBlock`): clear (+ drafts and `not_stakeholder_relevant` survive, event emitted), update (+ spacing-only no-op), adopt (defaults `ok`, clears drafts), both guards, orphan self-heal (metadata-only change still emits `test_doc`).
+6. **Manual verification on VPL-1337:** accept → delete block in Jira → sync (or ticket-detail open) → marker neutral without hard refresh, popup offers generation instead of the old doc; also the edit and adopt paths.
+
+Design note: adopting on a ticket marked `not_stakeholder_relevant` keeps that classification but sets `testDoc`, so the marker shows accepted (testDoc wins in `deriveTestDocState`) — pasting a doc into Jira on a not-needed ticket is affirmative evidence a doc exists.
 
 ## Acceptance Criteria
 
-- [ ] Deleting the test doc block from a ticket's Jira description clears the local accepted doc on the next sync of that ticket; the board marker returns to the neutral state and the popup no longer shows the old content. <!-- reconcile step in src/lib/upsert-issue.ts + deriveTestDocState in src/lib/test-doc.ts -->
-- [ ] Editing the block content in Jira updates the local copy on the next sync; classification is preserved. <!-- update branch of the reconcile step -->
-- [ ] A block present in Jira with no local accepted doc is adopted as accepted; draft fields are cleared, classification defaults to `ok`. <!-- adopt branch of the reconcile step -->
-- [ ] A doc accepted in Bridge is NOT cleared by a sync that runs before the block lands in Jira (unpushed description edit, or Jira `fields.updated` older than `testDocUpdatedAt`). <!-- guards in the reconcile step -->
-- [ ] Drafts and the `not_stakeholder_relevant` classification are never modified by reconciliation. <!-- reconcile step leaves testDocDraft* and not_stakeholder_relevant untouched -->
-- [ ] An open board reflects the cleared/updated state without a hard refresh. <!-- existing ticket:changed -> SWR revalidation; verify test-doc GET cache -->
-- [ ] Pre-existing orphaned rows (e.g. VPL-46294) self-heal on the next upsert of the ticket without a migration. <!-- reconcile runs on every upsertIssue pass -->
+- [x] Deleting the test doc block from a ticket's Jira description clears the local accepted doc on the next sync of that ticket; the board marker returns to the neutral state and the popup no longer shows the old content. <!-- reconcile step in src/lib/upsert-issue.ts + deriveTestDocState in src/lib/test-doc.ts -->
+- [x] Editing the block content in Jira updates the local copy on the next sync; classification is preserved. <!-- update branch of the reconcile step -->
+- [x] A block present in Jira with no local accepted doc is adopted as accepted; draft fields are cleared, classification defaults to `ok`. <!-- adopt branch of the reconcile step -->
+- [x] A doc accepted in Bridge is NOT cleared by a sync that runs before the block lands in Jira (unpushed description edit, or Jira `fields.updated` older than `testDocUpdatedAt`). <!-- guards in the reconcile step -->
+- [x] Drafts and the `not_stakeholder_relevant` classification are never modified by reconciliation. <!-- reconcile step leaves testDocDraft* and not_stakeholder_relevant untouched -->
+- [x] An open board reflects the cleared/updated state without a hard refresh. <!-- rides the existing ticket:changed -> SWR revalidation via the new test_doc kind; /api/tickets server caches dropped in upsertIssue (GET test-doc route reads the DB per request, no cache) -->
+- [x] Pre-existing orphaned rows (e.g. VPL-46294) self-heal on the next upsert of the ticket without a migration. <!-- reconcile runs on every upsertIssue pass; covered by the orphan self-heal test -->
 
 ## Tests
 
-- [ ] `extractTestDocBlock`: returns inner markdown when present (start/middle/end of description), `null` when absent, tolerant of surrounding whitespace. <!-- src/lib/test-doc.test.ts -->
-- [ ] Sync with block removed clears `testDoc`/`testDocUpdatedAt`/`testDocClassification`; draft fields and `not_stakeholder_relevant` survive. <!-- src/lib/upsert-issue.test.ts -->
-- [ ] Sync with edited block updates `testDoc` and `testDocUpdatedAt`, keeps classification. <!-- src/lib/upsert-issue.test.ts -->
-- [ ] Sync with new block and no local doc adopts it and clears drafts. <!-- src/lib/upsert-issue.test.ts -->
-- [ ] Guard: no clear while an unpushed description local edit exists; no clear when `fields.updated` <= `testDocUpdatedAt`. <!-- src/lib/upsert-issue.test.ts -->
+- [x] `extractTestDocBlock`: returns inner markdown when present (start/middle/end of description), `null` when absent, tolerant of surrounding whitespace. <!-- src/lib/test-doc.test.ts -->
+- [x] Sync with block removed clears `testDoc`/`testDocUpdatedAt`/`testDocClassification`; draft fields and `not_stakeholder_relevant` survive. <!-- src/lib/upsert-issue.test.ts -->
+- [x] Sync with edited block updates `testDoc` and `testDocUpdatedAt`, keeps classification. <!-- src/lib/upsert-issue.test.ts -->
+- [x] Sync with new block and no local doc adopts it and clears drafts. <!-- src/lib/upsert-issue.test.ts -->
+- [x] Guard: no clear while an unpushed description local edit exists; no clear when `fields.updated` <= `testDocUpdatedAt`. <!-- src/lib/upsert-issue.test.ts -->
 
 ## Related
 
