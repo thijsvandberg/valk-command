@@ -38,6 +38,7 @@ import {
   FilterX,
   Layers,
   ClipboardCheck,
+  FileCheck2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -76,6 +77,7 @@ export function SidePanel({
   storageKey,
   epicActions,
   dragHandle,
+  onGenerateTestDoc,
   enableBackNavigation = false,
 }: {
   ticket: Ticket;
@@ -105,6 +107,11 @@ export function SidePanel({
       open ticket onto a refinement session). The host page owns the DndContext
       and the draggable, keeping this panel dnd-agnostic. */
   dragHandle?: React.ReactNode;
+  /** Opens the test-doc review modal for the current ticket (BRDG-426), reusing
+      the board's generate/review flow. `view` is true when a doc/draft already
+      exists (open read-only, no regeneration). Board-only: hosts without the
+      review modal omit it and the menu item is hidden. */
+  onGenerateTestDoc?: (key: string, view: boolean) => void;
   /** When true, drilling into a linked/child/related item opens it inside this
       same panel and pushes a back-stack entry, instead of bubbling the key to
       the host. A back control then returns to the previous item; Close still
@@ -507,6 +514,19 @@ export function SidePanel({
                 )}
               </button>
             )}
+            {!isSubtask && t.type !== "epic" && onGenerateTestDoc && (() => {
+              const hasTestDoc = t.testDocState === "draft" || t.testDocState === "accepted";
+              return (
+                <button
+                  onClick={() => { setMoreMenuOpen(false); onGenerateTestDoc(currentKey, hasTestDoc); }}
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  style={{ transition: "background-color 0.1s ease" }}
+                >
+                  <FileCheck2 size={13} strokeWidth={1.5} className={hasTestDoc ? "text-[var(--color-brand-400)]" : "text-text-muted"} />
+                  {hasTestDoc ? "View test doc" : "Generate test doc"}
+                </button>
+              );
+            })()}
             <div className="mx-2 my-1 h-px bg-overlay-default" />
             <button
               onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(currentKey) : h.follow(currentKey); }}

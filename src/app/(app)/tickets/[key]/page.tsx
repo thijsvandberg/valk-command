@@ -6,6 +6,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import {
   CloudUpload,
+  FileCheck2,
   Flag,
   Loader2,
   MoreHorizontal,
@@ -64,6 +65,10 @@ const AddToRefinementModal = dynamic(
 );
 const SearchModal = dynamic(
   () => import("@/components/sprint-board/SearchModal").then((m) => ({ default: m.SearchModal })),
+  { ssr: false },
+);
+const TestDocReviewModal = dynamic(
+  () => import("@/components/sprint-board/TestDocReviewModal").then((m) => ({ default: m.TestDocReviewModal })),
   { ssr: false },
 );
 import { Button } from "@/components/ui/Button";
@@ -259,6 +264,9 @@ export default function TicketDetailPage({
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [showAddToRefinement, setShowAddToRefinement] = useState(false);
   const [showFlagDialog, setShowFlagDialog] = useState(false);
+  // Test-doc review modal (BRDG-426), reusing the board's generate/review flow.
+  // autoGenerate is false when a doc/draft already exists (open read-only).
+  const [testDocReview, setTestDocReview] = useState<{ autoGenerate: boolean } | null>(null);
 
   // editState is the persisted truth (title or description), so a title-only edit
   // still surfaces the push button after a remount when the client-only flags reset.
@@ -557,6 +565,19 @@ export default function TicketDetailPage({
                     <Boxes size={13} strokeWidth={1.5} className="text-text-muted" />
                     Add to refinement
                   </button>
+                  {ticket.type !== "subtask" && !isEpic && (() => {
+                    const hasTestDoc = ticket.testDocState === "draft" || ticket.testDocState === "accepted";
+                    return (
+                      <button
+                        onClick={() => { setMoreMenuOpen(false); setTestDocReview({ autoGenerate: !hasTestDoc }); }}
+                        className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                        style={{ transition: "background-color 0.1s ease" }}
+                      >
+                        <FileCheck2 size={13} strokeWidth={1.5} className={hasTestDoc ? "text-[var(--color-brand-400)]" : "text-text-muted"} />
+                        {hasTestDoc ? "View test doc" : "Generate test doc"}
+                      </button>
+                    );
+                  })()}
                 </div>
               </Popover>
             </div>
@@ -764,6 +785,13 @@ export default function TicketDetailPage({
       onClose={() => setShowAddToRefinement(false)}
       ticketKeys={[key]}
     />
+    {testDocReview && (
+      <TestDocReviewModal
+        keys={[key]}
+        autoGenerate={testDocReview.autoGenerate}
+        onClose={() => setTestDocReview(null)}
+      />
+    )}
     <Toast toast={h.toast} loading={h.toastLoading} onDismiss={h.dismissToast} />
     </>
   );

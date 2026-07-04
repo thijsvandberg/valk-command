@@ -293,6 +293,37 @@ describe("SidePanel", () => {
     expect(screen.getByTestId("more-menu")).not.toHaveTextContent("Review");
   });
 
+  describe("generate test doc (BRDG-426)", () => {
+    it("offers 'Generate test doc' when no doc exists and passes view=false", () => {
+      const onGenerateTestDoc = vi.fn();
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ key: "PROJ-42", testDocState: null })} onGenerateTestDoc={onGenerateTestDoc} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      fireEvent.click(screen.getByText("Generate test doc"));
+      expect(onGenerateTestDoc).toHaveBeenCalledWith("PROJ-42", false);
+    });
+
+    it.each(["draft", "accepted"] as const)("reads 'View test doc' and passes view=true once a %s doc exists", (testDocState) => {
+      const onGenerateTestDoc = vi.fn();
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ key: "PROJ-42", testDocState })} onGenerateTestDoc={onGenerateTestDoc} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByText("View test doc"));
+      expect(onGenerateTestDoc).toHaveBeenCalledWith("PROJ-42", true);
+    });
+
+    it("hides the test-doc item for subtasks", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "subtask" })} onGenerateTestDoc={vi.fn()} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).not.toHaveTextContent("test doc");
+    });
+
+    it("hides the test-doc item when no handler is wired (non-board hosts)", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ testDocState: null })} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).not.toHaveTextContent("test doc");
+    });
+  });
+
   it("shows a push-to-jira action when there are local edits", () => {
     hookValue = makeHook({ hasLocalTitleEdit: true });
     render(<SidePanel {...defaultProps} />);

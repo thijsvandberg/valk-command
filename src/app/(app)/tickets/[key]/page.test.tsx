@@ -169,6 +169,11 @@ vi.mock("@/components/refinement-session/AddToRefinementModal", () => ({
 vi.mock("@/components/sprint-board/SearchModal", () => ({
   SearchModal: () => null,
 }));
+vi.mock("@/components/sprint-board/TestDocReviewModal", () => ({
+  TestDocReviewModal: ({ keys, autoGenerate }: { keys: string[]; autoGenerate?: boolean }) => (
+    <div data-testid="test-doc-review-modal" data-keys={keys.join(",")} data-auto-generate={String(autoGenerate)} />
+  ),
+}));
 // Spy so tests can assert when the fetch fallback is (not) engaged. The page only fetches a
 // child by key when it is NOT already present in the page's loaded detail.
 const { useTicketDetailSpy } = vi.hoisted(() => ({ useTicketDetailSpy: vi.fn() }));
@@ -310,6 +315,48 @@ describe("TicketDetailPage header - Add to refinement button", () => {
       expect(screen.queryByText("Add to refinement")).not.toBeInTheDocument();
     },
   );
+});
+
+describe("TicketDetailPage header - generate test doc (BRDG-426)", () => {
+  beforeEach(() => {
+    resetHook(null);
+    mockSessions = [];
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("opens the review modal with autoGenerate when no doc exists", async () => {
+    resetHook(null, { ticket: { ...baseTicket, testDocState: null } });
+    await renderPage();
+    fireEvent.click(screen.getByLabelText("More actions"));
+    fireEvent.click(screen.getByText("Generate test doc"));
+    const modal = await screen.findByTestId("test-doc-review-modal");
+    expect(modal).toHaveAttribute("data-keys", "VPL-100");
+    expect(modal).toHaveAttribute("data-auto-generate", "true");
+  });
+
+  it.each(["draft", "accepted"] as const)(
+    "reads 'View test doc' and opens read-only once a %s doc exists",
+    async (testDocState) => {
+      resetHook(null, { ticket: { ...baseTicket, testDocState } });
+      await renderPage();
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByText("View test doc"));
+      const modal = await screen.findByTestId("test-doc-review-modal");
+      expect(modal).toHaveAttribute("data-auto-generate", "false");
+    },
+  );
+
+  it.each(["subtask", "epic"] as const)("hides the test-doc item for %s tickets", async (type) => {
+    resetHook(null, { ticket: { ...baseTicket, type, testDocState: null } });
+    await renderPage();
+    fireEvent.click(screen.getByLabelText("More actions"));
+    expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
+    expect(screen.queryByText("View test doc")).not.toBeInTheDocument();
+  });
 });
 
 describe("TicketDetailPage header - title reflects local edit (BRDG-449)", () => {

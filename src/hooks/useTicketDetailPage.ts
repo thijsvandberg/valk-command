@@ -40,6 +40,9 @@ export function useTicketDetailPage(key: string) {
     sprintId: apiData.sprintId,
     businessValue: apiData.businessValue ?? null,
     removedFromJiraAt: apiData.removedFromJiraAt ?? null,
+    // The detail payload derives this too (ticket-detail-builder); carry it so
+    // the panel's "Generate/View test doc" label matches the board row.
+    testDocState: apiData.testDocState ?? null,
   } : undefined, [apiData]);
 
   const detail: TicketDetail | undefined = useMemo(() => apiData ? {
