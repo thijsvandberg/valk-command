@@ -145,6 +145,8 @@ vi.mock("@/components/sprint-board/useSprintBoardFilters", () => ({
     gapsFilter: new Set(),
     teamFilter: new Set(),
     sprintFilter: new Set(),
+    testDocFilter: new Set(),
+    setTestDocFilter: vi.fn(),
     searchQuery: "",
     setStatusFilter: vi.fn(),
     setEpicFilter: vi.fn(),

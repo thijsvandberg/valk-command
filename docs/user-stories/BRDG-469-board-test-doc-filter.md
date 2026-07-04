@@ -1,6 +1,6 @@
 # BRDG-469: Filter the board on test-doc state and show per-group doc coverage
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
@@ -49,7 +49,7 @@ Open call flagged by planning: DEPRECATED tickets stay in the coverage denominat
 
 ## Acceptance Criteria
 
-- [ ] The filter bar offers a "Test doc" filter with Missing / Draft / Accepted / Not needed; selecting values filters the rows accordingly on every view. <!-- predicate + panel category DONE; the ~3-line SprintBoard.tsx wiring (pass testDocFilter/onTestDocFilterChange + funnel badge count) is DEFERRED until the parallel session's uncommitted SprintBoard work lands -->
+- [x] The filter bar offers a "Test doc" filter with Missing / Draft / Accepted / Not needed; selecting values filters the rows accordingly on every view. <!-- predicate + panel category + SprintBoard wiring (filterControlsProps pass-through, funnel badge count); wiring applied after the parallel session's SprintBoard work landed -->
 - [x] The filter persists across reloads like the other board filters, and is included in the existing clear-filters affordance. <!-- StoredFilters.testDoc + snapshot/reset/saved-view paths; legacy objects read as empty via ?? [] -->
 - [x] Filtering respects in-flight optimistic state: a ticket whose doc was just generated moves between filter buckets without a refresh. <!-- the hook receives the applyPendingEdits-overlaid list; covered by an overlay test -->
 - [x] Group headers show an accurate "N/M docs" coverage stat with a breakdown tooltip when the sprint's "Test documentation" field toggle is on, and nothing when it is off. <!-- GroupStatBar showDocCoverage, wired from SingleSprintHeader + TicketTable via visibleTags.has("testDoc") -->

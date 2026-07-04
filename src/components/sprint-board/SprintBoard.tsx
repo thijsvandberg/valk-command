@@ -427,8 +427,8 @@ export default function SprintBoard() {
   // Search has its own segment in the unified cluster (BRDG-344), so the filter
   // badge counts active filter categories only -- not the search query.
   const activeFilterCount = useMemo(() =>
-    [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.sprintFilter].filter((s) => s.size > 0).length,
-  [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.sprintFilter]);
+    [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.sprintFilter, f.testDocFilter].filter((s) => s.size > 0).length,
+  [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.sprintFilter, f.testDocFilter]);
   const { groupBy, setGroupBy, collapsedGroups, toggleCollapse, allCollapsed, toggleAllGroups, groups } = useGroupBy(tickets, sprints, sprintNameMap, isAllView, slotSprints, f.includeClosedSprints, f.forceShowSprintIds, placeholderSprintIds);
   // When grouping by epic, the epic chip is redundant on every row (the group header
   // already names it), so suppress it. Other groupings keep the chip (BRDG-239).
@@ -1078,6 +1078,7 @@ export default function SprintBoard() {
     issueTypeFilter: f.issueTypeFilter,
     gapsFilter: f.gapsFilter,
     teamFilter: f.teamFilter,
+    testDocFilter: f.testDocFilter,
     onStatusFilterChange: f.setStatusFilter,
     onEpicFilterChange: f.setEpicFilter,
     onAssigneeFilterChange: f.setAssigneeFilter,
@@ -1086,6 +1087,7 @@ export default function SprintBoard() {
     onIssueTypeFilterChange: f.setIssueTypeFilter,
     onGapsFilterChange: f.setGapsFilter,
     onTeamFilterChange: f.setTeamFilter,
+    onTestDocFilterChange: f.setTestDocFilter,
     statusOptions: f.statusOptions,
     epicOptions: f.epicOptions,
     assigneeOptions: f.assigneeOptions,

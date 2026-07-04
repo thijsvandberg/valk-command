@@ -109,7 +109,7 @@ vi.mock("@/components/sprint-board/ExportToasts", () => ({ ExportToasts: () => n
 vi.mock("@/components/sprint-board/useSprintBoardFilters", () => ({
   useSprintBoardFilters: () => ({
     statusFilter: new Set(), epicFilter: new Set(), assigneeFilter: new Set(), readinessFilter: new Set(),
-    editStateFilter: new Set(), issueTypeFilter: new Set(), gapsFilter: new Set(), teamFilter: new Set(), sprintFilter: new Set(),
+    editStateFilter: new Set(), issueTypeFilter: new Set(), gapsFilter: new Set(), teamFilter: new Set(), sprintFilter: new Set(), testDocFilter: new Set(),
     searchQuery: "",
     setStatusFilter: vi.fn(), setEpicFilter: vi.fn(), setAssigneeFilter: vi.fn(), setReadinessFilter: vi.fn(),
     setEditStateFilter: vi.fn(), setIssueTypeFilter: vi.fn(), setGapsFilter: vi.fn(), setTeamFilter: vi.fn(), setSprintFilter: vi.fn(), setSearchQuery: vi.fn(),
