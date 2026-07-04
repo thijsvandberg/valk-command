@@ -142,6 +142,16 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(screen.getByTestId("test-docs-missing")).not.toHaveTextContent("VPL-7");
   });
 
+  it("not-needed rows offer Open into the review popup, but no Generate/Skip", () => {
+    const props = renderModal();
+    const section = screen.getByTestId("test-docs-not-needed");
+    const row = within(section).getByText("VPL-7 DONE").closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByText("Open"));
+    expect(props.onEditItem).toHaveBeenCalledWith("VPL-7");
+    expect(within(section).queryByText("Generate")).not.toBeInTheDocument();
+    expect(within(section).queryByText("Skip")).not.toBeInTheDocument();
+  });
+
   it("plain lists render regular ticket rows: pill + title + epic", () => {
     renderModal();
     const missing = screen.getByTestId("test-docs-missing");

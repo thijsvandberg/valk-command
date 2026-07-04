@@ -336,7 +336,19 @@ export function SprintTestDocsModal({
                   <SectionLabel>No test documentation needed ({data.notNeeded.length})</SectionLabel>
                   <ul className="mt-2.5 flex flex-col gap-1">
                     {data.notNeeded.map((m) => (
-                      <TicketListRow key={m.key} item={m} />
+                      <TicketListRow
+                        key={m.key}
+                        item={m}
+                        trailing={
+                          <CaptionButton
+                            className="shrink-0"
+                            onClick={() => onEditItem(m.key)}
+                            title="Open this story in the review popup to still write a doc"
+                          >
+                            Open
+                          </CaptionButton>
+                        }
+                      />
                     ))}
                   </ul>
                 </div>
