@@ -67,25 +67,41 @@ Out of scope:
 2. Validate: regenerate the doc for VPL-45607 plus one small fix and one normal story from
    a recent sprint; compare old vs. new side by side with the PO (tighter, no lost checks).
 
+### Validation results (2026-07-04)
+
+Regenerated via the real flow (POST `/api/tickets/[key]/generate-test-doc`, prompt v1.1.0):
+
+- **VPL-45607** (reference case, normal story): 4 verbose bullets with full email copy →
+  3 one-sentence bullets; email referenced by paraphrase + "(exact wording in the story)";
+  title lost the "instead of DLQ noise" rationale; Loyal note became a clause; Internal
+  line follows the terse pattern. No checks lost (reinstatement merged into bullet 1).
+- **VPL-47093** (small fix): output effectively unchanged — was already concise, so the
+  new rules do not over-trim.
+- **VPL-46432** (story): output effectively unchanged apart from minor wording.
+
+Side effect: the three regenerations wrote `test_doc_draft` (accepted `test_doc`
+untouched), so the new versions sit in the review modal behind the provenance banner,
+ready to accept.
+
 ## Acceptance Criteria
 
-- [ ] The prompt forbids reproducing email/notification subject or body copy; mails are
+- [x] The prompt forbids reproducing email/notification subject or body copy; mails are
       referenced by paraphrase with an "exact wording in the story" pointer. <!-- generate-test-doc.md, quoting rule under "Writing the block" -->
-- [ ] Verbatim quoting is limited to checks where the wording itself is the change: one
+- [x] Verbatim quoting is limited to checks where the wording itself is the change: one
       short string, one language. <!-- generate-test-doc.md, same rule -->
-- [ ] The no-rationale rule explicitly covers the block title. <!-- generate-test-doc.md, title paragraph + rules list -->
-- [ ] Bullets are capped at one sentence; side conditions are short clauses; "Internal:"
+- [x] The no-rationale rule explicitly covers the block title. <!-- generate-test-doc.md, title paragraph ("names the behaviour only") + rules list -->
+- [x] Bullets are capped at one sentence; side conditions are short clauses; "Internal:"
       lines follow the terse fixed pattern. <!-- generate-test-doc.md, rules list -->
-- [ ] The prompt contains a bad→good example derived from the VPL-45607 quoted-email
-      bullet. <!-- generate-test-doc.md, examples section -->
+- [x] The prompt contains a bad→good example derived from the VPL-45607 quoted-email
+      bullet. <!-- generate-test-doc.md, "Too detailed / Right" example after the right-sizing example -->
 - [ ] Regenerated docs for VPL-45607 + one small + one normal story are visibly more
       concise without dropping checks, confirmed by the PO. <!-- manual comparison via TestDocReviewModal regenerate -->
 
 ## Tests
 
-- [ ] Manual validation only: this story changes a prompt `.md` in the VRW repo; there is
+- [x] Manual validation only: this story changes a prompt `.md` in the VRW repo; there is
       no Bridge code to unit-test. The comparison run in the implementation plan is the
-      acceptance test. <!-- regenerate via the board row action / review modal Regenerate -->
+      acceptance test. <!-- see Validation results (2026-07-04) above -->
 
 ## Related
 
