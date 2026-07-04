@@ -98,6 +98,19 @@ Rule for any sidebar field that also lives on the board row: overlay for the boa
 patches the list). Fields with no board-row presence (PO notes, labels) may keep using
 `patchTicketCaches`.
 
+### Test-doc marker (testDocState)
+
+The board row's test-doc marker renders from `ticket.testDocState` on the list. Every
+action that changes it — Skip in the sprint test-doc bundle (`SprintTestDocsModal`),
+Save / "No test doc needed" / the background draft save in the review modal
+(`useTestDocReview`) — registers on this overlay. The immediate list revalidation those
+handlers fire can be served a pre-write snapshot (the `/api/tickets` response cache plus
+the browser honoring its `max-age=10, stale-while-revalidate=20` header), which kept the
+old icon until a manual refresh. Two specifics: an accepted doc outranks a draft
+server-side (`deriveTestDocState`), so the draft-save path skips the overlay when an
+accepted doc exists; and an open detail panel gets `patchTicketDetailCache`, per the
+sidebar rule above.
+
 ### The save helpers must not patch the list cache for overlay fields (BRDG-383)
 
 `saveTicketMetadata` and `saveStoryPoints` optimistically patch the SWR **list** cache by

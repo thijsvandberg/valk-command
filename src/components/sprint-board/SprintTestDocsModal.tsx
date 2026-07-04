@@ -15,6 +15,8 @@ import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import Link from "next/link";
 import { swrFetcher, sprints, tickets as ticketsApi, ApiError, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
 import { invalidateTestDocCache } from "@/lib/test-doc-prefetch";
+import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
+import { patchTicketDetailCache } from "@/lib/ticket-cache";
 import { getJiraUrl } from "@/lib/jira-url";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
@@ -257,13 +259,21 @@ export function SprintTestDocsModal({
   const handleSkip = useCallback(
     async (key: string) => {
       setSkippingKeys((prev) => new Set(prev).add(key));
+      // Overlay, not a one-shot cache patch: the list revalidation below can be
+      // served a stale snapshot (short server/browser response caches), which
+      // would keep the old board marker until the next poll. The overlay
+      // re-applies the value on every render until a fresh read confirms it.
+      registerPendingEdit(key, "testDocState", "not_needed", Date.now());
       try {
         await ticketsApi.markTestDocNotNeeded(key);
+        confirmPendingEdit(key, "testDocState");
+        patchTicketDetailCache(key, { testDocState: "not_needed" });
         invalidateTestDocCache(key);
         await mutate(sprints.testDocsUrl(sprintId));
         void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
         showToast(`${key} marked as no test documentation needed`);
       } catch (err) {
+        clearPendingEdit(key, "testDocState");
         showToast(err instanceof ApiError ? err.message : `Could not skip ${key}`);
       } finally {
         setSkippingKeys((prev) => {

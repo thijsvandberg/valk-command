@@ -59,7 +59,19 @@ vi.mock("swr", () => ({
   useSWRConfig: () => ({ mutate: mockMutate }),
 }));
 
+// ticket-cache pulls in swr-scoped-mutate, whose top-level swr import the "swr"
+// mock above does not provide.
+const mockPatchTicketDetailCache = vi.fn();
+vi.mock("@/lib/ticket-cache", () => ({
+  patchTicketDetailCache: (...args: unknown[]) => mockPatchTicketDetailCache(...args),
+}));
+
 import { TestDocReviewModal } from "./TestDocReviewModal";
+import { __getPendingEdits, __resetPendingEdits, hasPendingEdit } from "./pendingTicketEdits";
+
+function findMarkerEdit(key: string) {
+  return [...__getPendingEdits().values()].find((e) => e.key === key && e.field === "testDocState");
+}
 
 const DOC = "**Title**\n\n- Confirm the thing";
 
@@ -110,6 +122,8 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     mockMarkNotNeeded.mockResolvedValue({ saved: true, notNeeded: true });
     mockCancelTask.mockResolvedValue({ ok: true });
     mockMutate.mockReset();
+    mockPatchTicketDetailCache.mockReset();
+    __resetPendingEdits();
   });
 
   it("renders the doc editor and the story side by side after generation", async () => {
@@ -377,6 +391,71 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(screen.getByTestId("test-doc-queue-position")).toHaveTextContent("2 / 2"),
       );
       expect(mockMarkNotNeeded).toHaveBeenCalledWith("VPL-1");
+    });
+  });
+
+  // The board row renders its marker from the SWR list, whose revalidation can
+  // be served a stale snapshot (short server/browser response caches). Every
+  // state-changing action must therefore flip the marker through the
+  // pending-edits overlay, which survives stale refetches.
+  describe("board-marker overlay", () => {
+    it("a fresh generation flips the marker to draft once the draft save lands", async () => {
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await emitResult("VPL-1", DOC);
+
+      await waitFor(() =>
+        expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "draft", confirmed: true }),
+      );
+      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: "draft" });
+    });
+
+    it("does not flip the marker to draft when an accepted doc exists (accepted outranks)", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        storyUpdatedAt: null,
+        saved: { markdown: "**Accepted**\n\n- Saved doc", classification: "ok", updatedAt: "2026-07-01T09:00:00.000Z" },
+        draft: null,
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await waitFor(() =>
+        expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
+      );
+
+      fireEvent.click(screen.getByText("Regenerate"));
+      await emitResult("VPL-1", DOC);
+      await waitFor(() => expect(mockSaveTestDocDraft).toHaveBeenCalled());
+      expect(findMarkerEdit("VPL-1")).toBeUndefined();
+    });
+
+    it("Save registers a confirmed accepted edit", async () => {
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await emitResult("VPL-1", DOC);
+
+      fireEvent.click(screen.getByText("Save"));
+      await waitFor(() =>
+        expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "accepted", confirmed: true }),
+      );
+      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: "accepted" });
+    });
+
+    it("a failed Save clears the edit so the marker falls back to server data", async () => {
+      mockSaveTestDoc.mockRejectedValue(new Error("boom"));
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await emitResult("VPL-1", DOC);
+
+      fireEvent.click(screen.getByText("Save"));
+      await waitFor(() => expect(mockSaveTestDoc).toHaveBeenCalled());
+      await waitFor(() => expect(hasPendingEdit("VPL-1", "testDocState")).toBe(false));
+    });
+
+    it("No test doc needed registers a confirmed not_needed edit", async () => {
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await emitResult("VPL-1", DOC);
+
+      fireEvent.click(screen.getByText("No test doc needed"));
+      await waitFor(() =>
+        expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "not_needed", confirmed: true }),
+      );
+      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: "not_needed" });
     });
   });
 

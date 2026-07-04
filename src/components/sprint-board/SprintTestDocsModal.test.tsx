@@ -27,7 +27,14 @@ vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
   renderMarkdown: (text: string) => [text],
 }));
 
+// ticket-cache pulls in swr-scoped-mutate, whose top-level swr import the "swr"
+// mock above does not provide.
+vi.mock("@/lib/ticket-cache", () => ({
+  patchTicketDetailCache: vi.fn(),
+}));
+
 import { SprintTestDocsModal, buildTestDocDocument } from "./SprintTestDocsModal";
+import { __getPendingEdits, __resetPendingEdits, hasPendingEdit } from "./pendingTicketEdits";
 
 const BASE: SprintTestDocs = {
   sprintName: "BT: 139",
@@ -90,6 +97,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
   beforeEach(() => {
     mockData = BASE;
     mockError = undefined;
+    __resetPendingEdits();
   });
 
   it("renders sprint name, documented blocks in order, Misc tail and missing list", () => {
@@ -190,10 +198,30 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     const missing = screen.getByTestId("test-docs-missing");
     const row = within(missing).getByText("VPL-4 DONE").closest("li") as HTMLElement;
     fireEvent.click(within(row).getByText("Skip"));
+    // The board-row marker flips through the pending-edits overlay so a stale
+    // list refetch cannot show the old state; the write's success confirms it.
+    expect(hasPendingEdit("VPL-4", "testDocState")).toBe(true);
     await waitFor(() => expect(spy).toHaveBeenCalledWith("VPL-4"));
     await waitFor(() =>
       expect(props.showToast).toHaveBeenCalledWith("VPL-4 marked as no test documentation needed"),
     );
+    const edit = [...__getPendingEdits().values()].find(
+      (e) => e.key === "VPL-4" && e.field === "testDocState",
+    );
+    expect(edit).toMatchObject({ value: "not_needed", confirmed: true });
+    spy.mockRestore();
+  });
+
+  it("a failed Skip clears the overlay so the marker falls back to server data", async () => {
+    const spy = vi
+      .spyOn(ticketsApi, "markTestDocNotNeeded")
+      .mockRejectedValue(new Error("boom"));
+    const props = renderModal();
+    const missing = screen.getByTestId("test-docs-missing");
+    const row = within(missing).getByText("VPL-4 DONE").closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByText("Skip"));
+    await waitFor(() => expect(props.showToast).toHaveBeenCalledWith("Could not skip VPL-4"));
+    expect(hasPendingEdit("VPL-4", "testDocState")).toBe(false);
     spy.mockRestore();
   });
 

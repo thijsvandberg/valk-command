@@ -6,6 +6,8 @@ import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { parseTestDoc, coerceClassification, type TestDocClassification } from "@/lib/parse-test-doc";
 import { getCachedTestDoc, primeTestDocCache, invalidateTestDocCache } from "@/lib/test-doc-prefetch";
 import { tickets as ticketsApi, workspaceTasks, ApiError } from "@/lib/api-client";
+import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
+import { patchTicketDetailCache } from "@/lib/ticket-cache";
 
 // Generations run ahead of the PO's review so the queue never waits (bulk
 // prefetch). Capped: each generation is a full agent task on the workspace,
@@ -141,6 +143,11 @@ export function useTestDocReview({
       });
   }, [patchEntry]);
 
+  // Keys that already have an ACCEPTED doc. A background draft save must not
+  // flip the board marker to "draft" for those: server-side, an accepted doc
+  // outranks a draft (deriveTestDocState), so the marker stays "accepted".
+  const hasSavedRef = useRef<Set<string>>(new Set());
+
   // Cache lookup, once per key on mount: a previously generated draft (or an
   // accepted save) shows immediately instead of costing a regeneration; only
   // keys without any cached doc are queued for generation.
@@ -155,6 +162,7 @@ export function useTestDocReview({
       (prefetched ? Promise.resolve(prefetched) : ticketsApi.getTestDoc(key))
         .then((data) => {
           if (!prefetched) primeTestDocCache(key, data);
+          if (data.saved) hasSavedRef.current.add(key);
           const cached = data.draft ?? data.saved;
           if (cached) {
             // Both a saved doc AND a newer draft become versions the PO can
@@ -272,12 +280,25 @@ export function useTestDocReview({
       // Cache the raw generation immediately (fire-and-forget): closing the
       // modal or revisiting later must never cost a regeneration. Refresh the
       // board lists after: the row's test-doc marker derives from this state.
+      // The marker flips through the pending-edits overlay because the list
+      // revalidation can be served a stale snapshot (see optimistic-updates
+      // doc); skipped when an accepted doc exists, since that outranks a draft.
       if (doc) {
         invalidateTestDocCache(key);
+        const becomesDraft = !hasSavedRef.current.has(key);
+        if (becomesDraft) registerPendingEdit(key, "testDocState", "draft", Date.now());
         ticketsApi
           .saveTestDocDraft(key, { markdown: doc, classification })
-          .then(() => revalidateTestDocViews())
-          .catch(() => {});
+          .then(() => {
+            if (becomesDraft) {
+              confirmPendingEdit(key, "testDocState");
+              patchTicketDetailCache(key, { testDocState: "draft" });
+            }
+            revalidateTestDocViews();
+          })
+          .catch(() => {
+            if (becomesDraft) clearPendingEdit(key, "testDocState");
+          });
       }
     },
     [revalidateTestDocViews],
@@ -320,11 +341,18 @@ export function useTestDocReview({
     if (!currentKey || !entry || !entry.doc.trim()) return;
     setSaving(true);
     patchEntry(currentKey, { error: null });
+    // Overlay so the board marker flips to accepted immediately: the list
+    // revalidation below can be served a stale snapshot (see the
+    // optimistic-updates doc) and would otherwise keep the old marker.
+    registerPendingEdit(currentKey, "testDocState", "accepted", Date.now());
     try {
       const result = await ticketsApi.saveTestDoc(currentKey, {
         markdown: entry.doc.trim(),
         classification: entry.classification,
       });
+      hasSavedRef.current.add(currentKey);
+      confirmPendingEdit(currentKey, "testDocState");
+      patchTicketDetailCache(currentKey, { testDocState: "accepted" });
       invalidateTestDocCache(currentKey);
       // Refresh the detail panel, the board rows (the marker flips to accepted)
       // AND any sprint bundle it was opened from; the server cache is already
@@ -339,6 +367,7 @@ export function useTestDocReview({
       }
       advance();
     } catch (err) {
+      clearPendingEdit(currentKey, "testDocState");
       setSaving(false);
       patchEntry(currentKey, {
         error: err instanceof ApiError ? err.message : "Failed to save test documentation",
@@ -354,16 +383,24 @@ export function useTestDocReview({
   const handleNotNeeded = useCallback(async () => {
     if (!currentKey || !entry) return;
     setSaving(true);
+    // Same overlay as handleSave: the marker must flip to not_needed even when
+    // the list revalidation returns a stale snapshot.
+    registerPendingEdit(currentKey, "testDocState", "not_needed", Date.now());
     try {
       if (entry.status === "generating" && entry.taskId) {
         workspaceTasks.cancel(entry.taskId).catch(() => {});
       }
       await ticketsApi.markTestDocNotNeeded(currentKey);
+      // The not-needed write clears the accepted doc and the draft server-side.
+      hasSavedRef.current.delete(currentKey);
+      confirmPendingEdit(currentKey, "testDocState");
+      patchTicketDetailCache(currentKey, { testDocState: "not_needed" });
       invalidateTestDocCache(currentKey);
       revalidateTestDocViews();
       setSaving(false);
       advance();
     } catch (err) {
+      clearPendingEdit(currentKey, "testDocState");
       setSaving(false);
       patchEntry(currentKey, {
         error: err instanceof ApiError ? err.message : "Failed to mark as not needed",
