@@ -1,6 +1,6 @@
 # BRDG-465: Per-story opt-in for unfinished stories in the sprint test doc
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
