@@ -448,8 +448,8 @@ export async function upsertIssue(
       }
 
       // BRDG-466: the Jira description is the source of truth for ACCEPTED test
-      // docs — reconcile the local copy against the expand block. Drafts and the
-      // not_stakeholder_relevant marker are Bridge-only and never touched here.
+      // docs — reconcile the local copy against the expand block. Drafts are
+      // Bridge-only and never touched here.
       if (jiraTestDoc !== null) {
         if (!meta.testDoc) {
           // Adopt: a block in Jira with no local accepted doc mirrors a normal
@@ -488,11 +488,16 @@ export async function upsertIssue(
           (meta.testDocUpdatedAt != null &&
             new Date(fields.updated).getTime() <= new Date(meta.testDocUpdatedAt).getTime());
         if (!descriptionEdit && !payloadPredatesAccept) {
+          // Classification is nulled unconditionally: the explicit "not needed"
+          // marker always has a null testDoc (see the PUT notNeeded handler), so
+          // it can never reach this branch. A classification found here is a
+          // leftover from generation riding along with the accepted doc; keeping
+          // it would surface a phantom "not needed" state after the doc is
+          // deleted in Jira (seen on VPL-46294).
           tx.update(ticketMetadata).set({
             testDoc: null,
             testDocUpdatedAt: null,
-            testDocClassification:
-              meta.testDocClassification === "not_stakeholder_relevant" ? meta.testDocClassification : null,
+            testDocClassification: null,
           }).where(eq(ticketMetadata.jiraKey, issue.key)).run();
           changedKinds.add("test_doc");
         }

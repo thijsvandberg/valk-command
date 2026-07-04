@@ -862,7 +862,11 @@ describe("test-doc reconciliation (BRDG-466)", () => {
     expect(emittedKinds()).toContain("test_doc");
   });
 
-  it("preserves the not_stakeholder_relevant marker when clearing", async () => {
+  it("clears a leftover not_stakeholder_relevant classification along with the doc", async () => {
+    // An explicit "not needed" marking always has a null testDoc, so it never
+    // reaches the clear branch; a classification alongside an accepted doc is a
+    // generator leftover. Keeping it would flip the marker to a phantom
+    // "not needed" after the doc is deleted in Jira (VPL-46294).
     await upsertIssue(withBlock(DOC, "2024-01-01T00:00:00.000Z"), "");
     setMeta({ testDocClassification: "not_stakeholder_relevant" });
 
@@ -870,7 +874,18 @@ describe("test-doc reconciliation (BRDG-466)", () => {
 
     const m = meta();
     expect(m.testDoc).toBeNull();
-    expect(m.testDocClassification).toBe("not_stakeholder_relevant");
+    expect(m.testDocClassification).toBeNull();
+  });
+
+  it("leaves an explicit not-needed marking (no accepted doc) untouched", async () => {
+    await upsertIssue(withoutBlock("2024-01-01T00:00:00.000Z"), "");
+    setMeta({ testDocClassification: "not_stakeholder_relevant" });
+    vi.mocked(emitTicketEvent).mockClear();
+
+    await upsertIssue(withoutBlock("2024-02-01T00:00:00.000Z"), "");
+
+    expect(meta().testDocClassification).toBe("not_stakeholder_relevant");
+    expect(emittedKinds()).not.toContain("test_doc");
   });
 
   it("self-heals an orphaned local doc even when the description mirror is already clean", async () => {

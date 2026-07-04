@@ -82,3 +82,7 @@ Design note: adopting on a ticket marked `not_stakeholder_relevant` keeps that c
 - `src/lib/test-doc.ts` block helpers (`appendTestDocBlock` / `stripTestDocBlock` / `TEST_DOC_BLOCK_RE`) — the block format this story parses back.
 - `docs/architecture/jira-sync.md` — sync strategies that invoke `upsertIssue`.
 - `docs/architecture/optimistic-updates.md` — pending-edits overlay; the unpushed-description guard leans on the same local-edit store.
+
+## Post-ship Correction (2026-07-04)
+
+The clear branch originally preserved a `not_stakeholder_relevant` classification ("belt-and-braces" for the explicit not-needed marking). That was wrong: an explicit not-needed marking always has a null `testDoc` (see the PUT `notNeeded` handler), so it can never reach the clear branch. The only value the preservation ever kept was a generator-produced classification riding along with an accepted doc — which surfaced as a phantom "not needed"/skip marker after the doc was deleted in Jira (observed on VPL-46294). Fixed to null the classification unconditionally when clearing; explicit not-needed markings (no accepted doc) remain untouched by reconciliation. Follow-up UI story: [[BRDG-467-test-doc-popup-not-needed-visibility]].
