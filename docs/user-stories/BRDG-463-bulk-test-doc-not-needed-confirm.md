@@ -1,6 +1,6 @@
 # BRDG-463: Confirm before regenerating test docs for tickets marked "no test doc needed"
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
@@ -59,29 +59,33 @@ Non-goals / out of scope:
 
 ## Implementation Plan
 
-1. **Guard logic + state** — `src/components/sprint-board/useTestDocBoard.ts`: partition `eligible`, add `pendingTestDocConfirm` state, branch in `openTestDocQueue`, expose `pendingTestDocConfirm` + resolvers (`confirmSkip`, `confirmInclude`, `cancelConfirm`).
-2. **Modal render** — `src/components/sprint-board/SprintBoard.tsx`: render `ConfirmDialog` (or a thin wrapper) driven by `pendingTestDocConfirm`, next to `TestDocReviewModal`.
-3. **Tests** — see below.
+1. **Guard logic + state** — `src/components/sprint-board/useTestDocBoard.ts`:
+   - Add `testDocConfirm` state: `{ eligible: string[]; notNeededKeys: string[]; returnToSprintId?: string } | null`.
+   - Rewrite `openTestDocQueue`: keep the DEPRECATED filter + empty-queue toast unchanged. Compute `autoGenerate`. If `!autoGenerate` (view-only) → `setTestDocQueue` as today (AC7). Compute `notNeeded`; if empty → `setTestDocQueue` immediately (AC6). Otherwise store `testDocConfirm` and do NOT queue (AC1/AC5). `autoGenerate` is always `true` past the view-only guard, so it need not be stored.
+   - Resolvers (`useCallback`, deps `[testDocConfirm, showToast]`): `confirmTestDocSkip` → queue `eligible \ notNeededKeys`; if that is empty, toast + queue nothing (AC8); clear confirm (AC2). `confirmTestDocInclude` → queue full `eligible`, clear confirm (AC3); it does not touch `testDocState`, so classification is untouched by construction. `cancelTestDocConfirm` → `setTestDocConfirm(null)` (AC4).
+   - Return the new state + three resolvers.
+2. **Modal render** — `src/components/sprint-board/SprintBoard.tsx`: destructure the new values; render a second `ConfirmDialog` gated on `testDocConfirm`. Primary/confirm = skip (`confirmVariant="primary"`, `onConfirm={confirmTestDocSkip}`); secondary via `extraActions` = "Include them" (`confirmTestDocInclude`, which self-clears the confirm state since the dialog only auto-closes on confirm/cancel); `onClose={cancelTestDocConfirm}`. List the affected keys via the `extra` prop (a `<div>`), NOT `description` (rendered in a `<p>` — block nesting is invalid); `description` carries the count sentence (AC9). No entry point changes — all still call `openTestDocQueue`.
+3. **Tests** — new `src/components/sprint-board/useTestDocBoard.test.ts` (renderHook + act, mock swr/api-client/sprint-board-utils), see below.
 
 ## Acceptance Criteria
 
-- [ ] Triggering a bulk (re)generate whose selection includes ≥1 "not needed" ticket opens a confirmation modal before any generation starts. <!-- openTestDocQueue guard, useTestDocBoard.ts:127 -->
-- [ ] The modal's default/primary button skips the "not needed" tickets and regenerates only the rest. <!-- ConfirmDialog onConfirm -> setTestDocQueue({ keys: rest }) -->
-- [ ] A secondary button includes the "not needed" tickets and regenerates the full eligible set. <!-- ConfirmDialog extraActions -> setTestDocQueue({ keys: eligible }) -->
-- [ ] Cancel closes the modal and queues nothing. <!-- cancelConfirm -->
-- [ ] The guard fires for a single "not needed" ticket too (e.g. row context menu), not only for 2+ selections. <!-- partition runs regardless of eligible.length -->
-- [ ] A selection with no "not needed" tickets behaves exactly as today (queues immediately, no modal). <!-- notNeeded.length === 0 short-circuit -->
-- [ ] View-only opens (`autoGenerate: false`) never show the modal. <!-- opts.autoGenerate === false short-circuit -->
-- [ ] Choosing "Skip" when every eligible ticket is "not needed" queues nothing and shows a toast instead of an empty review modal. <!-- rest.length === 0 branch -->
-- [ ] The modal names how many tickets are affected and lists their keys. <!-- ConfirmDialog description -->
+- [x] Triggering a bulk (re)generate whose selection includes ≥1 "not needed" ticket opens a confirmation modal before any generation starts. <!-- openTestDocQueue guard, useTestDocBoard.ts:127 -->
+- [x] The modal's default/primary button skips the "not needed" tickets and regenerates only the rest. <!-- ConfirmDialog onConfirm -> setTestDocQueue({ keys: rest }) -->
+- [x] A secondary button includes the "not needed" tickets and regenerates the full eligible set. <!-- ConfirmDialog extraActions -> setTestDocQueue({ keys: eligible }) -->
+- [x] Cancel closes the modal and queues nothing. <!-- cancelConfirm -->
+- [x] The guard fires for a single "not needed" ticket too (e.g. row context menu), not only for 2+ selections. <!-- partition runs regardless of eligible.length -->
+- [x] A selection with no "not needed" tickets behaves exactly as today (queues immediately, no modal). <!-- notNeeded.length === 0 short-circuit -->
+- [x] View-only opens (`autoGenerate: false`) never show the modal. <!-- opts.autoGenerate === false short-circuit -->
+- [x] Choosing "Skip" when every eligible ticket is "not needed" queues nothing and shows a toast instead of an empty review modal. <!-- rest.length === 0 branch -->
+- [x] The modal names how many tickets are affected and lists their keys. <!-- ConfirmDialog description -->
 
 ## Tests
 
-- [ ] `openTestDocQueue` opens the confirm modal (does not call `setTestDocQueue`) when the queue contains a "not needed" ticket; "Skip" queues only `rest`; "Include" queues all eligible; "Cancel" queues nothing. <!-- src/components/sprint-board/useTestDocBoard.test.ts (new) -->
-- [ ] No modal and immediate queue when selection has zero "not needed" tickets. <!-- useTestDocBoard.test.ts -->
-- [ ] No modal for `autoGenerate: false`. <!-- useTestDocBoard.test.ts -->
-- [ ] Single "not needed" ticket still triggers the modal. <!-- useTestDocBoard.test.ts -->
-- [ ] "Skip" with an all-"not needed" selection queues nothing and toasts. <!-- useTestDocBoard.test.ts -->
+- [x] `openTestDocQueue` opens the confirm modal (does not call `setTestDocQueue`) when the queue contains a "not needed" ticket; "Skip" queues only `rest`; "Include" queues all eligible; "Cancel" queues nothing. <!-- src/components/sprint-board/useTestDocBoard.test.ts (new) -->
+- [x] No modal and immediate queue when selection has zero "not needed" tickets. <!-- useTestDocBoard.test.ts -->
+- [x] No modal for `autoGenerate: false`. <!-- useTestDocBoard.test.ts -->
+- [x] Single "not needed" ticket still triggers the modal. <!-- useTestDocBoard.test.ts -->
+- [x] "Skip" with an all-"not needed" selection queues nothing and toasts. <!-- useTestDocBoard.test.ts -->
 
 ## Related
 - [[BRDG-461-test-doc-refactor]] — same test-doc UI area; recently refactored components (TestDocReviewModal/Pane/StoryPane).

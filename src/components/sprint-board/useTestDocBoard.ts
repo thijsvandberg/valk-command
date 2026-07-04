@@ -41,6 +41,11 @@ export function useTestDocBoard({
   // for the "view" entry points (marker, status line): opening the modal must
   // not silently start an agent task.
   const [testDocQueue, setTestDocQueue] = useState<{ keys: string[]; autoGenerate: boolean; returnToSprintId?: string } | null>(null);
+  // Confirm gate (BRDG-463): a bulk (re)generate that would sweep in tickets the
+  // PO already marked "no test doc needed" pauses here first. `eligible` is the
+  // full deprecation-filtered set; `notNeededKeys` its "not needed" subset. Only
+  // reached for autoGenerate runs, so a confirmed queue is always autoGenerate.
+  const [testDocConfirm, setTestDocConfirm] = useState<{ eligible: string[]; notNeededKeys: string[]; returnToSprintId?: string } | null>(null);
   // Sprint bundle modal (BRDG-461): the sprint whose delivery document is open.
   const [testDocsSprintId, setTestDocsSprintId] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
@@ -133,8 +138,44 @@ export function useTestDocBoard({
       showToast("Deprecated tickets don't get test documentation");
       return;
     }
-    setTestDocQueue({ keys: eligible, autoGenerate: opts?.autoGenerate ?? true, returnToSprintId: opts?.returnToSprintId });
+    const autoGenerate = opts?.autoGenerate ?? true;
+    // View-only opens never (re)generate, so they never need the confirm gate.
+    // A generate run that would touch a "not needed" ticket pauses for a choice
+    // (BRDG-463) instead of silently undoing the PO's earlier decision.
+    if (autoGenerate) {
+      const notNeededKeys = eligible.filter((k) => allTickets.find((x) => x.key === k)?.testDocState === "not_needed");
+      if (notNeededKeys.length > 0) {
+        setTestDocConfirm({ eligible, notNeededKeys, returnToSprintId: opts?.returnToSprintId });
+        return;
+      }
+    }
+    setTestDocQueue({ keys: eligible, autoGenerate, returnToSprintId: opts?.returnToSprintId });
   }, [allTickets, showToast]);
+
+  // Regenerate only the tickets that were NOT marked "not needed" (the default,
+  // safe choice). If the selection was entirely "not needed" tickets there is
+  // nothing left to do, so we toast rather than open an empty review modal.
+  const confirmTestDocSkip = useCallback(() => {
+    if (!testDocConfirm) return;
+    const notNeeded = new Set(testDocConfirm.notNeededKeys);
+    const rest = testDocConfirm.eligible.filter((k) => !notNeeded.has(k));
+    setTestDocConfirm(null);
+    if (rest.length === 0) {
+      showToast("All selected tickets are marked \"no test doc needed\" — nothing to generate");
+      return;
+    }
+    setTestDocQueue({ keys: rest, autoGenerate: true, returnToSprintId: testDocConfirm.returnToSprintId });
+  }, [testDocConfirm, showToast]);
+
+  // Regenerate the full set, "not needed" tickets included. The classification
+  // is left untouched: it only changes if the PO later accepts a doc.
+  const confirmTestDocInclude = useCallback(() => {
+    if (!testDocConfirm) return;
+    setTestDocQueue({ keys: testDocConfirm.eligible, autoGenerate: true, returnToSprintId: testDocConfirm.returnToSprintId });
+    setTestDocConfirm(null);
+  }, [testDocConfirm]);
+
+  const cancelTestDocConfirm = useCallback(() => setTestDocConfirm(null), []);
 
   const handleSprintTestDocs = useCallback((sprintId: string) => {
     setTestDocsSprintId(sprintId);
@@ -143,6 +184,10 @@ export function useTestDocBoard({
   return {
     testDocQueue,
     setTestDocQueue,
+    testDocConfirm,
+    confirmTestDocSkip,
+    confirmTestDocInclude,
+    cancelTestDocConfirm,
     backgroundGenerating,
     startBackgroundGeneration,
     testDocsSprintId,

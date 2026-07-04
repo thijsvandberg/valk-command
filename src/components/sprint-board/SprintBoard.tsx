@@ -16,6 +16,7 @@ import { SprintTestDocsModal } from "@/components/sprint-board/SprintTestDocsMod
 import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { Button } from "@/components/ui/Button";
 import { SidePanel } from "@/components/sprint-board/SidePanel";
 import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
 import dynamic from "next/dynamic";
@@ -581,6 +582,10 @@ export default function SprintBoard() {
   const {
     testDocQueue,
     setTestDocQueue,
+    testDocConfirm,
+    confirmTestDocSkip,
+    confirmTestDocInclude,
+    cancelTestDocConfirm,
     backgroundGenerating,
     startBackgroundGeneration,
     testDocsSprintId,
@@ -1290,6 +1295,30 @@ export default function SprintBoard() {
             setTestDocQueue(null);
             if (returnTo) setTestDocsSprintId(returnTo);
           }}
+        />
+      )}
+
+      {testDocConfirm && (
+        <ConfirmDialog
+          open
+          onClose={cancelTestDocConfirm}
+          title={`${testDocConfirm.notNeededKeys.length} ticket${testDocConfirm.notNeededKeys.length === 1 ? "" : "s"} marked "no test doc needed"`}
+          description="Skipping regenerates docs for the rest of the selection and leaves these untouched. Including them regenerates their docs too, but won't clear the marking."
+          extra={
+            <div className="flex flex-wrap gap-1.5">
+              {testDocConfirm.notNeededKeys.map((k) => (
+                <span key={k} className="rounded-md bg-overlay-subtle px-1.5 py-0.5 font-mono text-label text-text-secondary">{k}</span>
+              ))}
+            </div>
+          }
+          confirmLabel="Skip these"
+          confirmVariant="primary"
+          onConfirm={confirmTestDocSkip}
+          extraActions={
+            <Button variant="secondary" size="md" onClick={confirmTestDocInclude}>
+              Include them
+            </Button>
+          }
         />
       )}
 
