@@ -1,6 +1,6 @@
 # BRDG-462: Inbox digest — snooze for an hour instead of minimize
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
