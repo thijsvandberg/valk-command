@@ -66,3 +66,18 @@ export function deriveTestDocState(
   if (meta?.testDocClassification === "not_stakeholder_relevant") return "not_needed";
   return null;
 }
+
+/**
+ * Board-surface bucketing (BRDG-469): where a ticket falls in the test-doc
+ * filter and the coverage breakdown. DEPRECATED work never needs delivery
+ * documentation, so without an explicit state it buckets under "not_needed"
+ * rather than "missing" (PO decision 2026-07-04); an explicit state (e.g. an
+ * accepted doc on since-deprecated work) still wins.
+ */
+export function testDocBucket(
+  testDocState: TestDocState | undefined,
+  jiraStatus: string,
+): "accepted" | "draft" | "not_needed" | "missing" {
+  if (testDocState) return testDocState;
+  return jiraStatus === "DEPRECATED" ? "not_needed" : "missing";
+}

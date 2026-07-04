@@ -6,6 +6,7 @@ import type { Ticket, TicketReadiness } from "@/types/ticket";
 import type { SortField, SortDir, InlineTagId, SavedView } from "@/components/sprint-board/FilterBar";
 import { DEFAULT_VISIBLE_TAGS, columnsToTags } from "@/components/sprint-board/FilterBar";
 import { SPRINT_STATE_FILTER_PREFIX, SPRINT_STATE_CLOSED, isSprintStateFilter } from "@/components/sprint-board/filter-bar-types";
+import { testDocBucket } from "@/lib/test-doc";
 import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { useSavedViews } from "@/hooks/useSavedViews";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -271,7 +272,8 @@ export function useSprintBoardFilters(
       if (issueTypeFilter.size > 0 && !issueTypeFilter.has(t.type)) return false;
       // t.testDocState is already the effective (pending-edits-overlaid) value:
       // the board applies applyPendingEdits before this hook receives the list.
-      if (testDocFilter.size > 0 && !testDocFilter.has(t.testDocState ?? "missing")) return false;
+      // testDocBucket folds DEPRECATED-without-state into "not_needed".
+      if (testDocFilter.size > 0 && !testDocFilter.has(testDocBucket(t.testDocState, t.jiraStatus))) return false;
       return true;
     });
   }, [allTickets, statusFilter, epicFilter, assigneeFilter, editStateFilter, issueTypeFilter, testDocFilter]);

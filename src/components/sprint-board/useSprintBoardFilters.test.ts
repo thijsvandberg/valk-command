@@ -455,6 +455,17 @@ describe("useSprintBoardFilters - test-doc filter (BRDG-469)", () => {
     expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["VPL-A", "VPL-D"]);
   });
 
+  it("buckets deprecated tickets without a doc under Not needed, not Missing", () => {
+    const deprecated = makeTicket({ key: "VPL-DEP", jiraStatus: "DEPRECATED", testDocState: null });
+    const { result } = setup([...DOCS, deprecated]);
+
+    act(() => result.current.setTestDocFilter(new Set(["missing"])));
+    expect(result.current.sortedTickets.map((t) => t.key)).not.toContain("VPL-DEP");
+
+    act(() => result.current.setTestDocFilter(new Set(["not_needed"])));
+    expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["VPL-DEP", "VPL-N"]);
+  });
+
   it("composes with other filters (AND)", () => {
     const draftDone = makeTicket({ key: "VPL-DD", testDocState: "draft", jiraStatus: "DONE" });
     const { result } = setup([...DOCS, draftDone]);

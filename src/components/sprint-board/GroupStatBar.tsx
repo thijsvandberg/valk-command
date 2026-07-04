@@ -5,6 +5,7 @@ import type { Ticket, Sprint } from "@/types/ticket";
 import type { SortField, SortDir } from "@/components/sprint-board/filter-bar-types";
 import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
 import { getSpColor, getBvColor, effectivePoints } from "@/types/ticket";
+import { testDocBucket } from "@/lib/test-doc";
 import { FullnessMeter } from "./FullnessMeter";
 import { ChevronRight, ChevronDown, Pin, AlertTriangle, MoreHorizontal, RefreshCw, CheckCheck } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
@@ -326,18 +327,16 @@ export const GroupStatBar = memo(function GroupStatBar({
   // default, so they must not inflate the header's item count, SP/BV totals, or
   // status pills — otherwise an empty sprint still reads as having items.
   const liveTickets = tickets.filter((t) => !t.removedFromJiraAt);
-  // Delivery-doc coverage (BRDG-469): subtasks never carry docs, and tickets the
-  // PO marked "not needed" don't count toward the target either. DEPRECATED is
-  // excluded to match the sprint bundle: the counter measures readiness of the
-  // stakeholder delivery document, and deprecated work never enters it (the
-  // board FILTER still buckets deprecated under Missing — factually it has no
-  // doc — which is fine for finding work; PO decision 2026-07-04).
-  const docEligible = showDocCoverage
-    ? liveTickets.filter((t) => t.type !== "subtask" && t.jiraStatus !== "DEPRECATED")
-    : [];
-  const docAccepted = docEligible.filter((t) => t.testDocState === "accepted").length;
-  const docDraft = docEligible.filter((t) => t.testDocState === "draft").length;
-  const docNotNeeded = docEligible.filter((t) => t.testDocState === "not_needed").length;
+  // Delivery-doc coverage (BRDG-469): subtasks never carry docs, and tickets
+  // that need no doc don't count toward the target. testDocBucket folds
+  // DEPRECATED-without-state into "not_needed" (deprecated work never enters
+  // the stakeholder document), so the counter matches the sprint bundle and
+  // the board filter shares the same buckets.
+  const docEligible = showDocCoverage ? liveTickets.filter((t) => t.type !== "subtask") : [];
+  const docBuckets = docEligible.map((t) => testDocBucket(t.testDocState, t.jiraStatus));
+  const docAccepted = docBuckets.filter((b) => b === "accepted").length;
+  const docDraft = docBuckets.filter((b) => b === "draft").length;
+  const docNotNeeded = docBuckets.filter((b) => b === "not_needed").length;
   const docNeeded = docEligible.length - docNotNeeded;
   const docMissing = docNeeded - docAccepted - docDraft;
   const totalPoints = liveTickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
