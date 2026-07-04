@@ -15,6 +15,12 @@ export interface SprintTestDocItem {
   needsInput?: boolean;
   /** An unreviewed draft exists (relevant for `missing`: review beats regenerate). */
   hasDraft?: boolean;
+  /**
+   * Only set on `other` (not-finished) items that carry a doc: true when the doc
+   * is classified not_stakeholder_relevant (Misc placement when opted in), false
+   * when it belongs in the Documented list. Undefined on every other bucket.
+   */
+  internalDoc?: boolean;
 }
 
 /**
@@ -29,7 +35,9 @@ export interface SprintTestDocItem {
  * - notNeeded: explicitly marked "no test documentation needed" (no doc at
  *   all) — listed separately so they are never re-reviewed as missing.
  * - missing: DONE/TEST tickets without a doc — the delivery gap list.
- * - other: remaining statuses without a doc (informational only).
+ * - other: not-finished tickets (any status other than DONE/TEST). Those with a
+ *   doc carry it plus `internalDoc` so the bundle modal can offer a per-story
+ *   opt-in checkbox for the copy (BRDG-465); those without a doc are informational.
  */
 export async function GET(
   _request: Request,
@@ -95,16 +103,29 @@ export async function GET(
       doc: row.doc,
       hasDraft: row.draft != null,
     };
+    const finished = row.status === "DONE" || row.status === "TEST";
     if (row.doc) {
-      if (row.classification === "not_stakeholder_relevant") {
-        internal.push(item);
+      if (finished) {
+        if (row.classification === "not_stakeholder_relevant") {
+          internal.push(item);
+        } else {
+          // A doc with a null classification predates the column; treat as ok.
+          documented.push({ ...item, needsInput: row.classification === "needs_input" });
+        }
       } else {
-        // A doc with a null classification predates the column; treat as ok.
-        documented.push({ ...item, needsInput: row.classification === "needs_input" });
+        // Not finished but a doc exists: keep it out of the auto-included copy —
+        // the PO opts it in per story via a checkbox in the bundle modal
+        // (BRDG-465). Carry the placement hint + needsInput so a checked block
+        // renders in the right section with the right tag.
+        other.push({
+          ...item,
+          internalDoc: row.classification === "not_stakeholder_relevant",
+          needsInput: row.classification === "needs_input",
+        });
       }
     } else if (row.classification === "not_stakeholder_relevant") {
       notNeeded.push(item);
-    } else if (row.status === "DONE" || row.status === "TEST") {
+    } else if (finished) {
       missing.push(item);
     } else {
       other.push(item);

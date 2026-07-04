@@ -1098,6 +1098,12 @@ export interface SprintTestDocItem {
   needsInput?: boolean;
   /** An unreviewed draft exists (relevant for missing items: review beats regenerate). */
   hasDraft?: boolean;
+  /**
+   * Only set on `other` (not-finished) items that carry a doc: true when the doc
+   * is internal (Misc placement when opted in), false when it belongs in the
+   * Documented list. Undefined on every other bucket. See BRDG-465.
+   */
+  internalDoc?: boolean;
 }
 
 export interface SprintTestDocs {

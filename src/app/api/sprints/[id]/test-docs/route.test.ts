@@ -107,6 +107,38 @@ describe("GET /api/sprints/[id]/test-docs", () => {
     expect(data.other.map((d: { key: string }) => d.key)).toEqual(["VPL-5"]);
   });
 
+  it("keeps not-finished docs opt-in: doc-bearing not-Done tickets land in other, finished ones stay documented/internal", async () => {
+    // Finished + doc → auto-included buckets (unchanged).
+    seedTicket("VPL-10", { status: "DONE", doc: "**Done doc**", classification: "ok" });
+    seedTicket("VPL-11", { status: "TEST", doc: "**Test doc**", classification: "ok" });
+    seedTicket("VPL-12", { status: "DONE", doc: "Internal done", classification: "not_stakeholder_relevant" });
+    // Not-finished + doc → other, carrying the doc + placement hint, NOT documented/internal.
+    seedTicket("VPL-13", { status: "IN PROGRESS", doc: "**WIP doc**", classification: "ok" });
+    seedTicket("VPL-14", { status: "TODO", doc: "Internal WIP", classification: "not_stakeholder_relevant" });
+    // Not-finished + no doc → other with doc null (checkbox stays hidden).
+    seedTicket("VPL-15", { status: "IN PROGRESS" });
+
+    const data = await fetchBuckets();
+
+    expect(data.documented.map((d: { key: string }) => d.key)).toEqual(["VPL-10", "VPL-11"]);
+    expect(data.internal.map((d: { key: string }) => d.key)).toEqual(["VPL-12"]);
+    expect(data.other.map((d: { key: string }) => d.key)).toEqual(["VPL-13", "VPL-14", "VPL-15"]);
+
+    const other = Object.fromEntries(
+      data.other.map((d: { key: string; doc: string | null; internalDoc?: boolean }) => [d.key, d]),
+    );
+    expect(other["VPL-13"].doc).toBe("**WIP doc**");
+    expect(other["VPL-13"].internalDoc).toBe(false);
+    expect(other["VPL-14"].doc).toBe("Internal WIP");
+    expect(other["VPL-14"].internalDoc).toBe(true);
+    expect(other["VPL-15"].doc).toBeNull();
+
+    // Opt-in means the docs are absent from the auto-included buckets.
+    const included = [...data.documented, ...data.internal].map((d: { key: string }) => d.key);
+    expect(included).not.toContain("VPL-13");
+    expect(included).not.toContain("VPL-14");
+  });
+
   it("orders documented by story points desc, nulls last, then key", async () => {
     seedTicket("VPL-9", { doc: "small", storyPoints: 2 });
     seedTicket("VPL-8", { doc: "big", storyPoints: 8 });
