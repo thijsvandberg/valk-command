@@ -30,6 +30,19 @@ describe("CaptionButton", () => {
     expect(screen.getByRole("button", { name: "Saved" }).className).toContain("bg-overlay-subtle");
   });
 
+  it("does not fire onClick when disabled", () => {
+    const onClick = vi.fn();
+    render(
+      <CaptionButton onClick={onClick} disabled>
+        Skip
+      </CaptionButton>,
+    );
+    const btn = screen.getByRole("button", { name: "Skip" });
+    expect(btn).toBeDisabled();
+    fireEvent.click(btn);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
   it("forwards data-testid and title", () => {
     render(
       <CaptionButton onClick={() => {}} data-testid="cb" title="tip">

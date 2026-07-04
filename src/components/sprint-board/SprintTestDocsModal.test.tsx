@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SprintTestDocs } from "@/lib/api-client";
+import { tickets as ticketsApi, type SprintTestDocs } from "@/lib/api-client";
 
 let mockData: SprintTestDocs | undefined;
 let mockError: Error | undefined;
 vi.mock("swr", () => ({
   default: () => ({ data: mockData, error: mockError }),
+  useSWRConfig: () => ({ mutate: vi.fn() }),
 }));
 
 vi.mock("@/components/shared/TicketStatusPill", () => ({
@@ -151,12 +152,30 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(within(screen.getByTestId("test-docs-other")).getAllByTestId("ticket-pill")).toHaveLength(1);
   });
 
-  it("missing rows with an unreviewed draft show a badge and a Review jump", () => {
+  it("missing rows offer Open / Generate / Skip, and flag an unreviewed draft", () => {
     const props = renderModal();
     const missing = screen.getByTestId("test-docs-missing");
     expect(within(missing).getByText("draft ready")).toBeInTheDocument();
-    fireEvent.click(within(missing).getByText("Review"));
+    const row = within(missing).getByText("VPL-5 TEST").closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByText("Open"));
     expect(props.onEditItem).toHaveBeenCalledWith("VPL-5");
+    fireEvent.click(within(row).getByText("Generate"));
+    expect(props.onGenerateMissing).toHaveBeenCalledWith(["VPL-5"]);
+  });
+
+  it("Skip marks a missing story as no test documentation needed and refreshes", async () => {
+    const spy = vi
+      .spyOn(ticketsApi, "markTestDocNotNeeded")
+      .mockResolvedValue({ saved: true, notNeeded: true } as never);
+    const props = renderModal();
+    const missing = screen.getByTestId("test-docs-missing");
+    const row = within(missing).getByText("VPL-4 DONE").closest("li") as HTMLElement;
+    fireEvent.click(within(row).getByText("Skip"));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("VPL-4"));
+    await waitFor(() =>
+      expect(props.showToast).toHaveBeenCalledWith("VPL-4 marked as no test documentation needed"),
+    );
+    spy.mockRestore();
   });
 
   it("per-block Edit jumps into the single-story review", () => {

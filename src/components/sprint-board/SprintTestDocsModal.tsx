@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import useSWR from "swr";
+import { useCallback, useMemo, useState } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { Modal } from "@/components/shared/Modal";
 import { ModalHeader } from "@/components/shared/ModalHeader";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,8 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { CaptionButton } from "@/components/sprint-board/CaptionButton";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import Link from "next/link";
-import { swrFetcher, sprints, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
+import { swrFetcher, sprints, tickets as ticketsApi, ApiError, type SprintTestDocs, type SprintTestDocItem } from "@/lib/api-client";
+import { invalidateTestDocCache } from "@/lib/test-doc-prefetch";
 import { getJiraUrl } from "@/lib/jira-url";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
@@ -112,6 +113,44 @@ function BridgeKeyLink({ item }: { item: SprintTestDocItem }) {
 }
 
 /**
+ * Per-row actions on the gap lists (missing / not-finished): open the story in
+ * the review popup, generate + review it, or skip it (mark "no test doc
+ * needed") straight from the bundle, without opening the full-screen queue.
+ */
+function RowActions({
+  item,
+  onOpen,
+  onGenerate,
+  onSkip,
+  skipping,
+}: {
+  item: SprintTestDocItem;
+  onOpen: (key: string) => void;
+  onGenerate: (key: string) => void;
+  onSkip: (key: string) => void;
+  skipping: boolean;
+}) {
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {item.hasDraft && <Tag color="amber" className="shrink-0">draft ready</Tag>}
+      <CaptionButton onClick={() => onOpen(item.key)} title="Open this story in the review popup">
+        Open
+      </CaptionButton>
+      <CaptionButton onClick={() => onGenerate(item.key)} title="Generate the doc and review it">
+        Generate
+      </CaptionButton>
+      <CaptionButton
+        onClick={() => onSkip(item.key)}
+        disabled={skipping}
+        title="Mark as needing no test documentation — moves it out of the delivery gap"
+      >
+        Skip
+      </CaptionButton>
+    </span>
+  );
+}
+
+/**
  * Sprint-level test documentation bundle (BRDG-461): every validated per-story
  * doc in delivery order, the internal one-liners as a Misc tail, and the
  * missing overview so gaps are visible before the sprint is delivered.
@@ -126,6 +165,33 @@ export function SprintTestDocsModal({
   const { data, error } = useSWR<SprintTestDocs>(sprints.testDocsUrl(sprintId), swrFetcher, {
     revalidateOnFocus: false,
   });
+  const { mutate } = useSWRConfig();
+  const [skippingKeys, setSkippingKeys] = useState<Set<string>>(new Set());
+
+  // Skip = the Bridge-only "no test documentation needed" marker (same as the
+  // review popup's button). Mark it, then refresh this bundle so the row moves
+  // to the notNeeded list, plus the board lists so the row marker follows.
+  const handleSkip = useCallback(
+    async (key: string) => {
+      setSkippingKeys((prev) => new Set(prev).add(key));
+      try {
+        await ticketsApi.markTestDocNotNeeded(key);
+        invalidateTestDocCache(key);
+        await mutate(sprints.testDocsUrl(sprintId));
+        void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
+        showToast(`${key} marked as no test documentation needed`);
+      } catch (err) {
+        showToast(err instanceof ApiError ? err.message : `Could not skip ${key}`);
+      } finally {
+        setSkippingKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [mutate, sprintId, showToast],
+  );
 
   const document = useMemo(() => (data ? buildTestDocDocument(data) : ""), [data]);
   const hasContent = document.trim().length > 0;
@@ -185,14 +251,13 @@ export function SprintTestDocsModal({
                         key={m.key}
                         item={m}
                         trailing={
-                          m.hasDraft ? (
-                            <>
-                              <Tag color="amber" className="shrink-0">draft ready</Tag>
-                              <Button variant="ghost" size="sm" onClick={() => onEditItem(m.key)}>
-                                Review
-                              </Button>
-                            </>
-                          ) : undefined
+                          <RowActions
+                            item={m}
+                            onOpen={onEditItem}
+                            onGenerate={(k) => onGenerateMissing([k])}
+                            onSkip={handleSkip}
+                            skipping={skippingKeys.has(m.key)}
+                          />
                         }
                       />
                     ))}
@@ -279,7 +344,7 @@ export function SprintTestDocsModal({
 
               {/* Not in DONE/Test yet, so not counted as missing — but the PO
                   decides what ships: an unfinished story that goes along in the
-                  delivery gets its doc via the per-row Generate. */}
+                  delivery gets its doc via the per-row actions. */}
               {data.other.length > 0 && (
                 <div data-testid="test-docs-other" className="rounded-xl border border-border-subtle bg-surface-base/60 p-3.5">
                   <SectionLabel>Not finished yet ({data.other.length})</SectionLabel>
@@ -292,9 +357,13 @@ export function SprintTestDocsModal({
                         key={m.key}
                         item={m}
                         trailing={
-                          <Button variant="ghost" size="sm" onClick={() => onGenerateMissing([m.key])}>
-                            Generate
-                          </Button>
+                          <RowActions
+                            item={m}
+                            onOpen={onEditItem}
+                            onGenerate={(k) => onGenerateMissing([k])}
+                            onSkip={handleSkip}
+                            skipping={skippingKeys.has(m.key)}
+                          />
                         }
                       />
                     ))}
