@@ -59,9 +59,11 @@ describe("useTestDocBoard - BRDG-463 not-needed confirm gate", () => {
     expect(result.current.testDocConfirm).not.toBeNull();
     expect(result.current.testDocConfirm?.eligible).toEqual(["A", "B", "C"]);
     expect(result.current.testDocConfirm?.notNeededKeys).toEqual(["B"]);
+    // The gate also carries the resolved ticket objects for the list rows.
+    expect(result.current.testDocConfirm?.notNeeded.map((t) => t.key)).toEqual(["B"]);
   });
 
-  it("skip regenerates only the tickets that were not marked not-needed", () => {
+  it("regenerates only the tickets that were not marked not-needed by default", () => {
     const { result } = setup([
       makeTicket("A", null),
       makeTicket("B", "not_needed"),
@@ -69,23 +71,36 @@ describe("useTestDocBoard - BRDG-463 not-needed confirm gate", () => {
     ]);
 
     act(() => result.current.openTestDocQueue(["A", "B", "C"]));
-    act(() => result.current.confirmTestDocSkip());
+    act(() => result.current.confirmTestDocProceed([]));
 
     expect(result.current.testDocConfirm).toBeNull();
     expect(result.current.testDocQueue?.keys).toEqual(["A", "C"]);
     expect(result.current.testDocQueue?.autoGenerate).toBe(true);
   });
 
-  it("include regenerates the full eligible set, not-needed tickets included", () => {
+  it("regenerates a not-needed ticket too when it is ticked back in", () => {
     const { result } = setup([
       makeTicket("A", null),
       makeTicket("B", "not_needed"),
     ]);
 
     act(() => result.current.openTestDocQueue(["A", "B"]));
-    act(() => result.current.confirmTestDocInclude());
+    act(() => result.current.confirmTestDocProceed(["B"]));
 
     expect(result.current.testDocConfirm).toBeNull();
+    expect(result.current.testDocQueue?.keys).toEqual(["A", "B"]);
+  });
+
+  it("skips the unticked not-needed tickets and includes only the ticked ones", () => {
+    const { result } = setup([
+      makeTicket("A", null),
+      makeTicket("B", "not_needed"),
+      makeTicket("D", "not_needed"),
+    ]);
+
+    act(() => result.current.openTestDocQueue(["A", "B", "D"]));
+    act(() => result.current.confirmTestDocProceed(["B"]));
+
     expect(result.current.testDocQueue?.keys).toEqual(["A", "B"]);
   });
 
@@ -127,14 +142,14 @@ describe("useTestDocBoard - BRDG-463 not-needed confirm gate", () => {
     expect(result.current.testDocQueue).toBeNull();
   });
 
-  it("skip with an all-not-needed selection queues nothing and toasts", () => {
+  it("queues nothing and toasts when the whole selection is not-needed and none are ticked", () => {
     const { result, showToast } = setup([
       makeTicket("B", "not_needed"),
       makeTicket("D", "not_needed"),
     ]);
 
     act(() => result.current.openTestDocQueue(["B", "D"]));
-    act(() => result.current.confirmTestDocSkip());
+    act(() => result.current.confirmTestDocProceed([]));
 
     expect(result.current.testDocConfirm).toBeNull();
     expect(result.current.testDocQueue).toBeNull();

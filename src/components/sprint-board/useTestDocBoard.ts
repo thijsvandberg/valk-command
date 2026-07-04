@@ -45,7 +45,7 @@ export function useTestDocBoard({
   // PO already marked "no test doc needed" pauses here first. `eligible` is the
   // full deprecation-filtered set; `notNeededKeys` its "not needed" subset. Only
   // reached for autoGenerate runs, so a confirmed queue is always autoGenerate.
-  const [testDocConfirm, setTestDocConfirm] = useState<{ eligible: string[]; notNeededKeys: string[]; returnToSprintId?: string } | null>(null);
+  const [testDocConfirm, setTestDocConfirm] = useState<{ eligible: string[]; notNeededKeys: string[]; notNeeded: Ticket[]; returnToSprintId?: string } | null>(null);
   // Sprint bundle modal (BRDG-461): the sprint whose delivery document is open.
   const [testDocsSprintId, setTestDocsSprintId] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
@@ -143,37 +143,43 @@ export function useTestDocBoard({
     // A generate run that would touch a "not needed" ticket pauses for a choice
     // (BRDG-463) instead of silently undoing the PO's earlier decision.
     if (autoGenerate) {
-      const notNeededKeys = eligible.filter((k) => allTickets.find((x) => x.key === k)?.testDocState === "not_needed");
-      if (notNeededKeys.length > 0) {
-        setTestDocConfirm({ eligible, notNeededKeys, returnToSprintId: opts?.returnToSprintId });
+      const notNeeded = eligible
+        .map((k) => allTickets.find((x) => x.key === k))
+        .filter((t): t is Ticket => !!t && t.testDocState === "not_needed");
+      if (notNeeded.length > 0) {
+        setTestDocConfirm({
+          eligible,
+          notNeededKeys: notNeeded.map((t) => t.key),
+          notNeeded,
+          returnToSprintId: opts?.returnToSprintId,
+        });
         return;
       }
     }
     setTestDocQueue({ keys: eligible, autoGenerate, returnToSprintId: opts?.returnToSprintId });
   }, [allTickets, showToast]);
 
-  // Regenerate only the tickets that were NOT marked "not needed" (the default,
-  // safe choice). If the selection was entirely "not needed" tickets there is
-  // nothing left to do, so we toast rather than open an empty review modal.
-  const confirmTestDocSkip = useCallback(() => {
-    if (!testDocConfirm) return;
-    const notNeeded = new Set(testDocConfirm.notNeededKeys);
-    const rest = testDocConfirm.eligible.filter((k) => !notNeeded.has(k));
-    setTestDocConfirm(null);
-    if (rest.length === 0) {
-      showToast("All selected tickets are marked \"no test doc needed\" — nothing to generate");
-      return;
-    }
-    setTestDocQueue({ keys: rest, autoGenerate: true, returnToSprintId: testDocConfirm.returnToSprintId });
-  }, [testDocConfirm, showToast]);
-
-  // Regenerate the full set, "not needed" tickets included. The classification
-  // is left untouched: it only changes if the PO later accepts a doc.
-  const confirmTestDocInclude = useCallback(() => {
-    if (!testDocConfirm) return;
-    setTestDocQueue({ keys: testDocConfirm.eligible, autoGenerate: true, returnToSprintId: testDocConfirm.returnToSprintId });
-    setTestDocConfirm(null);
-  }, [testDocConfirm]);
+  // Proceed with the (re)generation (BRDG-465): always regenerate the rest of
+  // the selection, plus any "not needed" tickets the PO ticked back in. The
+  // unticked marked ones stay untouched; their classification is left as-is
+  // either way (it only changes if the PO later accepts a doc). If nothing is
+  // left to do (all marked, none ticked), toast instead of opening an empty
+  // review modal.
+  const confirmTestDocProceed = useCallback(
+    (includeKeys: string[]) => {
+      if (!testDocConfirm) return;
+      const notNeeded = new Set(testDocConfirm.notNeededKeys);
+      const include = new Set(includeKeys);
+      const keys = testDocConfirm.eligible.filter((k) => !notNeeded.has(k) || include.has(k));
+      setTestDocConfirm(null);
+      if (keys.length === 0) {
+        showToast("All selected tickets are marked \"no test doc needed\" — nothing to generate");
+        return;
+      }
+      setTestDocQueue({ keys, autoGenerate: true, returnToSprintId: testDocConfirm.returnToSprintId });
+    },
+    [testDocConfirm, showToast],
+  );
 
   const cancelTestDocConfirm = useCallback(() => setTestDocConfirm(null), []);
 
@@ -185,8 +191,7 @@ export function useTestDocBoard({
     testDocQueue,
     setTestDocQueue,
     testDocConfirm,
-    confirmTestDocSkip,
-    confirmTestDocInclude,
+    confirmTestDocProceed,
     cancelTestDocConfirm,
     backgroundGenerating,
     startBackgroundGeneration,
