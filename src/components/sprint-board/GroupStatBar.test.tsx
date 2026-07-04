@@ -975,11 +975,14 @@ describe("GroupStatBar - test-doc coverage (BRDG-469)", () => {
     makeTicket({ key: "VPL-5", testDocState: "not_needed" }),
     // Subtasks never carry docs and must not count in any bucket.
     makeTicket({ key: "VPL-6", type: "subtask", testDocState: null }),
+    // Deprecated work never enters the stakeholder document, so it must not
+    // count toward the delivery target either (matches the sprint bundle).
+    makeTicket({ key: "VPL-7", jiraStatus: "DEPRECATED", testDocState: null }),
   ];
 
-  it("shows N/M excluding subtasks and not-needed from the target", () => {
+  it("shows N/M excluding subtasks, deprecated and not-needed from the target", () => {
     render(<GroupStatBar tickets={DOC_TICKETS} showDocCoverage />);
-    // 5 eligible non-subtasks minus 1 not-needed = 4 needed; 2 accepted.
+    // 5 eligible non-subtask, non-deprecated tickets minus 1 not-needed = 4 needed; 2 accepted.
     expect(screen.getByText("2/4 docs")).toBeTruthy();
   });
 

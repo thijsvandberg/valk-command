@@ -327,8 +327,14 @@ export const GroupStatBar = memo(function GroupStatBar({
   // status pills — otherwise an empty sprint still reads as having items.
   const liveTickets = tickets.filter((t) => !t.removedFromJiraAt);
   // Delivery-doc coverage (BRDG-469): subtasks never carry docs, and tickets the
-  // PO marked "not needed" don't count toward the target either.
-  const docEligible = showDocCoverage ? liveTickets.filter((t) => t.type !== "subtask") : [];
+  // PO marked "not needed" don't count toward the target either. DEPRECATED is
+  // excluded to match the sprint bundle: the counter measures readiness of the
+  // stakeholder delivery document, and deprecated work never enters it (the
+  // board FILTER still buckets deprecated under Missing — factually it has no
+  // doc — which is fine for finding work; PO decision 2026-07-04).
+  const docEligible = showDocCoverage
+    ? liveTickets.filter((t) => t.type !== "subtask" && t.jiraStatus !== "DEPRECATED")
+    : [];
   const docAccepted = docEligible.filter((t) => t.testDocState === "accepted").length;
   const docDraft = docEligible.filter((t) => t.testDocState === "draft").length;
   const docNotNeeded = docEligible.filter((t) => t.testDocState === "not_needed").length;
