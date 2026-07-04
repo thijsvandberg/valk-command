@@ -233,13 +233,19 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   `SprintTestDocsModal`, which reads `GET /api/sprints/[id]/test-docs` — validated blocks in
   delivery order, internal one-liners as a Misc tail, and the missing overview (DONE/TEST
   without a doc). "Copy document" puts the stakeholder markdown on the clipboard; "Generate
-  missing" feeds the gap keys back into the BRDG-426 validation queue.
-- **PO control over inclusion**: the review modal's "No test doc needed" button stores a
-  Bridge-only marker (`test_doc_classification = not_stakeholder_relevant` with no doc, no
-  Jira write; cancels an in-flight generation). Marked tickets land in the bundle's separate
-  `notNeeded` list and are never flagged as missing again. Conversely, unfinished tickets
-  (not DONE/TEST) list under "Not finished yet" with a per-row Generate, so a story that
-  ships with the delivery before it is Done still gets its doc.
+  missing" feeds all gap keys back into the BRDG-426 validation queue. Each row on the gap
+  lists (missing + "Not finished yet") also carries per-item actions (`RowActions`): **Open**
+  (the review popup in view mode, returns to the bundle), **Generate** (the review popup with
+  auto-start), and **Skip** (marks the story "no test doc needed" inline via
+  `PUT test-doc {notNeeded}`, then revalidates the bundle + board lists so the row moves to
+  the `notNeeded` group without leaving the modal).
+- **PO control over inclusion**: the review modal's "No test doc needed" button (and the
+  bundle's per-row **Skip**) stores a Bridge-only marker (`test_doc_classification =
+  not_stakeholder_relevant` with no doc, no Jira write; cancels an in-flight generation).
+  Marked tickets land in the bundle's separate `notNeeded` list and are never flagged as
+  missing again. Conversely, unfinished tickets (not DONE/TEST) list under "Not finished yet"
+  with the same per-row actions, so a story that ships with the delivery before it is Done
+  still gets its doc.
 - **Board marker**: the toggleable "Test documentation" row field (off by default,
   `filter-bar-types` tag `testDoc`) shows the per-ticket state — accepted (green), draft
   (amber), not-needed (muted FileX), none (faint) — derived server-side into
