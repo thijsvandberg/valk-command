@@ -195,22 +195,17 @@ export function TestDocReviewModal({ keys, autoGenerate = true, regenerateOnOpen
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-5 py-3.5">
-          <Button
-            variant="ghost"
-            size="md"
-            onClick={handleClose}
-            icon={returnsToBundle ? <ArrowLeft size={12} strokeWidth={2} /> : undefined}
-          >
-            {returnsToBundle ? "Back to sprint doc" : "Cancel"}
-          </Button>
+        {/* Footer: the marker toggle is a different KIND of decision than the
+            review flow, so it sits alone on the left; navigation + the primary
+            path group on the right. */}
+        <div className="flex shrink-0 items-center gap-2 border-t border-border-subtle px-5 py-3.5">
           {entry.status === "not_needed" ? (
             <Button
               variant="ghost"
               size="md"
               onClick={handleRemoveNotNeeded}
               disabled={saving}
+              className="mr-auto"
               title="Remove the marker and return the ticket to the neutral no-doc state — it counts as missing again; nothing is generated"
             >
               Remove &apos;not needed&apos; marker
@@ -221,11 +216,20 @@ export function TestDocReviewModal({ keys, autoGenerate = true, regenerateOnOpen
               size="md"
               onClick={handleNotNeeded}
               disabled={saving}
+              className="mr-auto"
               title="Mark this ticket as needing no test documentation — it moves to a separate list in the sprint bundle and is never flagged as missing again"
             >
               No test doc needed
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={handleClose}
+            icon={returnsToBundle ? <ArrowLeft size={12} strokeWidth={2} /> : undefined}
+          >
+            {returnsToBundle ? "Back to sprint doc" : "Cancel"}
+          </Button>
           {isBulk && (
             <Button variant="ghost" size="md" onClick={advance} disabled={saving}>
               Skip

@@ -39,10 +39,14 @@ interface SprintTestDocsModalProps {
   showToast: ShowToast;
 }
 
-/** Split a doc block into its bold title line (if any) and the remainder. */
+/** Split a doc block into its bold title line (if any) and the remainder.
+ *  Only a first line that is ENTIRELY bold counts as a title: a bold lead-in
+ *  with trailing text ("**Cleanup**: legacy endpoint …") stays in the body,
+ *  otherwise both the preview heading and the copied document would tear the
+ *  line in half. */
 export function splitDocTitle(doc: string): { title: string | null; body: string } {
   const trimmed = doc.trim();
-  const match = trimmed.match(/^\*\*(.+?)\*\*\s*\n?/);
+  const match = trimmed.match(/^\*\*(.+?)\*\*[ \t]*(\n|$)/);
   if (!match) return { title: null, body: trimmed };
   return { title: match[1].trim(), body: trimmed.slice(match[0].length).trim() };
 }
@@ -153,6 +157,43 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Eyebrow with a trailing hairline, marking a document section without boxing it. */
+function SectionRule({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3">
+      <SectionLabel>{children}</SectionLabel>
+      <div aria-hidden className="h-px flex-1 bg-border-subtle" />
+    </div>
+  );
+}
+
+/** One clickable row in the contents rail; the dot mirrors the marker colors. */
+function OutlineEntry({
+  dotClass,
+  label,
+  count,
+  onJump,
+}: {
+  dotClass: string;
+  label: string;
+  count?: number;
+  onJump: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onJump}
+      title={label}
+      className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left text-body-sm text-text-tertiary hover:bg-overlay-subtle hover:text-text-primary active:opacity-70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+    >
+      <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {count !== undefined && <span className="shrink-0 text-caption text-text-muted">{count}</span>}
+    </button>
+  );
+}
+
 /**
  * Overflow menu holding the secondary row actions (Generate / Skip) so the
  * gap-list rows stay uncluttered next to the primary Open/Edit action.
@@ -260,12 +301,19 @@ function RowActions({
   );
 }
 
+/** DOM id a rail entry scrolls to; block anchors are per ticket key. */
+export function bundleAnchorId(suffix: string): string {
+  return `bundle-${suffix}`;
+}
+
 /**
- * One rendered doc block. Shared by the auto-included Documented cards, the
- * lighter Misc entries (`variant="misc"`), and the opt-in "not finished yet"
- * blocks (BRDG-465): `provisional` renders a ticked-but-unfinished story as a
- * full card like the others, marked with a "not finished yet" tag + a subtle
- * brand-tinted border so the PO can tell it apart from a shipped deliverable.
+ * One rendered doc entry in the delivery document. The bundle reads as one
+ * editorial document (it IS what the PO copies to stakeholders), so entries are
+ * articles, not cards: a display-font story heading with a quiet meta line
+ * (ticket pill + state tags) and the doc body in the app's reading typography.
+ * `variant="misc"` renders the internal one-liners at a lower heading weight;
+ * `provisional` (opt-in unfinished stories, BRDG-465) carries a brand-tinted
+ * left accent + tag so it cannot be mistaken for a shipped deliverable.
  */
 function TestDocBlock({
   item,
@@ -281,49 +329,47 @@ function TestDocBlock({
   const { title, body } = splitDocTitle(item.doc ?? "");
   const isCard = variant === "card";
   const header = (
-    <div
-      className={
-        isCard
-          ? "mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-subtle pb-2"
-          : "mb-1 flex flex-wrap items-center gap-x-2 gap-y-1"
-      }
-    >
-      <span className={isCard ? "text-body-lg font-semibold text-text-primary" : "font-semibold text-text-primary"}>
-        {title ?? item.title}
-      </span>
-      <TestDocTicketPill item={item} size="sm" />
-      {item.needsInput && <Tag color="amber">needs input</Tag>}
-      {provisional && <Tag color="neutral">not finished yet</Tag>}
-      <CaptionButton
-        onClick={() => onEditItem(item.key)}
-        className="ml-auto"
-        title="Open this doc in the review modal; you return here when done"
-      >
-        Edit
-      </CaptionButton>
-    </div>
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <h3
+          className={
+            isCard
+              ? "min-w-0 font-[var(--font-display)] text-heading font-semibold leading-snug tracking-[-0.02em] text-text-primary"
+              : "min-w-0 font-[var(--font-display)] text-body-lg font-semibold leading-snug tracking-[-0.01em] text-text-primary"
+          }
+        >
+          {title ?? item.title}
+        </h3>
+        {/* Hover-revealed so the reading surface stays a document, not a toolbar. */}
+        <CaptionButton
+          onClick={() => onEditItem(item.key)}
+          className="shrink-0 opacity-0 transition-opacity duration-150 focus-visible:opacity-100 group-hover/block:opacity-100"
+          title="Open this doc in the review modal; you return here when done"
+        >
+          Edit
+        </CaptionButton>
+      </div>
+      <div className={isCard ? "mb-3 mt-1.5 flex flex-wrap items-center gap-2" : "mb-2 mt-1 flex flex-wrap items-center gap-2"}>
+        <TestDocTicketPill item={item} size="sm" />
+        {item.needsInput && <Tag color="amber">needs input</Tag>}
+        {provisional && <Tag color="neutral">not finished yet</Tag>}
+      </div>
+    </>
   );
   const content = (
     <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
   );
-  if (!isCard) {
-    return (
-      <div>
-        {header}
-        {content}
-      </div>
-    );
-  }
   return (
-    <div
-      data-testid="test-docs-block"
-      className={`rounded-xl border bg-surface-base p-4 shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-600)_8%,transparent)] ${
-        provisional ? "border-[var(--color-brand-400)]/45" : "border-border-default"
+    <article
+      data-testid={isCard ? "test-docs-block" : undefined}
+      id={bundleAnchorId(`block-${item.key}`)}
+      className={`group/block scroll-mt-4 ${isCard ? "py-7 first:pt-1 last:pb-2" : ""} ${
+        provisional ? "border-l-2 border-[var(--color-brand-400)]/45 pl-4" : ""
       }`}
     >
       {header}
       {content}
-    </div>
+    </article>
   );
 }
 
@@ -425,181 +471,285 @@ export function SprintTestDocsModal({
     onGenerateMissing(data.missing.map((m) => m.key));
   }, [data, onGenerateMissing]);
 
+  // Contents-rail navigation: the document pane scrolls, the rail is sticky.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const jumpTo = useCallback((suffix: string) => {
+    scrollRef.current
+      ?.querySelector(`#${bundleAnchorId(suffix)}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   return (
     <Modal open onClose={onClose} aria-label="Sprint test documentation">
-      <div className="flex h-[min(880px,90vh)] w-[min(1080px,94vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
+      <div className="flex h-[min(880px,90vh)] w-[min(1220px,95vw)] flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
         <ModalHeader
           icon={<FileCheck2 size={16} strokeWidth={1.75} className="text-[var(--color-brand-400)]" />}
           title="Test documentation"
+          // The sprint name lives in the document title below; the chrome
+          // carries the delivery state instead.
           subtitle={
             <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
-              {data?.sprintName ?? "…"}
+              {data
+                ? `${documentedAll.length + internalAll.length} documented${data.missing.length > 0 ? ` · ${data.missing.length} missing` : ""}`
+                : "…"}
             </p>
           }
           onClose={onClose}
         />
 
-        {/* Body */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          {error && <InlineAlert variant="error">Failed to load test documentation.</InlineAlert>}
-          {!data && !error && (
-            <LoadingState variant="spinner" label="Loading test documentation…" className="h-40" />
-          )}
+        {/* Body: contents rail left, the delivery document right. */}
+        <div className="flex min-h-0 flex-1">
           {data && (
-            <div className="flex flex-col gap-4">
-              {/* Missing overview first: the gap list is what blocks delivery. */}
+            <nav
+              aria-label="Document contents"
+              className="hidden w-[240px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-border-subtle bg-surface-base/60 px-3 py-4 md:flex"
+            >
               {data.missing.length > 0 && (
-                <div
-                  data-testid="test-docs-missing"
-                  className="rounded-xl border border-border-subtle bg-surface-base/60 p-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="flex items-center gap-2 text-body-sm font-medium text-text-secondary">
-                      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-status-warning)]" />
-                      {data.missing.length} finished {data.missing.length === 1 ? "story misses" : "stories miss"} test documentation
-                    </p>
-                    <Button variant="secondary" size="sm" onClick={handleGenerateMissing}>
-                      Generate missing ({data.missing.length})
-                    </Button>
-                  </div>
-                  <ul className="mt-2 flex flex-col gap-1">
-                    {data.missing.map((m) => (
-                      <TicketListRow
-                        key={m.key}
-                        item={m}
-                        trailing={
-                          <RowActions
-                            item={m}
-                            onOpen={onEditItem}
-                            onGenerate={(k) => onGenerateMissing([k])}
-                            onSkip={handleSkip}
-                            skipping={skippingKeys.has(m.key)}
-                          />
-                        }
-                      />
-                    ))}
-                  </ul>
+                <div className="flex flex-col gap-0.5">
+                  <div className="px-2 pb-1"><SectionLabel>Needs attention</SectionLabel></div>
+                  <OutlineEntry
+                    dotClass="bg-[var(--color-status-warning)]"
+                    label="Missing documentation"
+                    count={data.missing.length}
+                    onJump={() => jumpTo("missing")}
+                  />
                 </div>
               )}
-
-              {documentedAll.length === 0 && internalAll.length === 0 && (
-                <EmptyState
-                  className="py-8"
-                  icon={<FileCheck2 size={20} strokeWidth={1.75} className="text-text-muted" />}
-                  title="No test documentation saved for this sprint yet."
-                />
-              )}
-
-              {documentedAll.length > 0 && (
-                <section className="flex flex-col gap-2.5">
-                  <SectionLabel>Documented ({documentedAll.length})</SectionLabel>
+              {(documentedAll.length > 0 || internalAll.length > 0) && (
+                <div className="flex flex-col gap-0.5">
+                  <div className="px-2 pb-1"><SectionLabel>In this document</SectionLabel></div>
                   {documentedAll.map((item) => (
-                    <TestDocBlock
+                    <OutlineEntry
                       key={item.key}
-                      item={item}
-                      onEditItem={onEditItem}
-                      provisional={selectedUnfinished.has(item.key)}
+                      dotClass={
+                        selectedUnfinished.has(item.key)
+                          ? "bg-[var(--color-brand-400)]"
+                          : "bg-[var(--color-status-success)]"
+                      }
+                      label={splitDocTitle(item.doc ?? "").title ?? item.title}
+                      onJump={() => jumpTo(`block-${item.key}`)}
                     />
                   ))}
-                </section>
-              )}
-
-              {internalAll.length > 0 && (
-                <div data-testid="test-docs-misc" className="rounded-xl border border-border-default bg-surface-base p-4 shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-600)_8%,transparent)]">
-                  <div className="mb-2.5 border-b border-border-subtle pb-2">
-                    <SectionLabel>Misc ({internalAll.length})</SectionLabel>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    {internalAll.map((item) => (
-                      <TestDocBlock
-                        key={item.key}
-                        item={item}
-                        onEditItem={onEditItem}
-                        variant="misc"
-                        provisional={selectedUnfinished.has(item.key)}
-                      />
-                    ))}
-                  </div>
+                  {internalAll.length > 0 && (
+                    <OutlineEntry
+                      dotClass="bg-[var(--color-text-muted)]/60"
+                      label="Misc"
+                      count={internalAll.length}
+                      onJump={() => jumpTo("misc")}
+                    />
+                  )}
                 </div>
               )}
-
-              {data.notNeeded.length > 0 && (
-                <div data-testid="test-docs-not-needed" className="rounded-xl border border-border-subtle bg-surface-base/60 p-3.5">
-                  <SectionLabel>No test documentation needed ({data.notNeeded.length})</SectionLabel>
-                  <ul className="mt-2.5 flex flex-col gap-1">
-                    {data.notNeeded.map((m) => (
-                      <TicketListRow
-                        key={m.key}
-                        item={m}
-                        trailing={
-                          <CaptionButton
-                            className="shrink-0"
-                            onClick={() => onEditItem(m.key)}
-                            title={m.doc ? "Open this doc in the review popup to edit it" : "Open this story in the review popup to still write a doc"}
-                          >
-                            {m.doc ? "Edit" : "Open"}
-                          </CaptionButton>
-                        }
-                      />
-                    ))}
-                  </ul>
+              {(data.notNeeded.length > 0 || data.other.length > 0) && (
+                <div className="flex flex-col gap-0.5">
+                  <div className="px-2 pb-1"><SectionLabel>Outside the document</SectionLabel></div>
+                  {data.notNeeded.length > 0 && (
+                    <OutlineEntry
+                      dotClass="bg-[var(--color-text-muted)]/60"
+                      label="Not needed"
+                      count={data.notNeeded.length}
+                      onJump={() => jumpTo("not-needed")}
+                    />
+                  )}
+                  {data.other.length > 0 && (
+                    <OutlineEntry
+                      dotClass="bg-[var(--color-text-muted)]/60"
+                      label="Not finished yet"
+                      count={data.other.length}
+                      onJump={() => jumpTo("other")}
+                    />
+                  )}
                 </div>
               )}
+            </nav>
+          )}
 
-              {/* Not in DONE/Test yet, so not counted as missing — but the PO
-                  decides what ships: generate a doc, then tick the story to fold
-                  it into the delivery document (BRDG-465). */}
-              {data.other.length > 0 && (
-                <div data-testid="test-docs-other" className="rounded-xl border border-border-subtle bg-surface-base/60 p-3.5">
-                  <SectionLabel>Not finished yet ({data.other.length})</SectionLabel>
-                  <p className="mt-1 text-body-sm text-text-muted">
-                    Ships with this delivery? Generate a doc, then tick it to include it in the document.
-                  </p>
-                  <ul className="mt-2.5 flex flex-col gap-1">
-                    {data.other.map((m) => (
-                      <TicketListRow
-                        key={m.key}
-                        item={m}
-                        leading={
-                          m.doc ? (
-                            <div
-                              role="checkbox"
-                              aria-checked={selectedUnfinished.has(m.key)}
-                              aria-label={`Include ${m.key} in the document`}
-                              tabIndex={0}
-                              onClick={() => toggleUnfinished(m.key)}
-                              onKeyDown={(e) => {
-                                if (e.key === " " || e.key === "Enter") {
-                                  e.preventDefault();
-                                  toggleUnfinished(m.key);
-                                }
-                              }}
-                              className="flex shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                            >
-                              <Checkbox checked={selectedUnfinished.has(m.key)} />
-                            </div>
-                          ) : (
-                            // Keep the checkbox gutter reserved so doc-less rows stay aligned
-                            // with the ticked ones, mirroring the board's selection column.
-                            <span aria-hidden className="w-3.5 shrink-0" />
-                          )
-                        }
-                        trailing={
-                          <RowActions
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-[780px] px-8 py-7">
+              {error && <InlineAlert variant="error">Failed to load test documentation.</InlineAlert>}
+              {!data && !error && (
+                <LoadingState variant="spinner" label="Loading test documentation…" className="h-40" />
+              )}
+              {data && (
+                <>
+                  {/* The document's own title: this pane previews exactly what
+                      leaves Bridge, so it reads as a document, not an admin list. */}
+                  <header className="mb-6">
+                    <p className="text-caption font-semibold uppercase tracking-wider text-[var(--color-brand-400)]">
+                      Sprint delivery
+                    </p>
+                    <h2 className="mt-1 font-[var(--font-display)] text-heading-lg font-bold tracking-[-0.03em] text-text-primary">
+                      {data.sprintName}
+                    </h2>
+                  </header>
+
+                  {/* Missing overview first: the gap list is what blocks delivery. */}
+                  {data.missing.length > 0 && (
+                    <div
+                      data-testid="test-docs-missing"
+                      id={bundleAnchorId("missing")}
+                      className="mb-8 scroll-mt-4 border-l-2 border-[var(--color-status-warning)]/60 pl-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-body-sm font-medium text-text-secondary">
+                          {data.missing.length} finished {data.missing.length === 1 ? "story misses" : "stories miss"} test documentation
+                        </p>
+                        <Button variant="secondary" size="sm" onClick={handleGenerateMissing}>
+                          Generate missing ({data.missing.length})
+                        </Button>
+                      </div>
+                      <ul className="mt-2 flex flex-col gap-1">
+                        {data.missing.map((m) => (
+                          <TicketListRow
+                            key={m.key}
                             item={m}
-                            onOpen={onEditItem}
-                            onGenerate={(k) => onGenerateMissing([k])}
-                            onSkip={handleSkip}
-                            skipping={skippingKeys.has(m.key)}
+                            trailing={
+                              <RowActions
+                                item={m}
+                                onOpen={onEditItem}
+                                onGenerate={(k) => onGenerateMissing([k])}
+                                onSkip={handleSkip}
+                                skipping={skippingKeys.has(m.key)}
+                              />
+                            }
                           />
-                        }
-                      />
-                    ))}
-                  </ul>
-                </div>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {documentedAll.length === 0 && internalAll.length === 0 && (
+                    <EmptyState
+                      className="py-8"
+                      icon={<FileCheck2 size={20} strokeWidth={1.75} className="text-text-muted" />}
+                      title="No test documentation saved for this sprint yet."
+                    />
+                  )}
+
+                  {documentedAll.length > 0 && (
+                    <section>
+                      <SectionRule>Documented ({documentedAll.length})</SectionRule>
+                      <div className="mt-2 flex flex-col divide-y divide-border-subtle">
+                        {documentedAll.map((item) => (
+                          <TestDocBlock
+                            key={item.key}
+                            item={item}
+                            onEditItem={onEditItem}
+                            provisional={selectedUnfinished.has(item.key)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {internalAll.length > 0 && (
+                    <section
+                      data-testid="test-docs-misc"
+                      id={bundleAnchorId("misc")}
+                      className="mt-8 scroll-mt-4"
+                    >
+                      <SectionRule>Misc ({internalAll.length})</SectionRule>
+                      <div className="mt-4 flex flex-col gap-6">
+                        {internalAll.map((item) => (
+                          <TestDocBlock
+                            key={item.key}
+                            item={item}
+                            onEditItem={onEditItem}
+                            variant="misc"
+                            provisional={selectedUnfinished.has(item.key)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {data.notNeeded.length > 0 && (
+                    <section
+                      data-testid="test-docs-not-needed"
+                      id={bundleAnchorId("not-needed")}
+                      className="mt-10 scroll-mt-4"
+                    >
+                      <SectionRule>No test documentation needed ({data.notNeeded.length})</SectionRule>
+                      <ul className="mt-2.5 flex flex-col gap-1">
+                        {data.notNeeded.map((m) => (
+                          <TicketListRow
+                            key={m.key}
+                            item={m}
+                            trailing={
+                              <CaptionButton
+                                className="shrink-0"
+                                onClick={() => onEditItem(m.key)}
+                                title={m.doc ? "Open this doc in the review popup to edit it" : "Open this story in the review popup to still write a doc"}
+                              >
+                                {m.doc ? "Edit" : "Open"}
+                              </CaptionButton>
+                            }
+                          />
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+
+                  {/* Not in DONE/Test yet, so not counted as missing — but the PO
+                      decides what ships: generate a doc, then tick the story to fold
+                      it into the delivery document (BRDG-465). */}
+                  {data.other.length > 0 && (
+                    <section
+                      data-testid="test-docs-other"
+                      id={bundleAnchorId("other")}
+                      className="mt-10 scroll-mt-4"
+                    >
+                      <SectionRule>Not finished yet ({data.other.length})</SectionRule>
+                      <p className="mt-1.5 text-body-sm text-text-muted">
+                        Ships with this delivery? Generate a doc, then tick it to include it in the document.
+                      </p>
+                      <ul className="mt-2.5 flex flex-col gap-1">
+                        {data.other.map((m) => (
+                          <TicketListRow
+                            key={m.key}
+                            item={m}
+                            leading={
+                              m.doc ? (
+                                <div
+                                  role="checkbox"
+                                  aria-checked={selectedUnfinished.has(m.key)}
+                                  aria-label={`Include ${m.key} in the document`}
+                                  tabIndex={0}
+                                  onClick={() => toggleUnfinished(m.key)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === " " || e.key === "Enter") {
+                                      e.preventDefault();
+                                      toggleUnfinished(m.key);
+                                    }
+                                  }}
+                                  className="flex shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                                >
+                                  <Checkbox checked={selectedUnfinished.has(m.key)} />
+                                </div>
+                              ) : (
+                                // Keep the checkbox gutter reserved so doc-less rows stay aligned
+                                // with the ticked ones, mirroring the board's selection column.
+                                <span aria-hidden className="w-3.5 shrink-0" />
+                              )
+                            }
+                            trailing={
+                              <RowActions
+                                item={m}
+                                onOpen={onEditItem}
+                                onGenerate={(k) => onGenerateMissing([k])}
+                                onSkip={handleSkip}
+                                skipping={skippingKeys.has(m.key)}
+                              />
+                            }
+                          />
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                </>
               )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Footer */}

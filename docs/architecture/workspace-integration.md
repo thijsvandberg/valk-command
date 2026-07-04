@@ -286,8 +286,20 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   `revalidateTestDocViews` in `test-doc-prefetch`), and Regenerate (modal with
   `regenerateOnOpen`, which queues a fresh generation next to the cached versions; single-key
   only, and a not-needed marker still suppresses it per BRDG-467).
+- **Bundle layout (2026-07-04 redesign)**: the sprint bundle renders as ONE editorial
+  document, not a card stack — a sticky contents rail on the left (state-dotted outline;
+  entries scroll the document pane via `bundleAnchorId`) and a bounded reading column on
+  the right with the sprint name as the document title. Doc entries are articles
+  (display-font heading, quiet pill/tag meta line, hover-revealed Edit) separated by
+  hairlines; the missing/not-needed/not-finished lists are slim accent strips and
+  appendix sections, never boxes. `splitDocTitle` only treats a FULLY bold first line as
+  a title, so bold lead-ins ("**Cleanup**: legacy…") stay intact in both the preview and
+  the copied document.
 - **Review modal layout**: the doc renders as markdown by default (Edit toggles the raw
-  textarea; hand-work results open in the editor directly); the story pane
+  textarea; hand-work results open in the editor directly) directly on the pane surface —
+  a bounded reading column under a slim provenance/version toolbar, no inset box; the
+  footer keeps the not-needed marker toggle alone on the left, away from the review flow.
+  The story pane
   (`TestDocStoryPane`) mirrors the ticket sidebar's reading style incl. Jira comments and
   strips the doc's own expand block from the description; the pane split is draggable and
   persisted (`bridge:test-doc-split`); the header carries the regular ticket pill.

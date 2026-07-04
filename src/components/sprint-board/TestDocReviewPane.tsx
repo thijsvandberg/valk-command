@@ -49,7 +49,7 @@ export function TestDocReviewPane({
   onPreviewClick,
 }: TestDocReviewPaneProps) {
   return (
-    <div className="flex min-h-0 flex-col gap-3 p-5" style={{ width: `${splitPct}%` }}>
+    <div className="flex min-h-0 flex-col gap-3 px-6 py-5" style={{ width: `${splitPct}%` }}>
       {entry.unstructured && !generating && (
         <InlineAlert variant="warning">
           The workspace returned unstructured output — review it carefully before saving.
@@ -88,7 +88,10 @@ export function TestDocReviewPane({
           the PO switches, compares, then accepts ONE — Save discards the rest)
           plus the rendered/edit toggle. */}
       {entry.status === "ready" && (
-        <div className="flex shrink-0 items-center gap-1.5" data-testid="test-doc-toolbar">
+        <div
+          className="flex shrink-0 items-center gap-1.5 border-b border-border-subtle pb-2.5"
+          data-testid="test-doc-toolbar"
+        >
           {entry.source === "saved" && entry.cachedAt && (
             <span className="text-caption text-text-muted" data-testid="test-doc-saved-at">
               Saved {new Date(entry.cachedAt).toLocaleString()}
@@ -191,20 +194,23 @@ export function TestDocReviewPane({
           spellCheck={false}
           placeholder="Generated test documentation (markdown)..."
           data-testid="test-doc-editor"
-          className="min-h-0 flex-1 resize-none rounded-xl border border-border-default bg-surface-base p-3 font-mono text-body-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted focus:border-[var(--color-brand-500)]/45 [transition:border-color_.15s_ease]"
+          className="min-h-0 flex-1 resize-none rounded-lg border border-border-subtle bg-surface-base p-4 font-mono text-body-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted focus:border-[var(--color-brand-500)]/45 [transition:border-color_.15s_ease]"
         />
       ) : (
         // Rendered markdown is the default reading mode; clicking it (or the
-        // Edit toggle) switches to the raw editor.
+        // Edit toggle) switches to the raw editor. No box: this pane IS the
+        // document page — a bounded reading column on the elevated surface.
         <div
           data-testid="test-doc-preview"
           onClick={onPreviewClick}
           title="Click to edit"
-          className="description-content min-h-0 flex-1 cursor-pointer overflow-y-auto rounded-xl border border-border-subtle bg-surface-base p-3 text-body-sm"
+          className="min-h-0 flex-1 cursor-pointer overflow-y-auto"
         >
-          {entry.doc.trim()
-            ? renderMarkdown(entry.doc)
-            : <p className="text-body-sm text-text-muted">Empty — click to write the checks yourself.</p>}
+          <div className="description-content max-w-[680px] pb-4 pt-1">
+            {entry.doc.trim()
+              ? renderMarkdown(entry.doc)
+              : <p className="text-body-sm text-text-muted">Empty — click to write the checks yourself.</p>}
+          </div>
         </div>
       )}
     </div>
