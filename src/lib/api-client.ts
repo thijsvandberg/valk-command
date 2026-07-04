@@ -329,6 +329,8 @@ export const tickets = {
   getTestDoc: (ticketKey: string, signal?: AbortSignal) =>
     apiFetch<{
       storyUpdatedAt: string | null;
+      notNeeded: boolean;
+      notNeededAt: string | null;
       saved: { markdown: string; classification: string; updatedAt: string | null } | null;
       draft: { markdown: string; classification: string; generatedAt: string | null } | null;
     }>(`/api/tickets/${enc(ticketKey)}/test-doc`, { signal }),
@@ -343,6 +345,10 @@ export const tickets = {
   markTestDocNotNeeded: (ticketKey: string, signal?: AbortSignal) =>
     apiFetch<{ saved: boolean; notNeeded: boolean }>(
       `/api/tickets/${enc(ticketKey)}/test-doc`, { method: "PUT", body: { notNeeded: true }, signal },
+    ),
+  unmarkTestDocNotNeeded: (ticketKey: string, signal?: AbortSignal) =>
+    apiFetch<{ saved: boolean; notNeeded: boolean }>(
+      `/api/tickets/${enc(ticketKey)}/test-doc`, { method: "PUT", body: { notNeeded: false }, signal },
     ),
 
   // Subtask suggestions (persisted AI suggestions)

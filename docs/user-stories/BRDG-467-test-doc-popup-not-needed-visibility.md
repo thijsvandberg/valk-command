@@ -36,19 +36,30 @@ Decided behaviour:
 - No changes to the bulk/sprint-bundle flows; they already display not-needed tickets separately.
 - No Jira writes; the marker is Bridge-only.
 
+## Implementation Plan
+
+1. **Route (`src/app/api/tickets/[key]/test-doc/route.ts`).** GET: add top-level `notNeeded` (`!!meta && !meta.testDoc && classification === "not_stakeholder_relevant"`) and `notNeededAt` (from `testDocUpdatedAt`). PUT: new `notNeeded === false` branch before the markdown validation — 404 unknown ticket; 400 when an accepted doc exists; idempotent 200 no-op when no marker; otherwise null `testDocClassification` + `testDocUpdatedAt` only (never `testDoc`/drafts, no Jira write) and invalidate the same `/api/tickets` caches as the set branch.
+2. **API client (`src/lib/api-client.ts`).** Extend the `getTestDoc` return type; add `unmarkTestDocNotNeeded` (PUT `{ notNeeded: false }`).
+3. **Hook (`src/components/sprint-board/useTestDocReview.ts`).** New entry status `"not_needed"` + `notNeededAt` field. In the cache-lookup effect, route `data.notNeeded` (when no cached doc/draft) to that status instead of `queued/idle` — the scheduler only starts `"queued"` entries, so auto-generate is suppressed structurally. New `handleRemoveNotNeeded` mirroring `handleNotNeeded`: pending-edit overlay `testDocState -> null`, call the unset API, confirm + patch detail cache + invalidate test-doc cache + revalidate views, land the entry in `"idle"` (no advance, no queue). `handleRegenerate` already provides the explicit-generate path.
+4. **Pane (`TestDocReviewPane.tsx`).** New `not_needed` branch reusing the idle empty-state layout: `FileX2` icon (same as board marker), "Marked as not needing test documentation" + `toLocaleString()` date (format already used in this file), muted explanation, secondary "Generate test doc anyway" button.
+5. **Modal (`TestDocReviewModal.tsx`).** Footer: when `entry.status === "not_needed"`, swap "No test doc needed" for a ghost "Remove 'not needed' marker" button calling `handleRemoveNotNeeded`.
+6. **Tests.** Route: GET reports marker + date and `false` for no-doc/accepted; unset clears marker only, 400 on accepted doc, drafts untouched, no-op without marker, 404/409 mirrors; update the strict `toEqual` in the empty-GET test. Modal: marker state renders + never auto-generates, remove lands in idle without generating (overlay + cache patch asserted), explicit generate still works.
+
+Design calls: 400 (not silent no-op) when unsetting a ticket that has an accepted doc; idempotent no-op when the marker is already absent; a draft (checked first by the hook) outranks the marker, matching `deriveTestDocState` priority; `notNeededAt` may be null on legacy rows and the pane renders without the date then.
+
 ## Acceptance Criteria
 
-- [ ] Opening the review popup on a not-needed ticket shows a distinct "marked as not needed" state with the date, and does not auto-generate. <!-- useTestDocReview state + TestDocReviewPane -->
-- [ ] The popup offers a "remove marker" action on not-needed tickets; clicking it returns the ticket to the neutral state without generating, and the board marker resets without a hard refresh. <!-- TestDocReviewModal footer + PUT notNeeded:false + SWR patch like handleNotNeeded -->
-- [ ] Generating from a not-needed ticket remains possible via an explicit click and behaves as today. <!-- explicit Generate action in the notNeeded pane state -->
-- [ ] `GET /api/tickets/[key]/test-doc` reports the marker (`notNeeded`, `notNeededAt`). <!-- GET handler -->
-- [ ] `PUT { notNeeded: false }` clears only the explicit marker: a ticket with an accepted doc or a draft is left untouched (400 or no-op, decided in implementation). <!-- PUT handler unset branch -->
+- [x] Opening the review popup on a not-needed ticket shows a distinct "marked as not needed" state with the date, and does not auto-generate. <!-- useTestDocReview "not_needed" status + TestDocReviewPane test-doc-not-needed branch -->
+- [x] The popup offers a "remove marker" action on not-needed tickets; clicking it returns the ticket to the neutral state without generating, and the board marker resets without a hard refresh. <!-- TestDocReviewModal footer swap + handleRemoveNotNeeded + PUT notNeeded:false -->
+- [x] Generating from a not-needed ticket remains possible via an explicit click and behaves as today. <!-- "Generate test doc anyway" button in the not_needed pane state -->
+- [x] `GET /api/tickets/[key]/test-doc` reports the marker (`notNeeded`, `notNeededAt`). <!-- GET handler -->
+- [x] `PUT { notNeeded: false }` clears only the explicit marker: a ticket with an accepted doc is rejected with 400, drafts are untouched, no marker is an idempotent no-op. <!-- PUT handler unset branch -->
 
 ## Tests
 
-- [ ] GET returns `notNeeded: true` + date for a marked ticket, `false` for no-doc and accepted-doc tickets. <!-- src/app/api/tickets/[key]/test-doc/route.test.ts -->
-- [ ] PUT `notNeeded: false` clears the marker and caches; does not touch accepted docs or drafts. <!-- route.test.ts -->
-- [ ] Modal shows the not-needed state, does not auto-generate, and the remove action lands in idle. <!-- TestDocReviewModal.test.tsx -->
+- [x] GET returns `notNeeded: true` + date for a marked ticket, `false` for no-doc and accepted-doc tickets. <!-- src/app/api/tickets/[key]/test-doc/route.test.ts -->
+- [x] PUT `notNeeded: false` clears the marker and caches; does not touch accepted docs or drafts. <!-- route.test.ts -->
+- [x] Modal shows the not-needed state, does not auto-generate, and the remove action lands in idle. <!-- TestDocReviewModal.test.tsx -->
 
 ## Related
 

@@ -217,6 +217,63 @@ describe("PUT /api/tickets/[key]/test-doc", () => {
     });
   });
 
+  describe("unset marker (notNeeded: false, BRDG-467)", () => {
+    it("clears the marker Bridge-only and leaves drafts untouched", async () => {
+      seedTicket("VPL-10");
+      testDb.insert(ticketMetadata).values({
+        jiraKey: "VPL-10",
+        testDocClassification: "not_stakeholder_relevant",
+        testDocUpdatedAt: "2026-07-01T09:00:00.000Z",
+        testDocDraft: "draft doc",
+        testDocDraftClassification: "ok",
+        testDocDraftGeneratedAt: "2026-07-02T10:00:00.000Z",
+      }).run();
+
+      const response = await PUT(makeRequest("VPL-10", { notNeeded: false }), makeParams("VPL-10"));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ saved: true, notNeeded: false });
+
+      const meta = getMetadata("VPL-10");
+      expect(meta?.testDocClassification).toBeNull();
+      expect(meta?.testDocUpdatedAt).toBeNull();
+      expect(meta?.testDocDraft).toBe("draft doc");
+      expect(meta?.testDocDraftClassification).toBe("ok");
+      expect(meta?.testDocDraftGeneratedAt).toBe("2026-07-02T10:00:00.000Z");
+      expect(mockUpsertLocalEdit).not.toHaveBeenCalled();
+      expect(mockPushToJira).not.toHaveBeenCalled();
+    });
+
+    it("400s when the ticket has an accepted doc and changes nothing", async () => {
+      seedTicket("VPL-10");
+      testDb.insert(ticketMetadata).values({
+        jiraKey: "VPL-10",
+        testDoc: "accepted doc",
+        testDocUpdatedAt: "2026-07-01T09:00:00.000Z",
+        testDocClassification: "ok",
+      }).run();
+
+      const response = await PUT(makeRequest("VPL-10", { notNeeded: false }), makeParams("VPL-10"));
+      expect(response.status).toBe(400);
+
+      const meta = getMetadata("VPL-10");
+      expect(meta?.testDoc).toBe("accepted doc");
+      expect(meta?.testDocClassification).toBe("ok");
+    });
+
+    it("is an idempotent no-op when no marker is set", async () => {
+      seedTicket("VPL-10");
+      const response = await PUT(makeRequest("VPL-10", { notNeeded: false }), makeParams("VPL-10"));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ saved: true, notNeeded: false });
+      expect(getMetadata("VPL-10")).toBeUndefined();
+    });
+
+    it("404s on unknown tickets and 409s on draft keys", async () => {
+      expect((await PUT(makeRequest("VPL-999", { notNeeded: false }), makeParams("VPL-999"))).status).toBe(404);
+      expect((await PUT(makeRequest("DRAFT-abc", { notNeeded: false }), makeParams("DRAFT-abc"))).status).toBe(409);
+    });
+  });
+
   describe("GET (cached doc lookup)", () => {
     function makeGetRequest(key: string): Request {
       return new Request(`http://localhost:3100/api/tickets/${key}/test-doc`);
@@ -226,7 +283,27 @@ describe("PUT /api/tickets/[key]/test-doc", () => {
       seedTicket("VPL-10");
       const response = await GET(makeGetRequest("VPL-10"), makeParams("VPL-10"));
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ storyUpdatedAt: null, saved: null, draft: null });
+      expect(await response.json()).toEqual({
+        storyUpdatedAt: null,
+        notNeeded: false,
+        notNeededAt: null,
+        saved: null,
+        draft: null,
+      });
+    });
+
+    it("reports the not-needed marker with its date", async () => {
+      seedTicket("VPL-10");
+      testDb.insert(ticketMetadata).values({
+        jiraKey: "VPL-10",
+        testDocClassification: "not_stakeholder_relevant",
+        testDocUpdatedAt: "2026-07-01T09:00:00.000Z",
+      }).run();
+
+      const data = await (await GET(makeGetRequest("VPL-10"), makeParams("VPL-10"))).json();
+      expect(data.notNeeded).toBe(true);
+      expect(data.notNeededAt).toBe("2026-07-01T09:00:00.000Z");
+      expect(data.saved).toBeNull();
     });
 
     it("returns both the accepted doc and the draft cache", async () => {
@@ -242,6 +319,8 @@ describe("PUT /api/tickets/[key]/test-doc", () => {
       }).run();
 
       const data = await (await GET(makeGetRequest("VPL-10"), makeParams("VPL-10"))).json();
+      // An accepted doc is never reported as the not-needed marker.
+      expect(data.notNeeded).toBe(false);
       expect(data.saved).toEqual({
         markdown: "accepted doc",
         classification: "ok",

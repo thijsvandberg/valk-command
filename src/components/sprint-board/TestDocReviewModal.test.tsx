@@ -6,6 +6,7 @@ const mockSaveTestDoc = vi.fn();
 const mockGetTestDoc = vi.fn();
 const mockSaveTestDocDraft = vi.fn();
 const mockMarkNotNeeded = vi.fn();
+const mockUnmarkNotNeeded = vi.fn();
 const mockCancelTask = vi.fn();
 const mockMutate = vi.fn();
 vi.mock("@/lib/api-client", () => ({
@@ -16,6 +17,7 @@ vi.mock("@/lib/api-client", () => ({
     getTestDoc: (...args: unknown[]) => mockGetTestDoc(...args),
     saveTestDocDraft: (...args: unknown[]) => mockSaveTestDocDraft(...args),
     markTestDocNotNeeded: (...args: unknown[]) => mockMarkNotNeeded(...args),
+    unmarkTestDocNotNeeded: (...args: unknown[]) => mockUnmarkNotNeeded(...args),
   },
   workspaceTasks: {
     cancel: (...args: unknown[]) => mockCancelTask(...args),
@@ -120,6 +122,8 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     mockSaveTestDocDraft.mockResolvedValue({ saved: true });
     mockMarkNotNeeded.mockReset();
     mockMarkNotNeeded.mockResolvedValue({ saved: true, notNeeded: true });
+    mockUnmarkNotNeeded.mockReset();
+    mockUnmarkNotNeeded.mockResolvedValue({ saved: true, notNeeded: false });
     mockCancelTask.mockResolvedValue({ ok: true });
     mockMutate.mockReset();
     mockPatchTicketDetailCache.mockReset();
@@ -391,6 +395,80 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(screen.getByTestId("test-doc-queue-position")).toHaveTextContent("2 / 2"),
       );
       expect(mockMarkNotNeeded).toHaveBeenCalledWith("VPL-1");
+    });
+  });
+
+  describe("not-needed marker visibility (BRDG-467)", () => {
+    function mockMarkedTicket() {
+      mockGetTestDoc.mockResolvedValue({
+        storyUpdatedAt: null,
+        notNeeded: true,
+        notNeededAt: "2026-07-01T09:00:00.000Z",
+        saved: null,
+        draft: null,
+      });
+    }
+
+    it("shows the marker state and never auto-generates", async () => {
+      mockMarkedTicket();
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+
+      await waitFor(() => expect(screen.getByTestId("test-doc-not-needed")).toBeInTheDocument());
+      expect(screen.getByText(/Marked as not needing test documentation/)).toBeInTheDocument();
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
+      // The footer offers the inverse action instead of re-marking.
+      expect(screen.getByText("Remove 'not needed' marker")).toBeInTheDocument();
+      expect(screen.queryByText("No test doc needed")).not.toBeInTheDocument();
+    });
+
+    it("removing the marker lands in idle without generating and resets the board marker", async () => {
+      mockMarkedTicket();
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await waitFor(() => expect(screen.getByTestId("test-doc-not-needed")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText("Remove 'not needed' marker"));
+
+      await waitFor(() => expect(mockUnmarkNotNeeded).toHaveBeenCalledWith("VPL-1"));
+      await waitFor(() => expect(screen.getByTestId("test-doc-idle")).toBeInTheDocument());
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
+
+      // The board marker resets through the pending-edits overlay + detail patch.
+      expect(findMarkerEdit("VPL-1")).toMatchObject({ value: null, confirmed: true });
+      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: null });
+
+      // Board lists and the sprint bundle revalidate so the reset is visible
+      // without a hard refresh.
+      const matchers = mockMutate.mock.calls.map(([arg]) => arg).filter((a) => typeof a === "function");
+      expect(matchers.some((fn) => fn("/api/sprints/6361/test-docs"))).toBe(true);
+      expect(matchers.some((fn) => fn("/api/tickets?sprint=6361"))).toBe(true);
+
+      // Back to the normal footer action.
+      expect(screen.getByText("No test doc needed")).toBeInTheDocument();
+    });
+
+    it("explicit generate from the marker state still works", async () => {
+      mockMarkedTicket();
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await waitFor(() => expect(screen.getByTestId("test-doc-not-needed")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText("Generate test doc anyway"));
+
+      await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1"));
+      await emitResult("VPL-1", DOC);
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Confirm the thing");
+    });
+
+    it("a failed unmark keeps the marker state and shows the error", async () => {
+      mockMarkedTicket();
+      mockUnmarkNotNeeded.mockRejectedValue(new Error("boom"));
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await waitFor(() => expect(screen.getByTestId("test-doc-not-needed")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText("Remove 'not needed' marker"));
+
+      await waitFor(() => expect(screen.getByText(/Failed to remove the marker/)).toBeInTheDocument());
+      expect(screen.getByTestId("test-doc-not-needed")).toBeInTheDocument();
+      await waitFor(() => expect(hasPendingEdit("VPL-1", "testDocState")).toBe(false));
     });
   });
 

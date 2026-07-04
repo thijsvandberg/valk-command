@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { FileX2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { CaptionButton } from "@/components/sprint-board/CaptionButton";
@@ -120,7 +120,27 @@ export function TestDocReviewPane({
           </span>
         </div>
       )}
-      {entry.status === "idle" ? (
+      {entry.status === "not_needed" ? (
+        // Explicit PO marker (BRDG-467): distinct from the empty state so a
+        // marked ticket is never mistaken for one that simply has no doc yet.
+        <div
+          className="flex flex-1 flex-col items-center justify-center gap-3 text-text-tertiary"
+          data-testid="test-doc-not-needed"
+        >
+          <FileX2 size={20} strokeWidth={1.75} className="text-text-muted" />
+          <p className="text-body-sm">
+            Marked as not needing test documentation
+            {entry.notNeededAt ? ` ${new Date(entry.notNeededAt).toLocaleString()}` : ""}.
+          </p>
+          <p className="max-w-[340px] text-center text-body-sm text-text-muted">
+            This ticket is skipped in the sprint doc and the missing overview.
+            Remove the marker below, or generate a doc anyway.
+          </p>
+          <Button variant="secondary" size="md" onClick={onGenerate}>
+            Generate test doc anyway
+          </Button>
+        </div>
+      ) : entry.status === "idle" ? (
         <div
           className="flex flex-1 flex-col items-center justify-center gap-3 text-text-tertiary"
           data-testid="test-doc-idle"

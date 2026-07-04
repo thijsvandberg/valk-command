@@ -97,6 +97,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle 
     advance,
     handleSave,
     handleNotNeeded,
+    handleRemoveNotNeeded,
     handleRegenerate,
     handleSwitchVersion,
     handleDocChange,
@@ -198,15 +199,27 @@ export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle 
           >
             {returnsToBundle ? "Back to sprint doc" : "Cancel"}
           </Button>
-          <Button
-            variant="ghost"
-            size="md"
-            onClick={handleNotNeeded}
-            disabled={saving}
-            title="Mark this ticket as needing no test documentation — it moves to a separate list in the sprint bundle and is never flagged as missing again"
-          >
-            No test doc needed
-          </Button>
+          {entry.status === "not_needed" ? (
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={handleRemoveNotNeeded}
+              disabled={saving}
+              title="Remove the marker and return the ticket to the neutral no-doc state — it counts as missing again; nothing is generated"
+            >
+              Remove &apos;not needed&apos; marker
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={handleNotNeeded}
+              disabled={saving}
+              title="Mark this ticket as needing no test documentation — it moves to a separate list in the sprint bundle and is never flagged as missing again"
+            >
+              No test doc needed
+            </Button>
+          )}
           {isBulk && (
             <Button variant="ghost" size="md" onClick={advance} disabled={saving}>
               Skip

@@ -17,6 +17,8 @@ import {
 
 const RESPONSE = {
   storyUpdatedAt: null,
+  notNeeded: false,
+  notNeededAt: null,
   saved: null,
   draft: { markdown: "doc", classification: "ok" as const, generatedAt: "2026-07-03T00:00:00Z" },
 };

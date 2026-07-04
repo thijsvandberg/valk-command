@@ -64,8 +64,16 @@ export async function GET(
       : `${latestVersion.createdAt.replace(" ", "T")}Z`
     : null;
 
+  // The explicit "no test doc needed" marker is a classification without a
+  // doc; surfacing it separately lets the review modal tell a marked ticket
+  // from one that simply has no doc yet (BRDG-467).
+  const notNeeded =
+    !!meta && !meta.testDoc && meta.testDocClassification === "not_stakeholder_relevant";
+
   return NextResponse.json({
     storyUpdatedAt,
+    notNeeded,
+    notNeededAt: notNeeded ? meta.testDocUpdatedAt ?? null : null,
     saved: meta?.testDoc
       ? {
           markdown: meta.testDoc,
@@ -145,6 +153,41 @@ export async function PUT(
     cache.invalidate(`/api/tickets/${key}`);
     cache.invalidate(/^\/api\/tickets(\?|$)/);
     return NextResponse.json({ saved: true, notNeeded: true });
+  }
+
+  // Inverse of the marker above (BRDG-467): return the ticket to the neutral
+  // "no doc" state. Bridge-only — no Jira write, drafts stay untouched.
+  if (notNeeded === false) {
+    const exists = await db
+      .select({ jiraKey: ticket.jiraKey })
+      .from(ticket)
+      .where(eq(ticket.jiraKey, key))
+      .get();
+    if (!exists) {
+      return errorResponse("Ticket not found", 404);
+    }
+    const metaRow = await db
+      .select({
+        testDoc: ticketMetadata.testDoc,
+        testDocClassification: ticketMetadata.testDocClassification,
+      })
+      .from(ticketMetadata)
+      .where(eq(ticketMetadata.jiraKey, key))
+      .get();
+    // An accepted doc is not a marker; the client should never ask to unset it.
+    if (metaRow?.testDoc) {
+      return errorResponse("Ticket has an accepted test doc; nothing to unset", 400);
+    }
+    if (metaRow?.testDocClassification === "not_stakeholder_relevant") {
+      await db
+        .update(ticketMetadata)
+        .set({ testDocClassification: null, testDocUpdatedAt: null })
+        .where(eq(ticketMetadata.jiraKey, key));
+      cache.invalidate(`/api/tickets/${key}`);
+      cache.invalidate(/^\/api\/tickets(\?|$)/);
+    }
+    // Marker already absent: idempotent no-op keeps UI retries harmless.
+    return NextResponse.json({ saved: true, notNeeded: false });
   }
 
   if (!markdown || typeof markdown !== "string" || !markdown.trim()) {

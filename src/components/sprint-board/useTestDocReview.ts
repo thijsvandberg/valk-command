@@ -26,8 +26,12 @@ export interface DocVersion {
 }
 
 export interface EntryState {
-  /** checking (cache lookup) → idle (no cache, awaiting explicit Generate) | queued → generating (task streaming) → ready | error */
-  status: "checking" | "idle" | "queued" | "generating" | "ready" | "error";
+  /**
+   * checking (cache lookup) → idle (no cache, awaiting explicit Generate)
+   * | not_needed (explicit marker, never auto-generates) | queued →
+   * generating (task streaming) → ready | error
+   */
+  status: "checking" | "idle" | "not_needed" | "queued" | "generating" | "ready" | "error";
   taskId: string | null;
   /** The ACTIVE working copy (editable); versions[activeVersion] holds its last snapshot. */
   doc: string;
@@ -38,6 +42,8 @@ export interface EntryState {
   source: "fresh" | "draft" | "saved" | null;
   /** ISO timestamp of the cached draft / accepted save, for the provenance line. */
   cachedAt: string | null;
+  /** When the explicit "no test doc needed" marker was set (BRDG-467). */
+  notNeededAt: string | null;
   /** Latest story CONTENT change; a doc older than this gets a staleness warning. */
   storyUpdatedAt: string | null;
   versions: DocVersion[];
@@ -54,6 +60,7 @@ function makeEntry(status: EntryState["status"]): EntryState {
     error: null,
     source: null,
     cachedAt: null,
+    notNeededAt: null,
     storyUpdatedAt: null,
     versions: [],
     activeVersion: 0,
@@ -193,6 +200,16 @@ export function useTestDocReview({
               storyUpdatedAt: data.storyUpdatedAt ?? null,
               versions,
               activeVersion: versions.length - 1,
+            });
+          } else if (data.notNeeded) {
+            // Explicit "no doc needed" marker (BRDG-467): show it instead of
+            // the empty state, and never auto-generate — the scheduler only
+            // starts "queued" entries. A cached doc/draft above outranks the
+            // marker, matching deriveTestDocState priority.
+            patchEntry(key, {
+              status: "not_needed",
+              notNeededAt: data.notNeededAt ?? null,
+              storyUpdatedAt: data.storyUpdatedAt ?? null,
             });
           } else {
             patchEntry(key, { status: autoGenerate ? "queued" : "idle" });
@@ -408,6 +425,33 @@ export function useTestDocReview({
     }
   }, [advance, currentKey, entry, revalidateTestDocViews, patchEntry]);
 
+  // Inverse of handleNotNeeded (BRDG-467): remove the marker and land in the
+  // neutral idle state. Deliberately no advance and no queue — the PO decides
+  // explicitly whether to generate next.
+  const handleRemoveNotNeeded = useCallback(async () => {
+    if (!currentKey || !entry) return;
+    setSaving(true);
+    patchEntry(currentKey, { error: null });
+    // Same overlay as handleNotNeeded: the board marker must reset to neutral
+    // even when the list revalidation returns a stale snapshot.
+    registerPendingEdit(currentKey, "testDocState", null, Date.now());
+    try {
+      await ticketsApi.unmarkTestDocNotNeeded(currentKey);
+      confirmPendingEdit(currentKey, "testDocState");
+      patchTicketDetailCache(currentKey, { testDocState: null });
+      invalidateTestDocCache(currentKey);
+      revalidateTestDocViews();
+      setSaving(false);
+      patchEntry(currentKey, { status: "idle", notNeededAt: null });
+    } catch (err) {
+      clearPendingEdit(currentKey, "testDocState");
+      setSaving(false);
+      patchEntry(currentKey, {
+        error: err instanceof ApiError ? err.message : "Failed to remove the marker",
+      });
+    }
+  }, [currentKey, entry, revalidateTestDocViews, patchEntry]);
+
   // Regenerate bypasses the concurrency cap: the PO is actively waiting on
   // this one, unlike the background prefetch. Existing versions are KEPT —
   // the new result lands next to them for comparison, never over them.
@@ -510,6 +554,7 @@ export function useTestDocReview({
     advance,
     handleSave,
     handleNotNeeded,
+    handleRemoveNotNeeded,
     handleRegenerate,
     handleSwitchVersion,
     handleDocChange,
