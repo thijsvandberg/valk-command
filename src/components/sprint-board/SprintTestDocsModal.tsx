@@ -159,9 +159,9 @@ function RowActions({
 /**
  * One rendered doc block. Shared by the auto-included Documented cards, the
  * lighter Misc entries (`variant="misc"`), and the opt-in "not finished yet"
- * blocks (BRDG-465): `provisional` flags a ticked-but-unfinished story with a
- * subtle tag + dashed border so the PO can tell it apart from a shipped
- * deliverable in the preview.
+ * blocks (BRDG-465): `provisional` renders a ticked-but-unfinished story as a
+ * full card like the others, marked with a "not finished yet" tag + a subtle
+ * brand-tinted border so the PO can tell it apart from a shipped deliverable.
  */
 function TestDocBlock({
   item,
@@ -213,7 +213,7 @@ function TestDocBlock({
     <div
       data-testid="test-docs-block"
       className={`rounded-xl border bg-surface-base p-4 shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-600)_8%,transparent)] ${
-        provisional ? "border-dashed border-[var(--color-brand-400)]/40" : "border-border-default"
+        provisional ? "border-[var(--color-brand-400)]/45" : "border-border-default"
       }`}
     >
       {header}
