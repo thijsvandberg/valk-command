@@ -17,6 +17,7 @@ import {
   GAPS_OPTIONS,
   READINESS_OPTIONS,
   SPRINT_STATE_FILTER_OPTIONS,
+  TEST_DOC_FILTER_OPTIONS,
   type InlineTagId,
 } from "@/components/sprint-board/filter-bar-types";
 
@@ -49,6 +50,7 @@ export interface FilterControlsPanelProps {
   gapsFilter?: Set<string>;
   teamFilter?: Set<string>;
   sprintFilter?: Set<string>;
+  testDocFilter?: Set<string>;
   onStatusFilterChange: (next: Set<string>) => void;
   onEpicFilterChange: (next: Set<string>) => void;
   onAssigneeFilterChange: (next: Set<string>) => void;
@@ -59,6 +61,7 @@ export interface FilterControlsPanelProps {
   onGapsFilterChange?: (next: Set<string>) => void;
   onTeamFilterChange?: (next: Set<string>) => void;
   onSprintFilterChange?: (next: Set<string>) => void;
+  onTestDocFilterChange?: (next: Set<string>) => void;
   statusOptions: string[];
   epicOptions: string[];
   assigneeOptions: string[];
@@ -108,6 +111,16 @@ function ChangesDot({ value }: { value: string }) {
 
 function GapsDot({ value }: { value: string }) {
   const cfg = GAPS_OPTIONS.find((o) => o.value === value);
+  return (
+    <span className="flex items-center gap-2">
+      <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg?.dotClass ?? ""}`} />
+      {cfg?.label ?? value}
+    </span>
+  );
+}
+
+function TestDocDot({ value }: { value: string }) {
+  const cfg = TEST_DOC_FILTER_OPTIONS.find((o) => o.value === value);
   return (
     <span className="flex items-center gap-2">
       <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg?.dotClass ?? ""}`} />
@@ -228,6 +241,16 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
         selected: props.gapsFilter,
         onChange: props.onGapsFilterChange,
         renderOption: (v) => <GapsDot value={v} />,
+      });
+    }
+    if (props.testDocFilter && props.onTestDocFilterChange) {
+      list.push({
+        key: "testDoc",
+        label: "Test doc",
+        options: TEST_DOC_FILTER_OPTIONS.map((o) => o.value),
+        selected: props.testDocFilter,
+        onChange: props.onTestDocFilterChange,
+        renderOption: (v) => <TestDocDot value={v} />,
       });
     }
     if (props.teamFilter && props.onTeamFilterChange && props.teamOptions && props.teamOptions.length > 0) {

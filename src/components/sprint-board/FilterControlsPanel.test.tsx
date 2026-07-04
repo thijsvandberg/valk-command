@@ -153,6 +153,29 @@ describe("FilterControlsPanel (BRDG-344)", () => {
     expect(onCreatorFilterChange).toHaveBeenCalledWith(new Set(["Alice"]));
   });
 
+  it("renders a Test doc category only when its props are supplied, and toggles it (BRDG-469)", () => {
+    // Absent without the props (e.g. the inbox reuse).
+    render(<FilterControlsPanel {...makeProps()} />);
+    expect(screen.queryByRole("button", { name: /^Test doc/ })).toBeNull();
+
+    const onTestDocFilterChange = vi.fn();
+    render(
+      <FilterControlsPanel
+        {...makeProps({ testDocFilter: new Set(["draft"]), onTestDocFilterChange })}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Test doc/ }));
+    // All four states offered, rail badge shows the current selection count.
+    expect(screen.getByText("Missing")).toBeTruthy();
+    expect(screen.getByText("Draft")).toBeTruthy();
+    expect(screen.getByText("Accepted")).toBeTruthy();
+    expect(screen.getByText("Not needed")).toBeTruthy();
+    expect(within(screen.getByRole("button", { name: /^Test doc/ })).getByText("1")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Accepted"));
+    expect(onTestDocFilterChange).toHaveBeenCalledWith(new Set(["draft", "accepted"]));
+  });
+
   it("limits the rail to the category whitelist, in order (BRDG-357 inbox)", () => {
     render(
       <FilterControlsPanel

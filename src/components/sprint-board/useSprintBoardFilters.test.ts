@@ -4,6 +4,7 @@ import { useSprintBoardFilters } from "./useSprintBoardFilters";
 import { SPRINT_STATE_CLOSED, SPRINT_STATE_FILTER_PREFIX } from "./filter-bar-types";
 import type { SavedView } from "./filter-bar-types";
 import type { Ticket } from "@/types/ticket";
+import { registerPendingEdit, applyPendingEdits, __getPendingEdits, __resetPendingEdits } from "./pendingTicketEdits";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
@@ -415,5 +416,104 @@ describe("useSprintBoardFilters - inline deep-field search (BRDG-345)", () => {
     // give the debounce window a chance to (not) fire
     await new Promise((r) => setTimeout(r, 200));
     expect(localKeysMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("useSprintBoardFilters - test-doc filter (BRDG-469)", () => {
+  const MISSING = makeTicket({ key: "VPL-M", testDocState: null });
+  const IMPLICIT_MISSING = makeTicket({ key: "VPL-U" }); // field absent entirely
+  const DRAFT = makeTicket({ key: "VPL-D", testDocState: "draft" });
+  const ACCEPTED = makeTicket({ key: "VPL-A", testDocState: "accepted" });
+  const NOT_NEEDED = makeTicket({ key: "VPL-N", testDocState: "not_needed" });
+  const DOCS = [MISSING, IMPLICIT_MISSING, DRAFT, ACCEPTED, NOT_NEEDED];
+
+  beforeEach(() => {
+    localStorage.clear();
+    apiFetchMock.mockClear();
+    __resetPendingEdits();
+  });
+
+  it("filters each state, mapping null and absent testDocState to Missing", () => {
+    const { result } = setup(DOCS);
+
+    act(() => result.current.setTestDocFilter(new Set(["missing"])));
+    expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["VPL-M", "VPL-U"]);
+
+    act(() => result.current.setTestDocFilter(new Set(["draft"])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["VPL-D"]);
+
+    act(() => result.current.setTestDocFilter(new Set(["accepted"])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["VPL-A"]);
+
+    act(() => result.current.setTestDocFilter(new Set(["not_needed"])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["VPL-N"]);
+  });
+
+  it("multi-select unions the buckets", () => {
+    const { result } = setup(DOCS);
+    act(() => result.current.setTestDocFilter(new Set(["draft", "accepted"])));
+    expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["VPL-A", "VPL-D"]);
+  });
+
+  it("composes with other filters (AND)", () => {
+    const draftDone = makeTicket({ key: "VPL-DD", testDocState: "draft", jiraStatus: "DONE" });
+    const { result } = setup([...DOCS, draftDone]);
+    act(() => {
+      result.current.setTestDocFilter(new Set(["draft"]));
+      result.current.setStatusFilter(new Set(["DONE"]));
+    });
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["VPL-DD"]);
+  });
+
+  it("persists the selection like sibling filters and counts as an active filter", () => {
+    const { result } = setup(DOCS);
+    expect(result.current.hasActiveFilters).toBe(false);
+
+    act(() => result.current.setTestDocFilter(new Set(["missing"])));
+
+    expect(result.current.hasActiveFilters).toBe(true);
+    expect(lastPutValue("/api/settings/sprint-board-filters")).toMatchObject({ testDoc: ["missing"] });
+  });
+
+  it("resetFilters clears the selection", () => {
+    const { result } = setup(DOCS);
+    act(() => result.current.setTestDocFilter(new Set(["draft"])));
+    act(() => result.current.resetFilters());
+    expect(result.current.hasActiveFilters).toBe(false);
+    expect(result.current.sortedTickets).toHaveLength(DOCS.length);
+  });
+
+  it("applying a legacy saved view without a testDoc key clears the filter instead of crashing", async () => {
+    // Saved views always write the All-view store, so start on the All view
+    // with an active test-doc filter there.
+    const { result } = renderHook(() => useSprintBoardFilters(DOCS, {}, true, null));
+    act(() => result.current.setTestDocFilter(new Set(["draft"])));
+    const legacyView = {
+      id: "v1",
+      title: "Legacy",
+      filters: { status: [], epic: [], assignee: [], readiness: [], editState: [] },
+      sort: { field: "rank", direction: "asc" },
+    } as unknown as SavedView;
+
+    act(() => result.current.handleViewClick(legacyView));
+
+    await waitFor(() =>
+      expect(lastPutValue("/api/settings/sprint-board-all-filters")).toMatchObject({ testDoc: [] }),
+    );
+    expect(result.current.hasActiveFilters).toBe(false);
+  });
+
+  it("sees the effective testDocState when the list carries a pending-edit overlay", () => {
+    // The board overlays pending edits BEFORE this hook receives the list; a
+    // just-generated draft must move buckets without a server roundtrip.
+    registerPendingEdit("VPL-M", "testDocState", "draft", Date.now());
+    const overlaid = applyPendingEdits(DOCS, __getPendingEdits(), Date.now())!;
+    const { result } = setup(overlaid);
+
+    act(() => result.current.setTestDocFilter(new Set(["draft"])));
+    expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["VPL-D", "VPL-M"]);
+
+    act(() => result.current.setTestDocFilter(new Set(["missing"])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["VPL-U"]);
   });
 });

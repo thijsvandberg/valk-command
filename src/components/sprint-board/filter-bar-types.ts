@@ -43,6 +43,7 @@ export interface SavedView {
     gaps?: string[];
     team?: string[];
     sprint?: string[];
+    testDoc?: string[];
   };
   sort: { field: SortField; direction: SortDir };
   columnConfig?: {
@@ -232,6 +233,19 @@ export function cycleMetricSort(
 export const GAPS_OPTIONS: { value: string; label: string; dotClass: string }[] = [
   { value: "no_points", label: "No story points", dotClass: "bg-[var(--color-status-caution)]/50" },
   { value: "no_bv", label: "No business value", dotClass: "bg-[var(--color-status-caution)]/50" },
+];
+
+// ---------------------------------------------------------------------------
+// Test-doc state filter (BRDG-469)
+// ---------------------------------------------------------------------------
+
+// "missing" is the null effective state; dot colors mirror TestDocMarker so the
+// filter reads the same as the board markers.
+export const TEST_DOC_FILTER_OPTIONS: { value: string; label: string; dotClass: string }[] = [
+  { value: "missing", label: "Missing", dotClass: "bg-[var(--color-status-caution)]/50" },
+  { value: "draft", label: "Draft", dotClass: "bg-[var(--color-status-warning)]" },
+  { value: "accepted", label: "Accepted", dotClass: "bg-[var(--color-status-success)]" },
+  { value: "not_needed", label: "Not needed", dotClass: "bg-[var(--color-text-muted)]/60" },
 ];
 
 // Sprint-state quick filters (BRDG-259). These live inside the Sprint filter as

@@ -21,6 +21,7 @@ export interface StoredFilters {
   gaps: string[];
   team: string[];
   sprint: string[];
+  testDoc: string[];
 }
 
 export interface StoredSort {
@@ -28,7 +29,7 @@ export interface StoredSort {
   direction: SortDir;
 }
 
-const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] };
+const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [], testDoc: [] };
 
 // Stable defaults for the account-scoped settings so the SWR fallback never
 // churns identity (BRDG-343).
@@ -155,6 +156,7 @@ export function useSprintBoardFilters(
   );
   const issueTypeFilter = useMemo(() => new Set(storedFilters.issueType ?? []), [storedFilters.issueType]);
   const gapsFilter = useMemo(() => new Set(storedFilters.gaps ?? []), [storedFilters.gaps]);
+  const testDocFilter = useMemo(() => new Set(storedFilters.testDoc ?? []), [storedFilters.testDoc]);
   const teamFilter = useMemo(() => new Set(storedFilters.team ?? []), [storedFilters.team]);
   const sprintFilter = useMemo(() => new Set(storedFilters.sprint ?? []), [storedFilters.sprint]);
 
@@ -178,6 +180,9 @@ export function useSprintBoardFilters(
   }, [setStoredFilters]);
   const setGapsFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, gaps: [...v] }));
+  }, [setStoredFilters]);
+  const setTestDocFilter = useCallback((v: Set<string>) => {
+    setStoredFilters((prev) => ({ ...prev, testDoc: [...v] }));
   }, [setStoredFilters]);
   const setTeamFilter = useCallback((v: Set<string>) => {
     setStoredFilters((prev) => ({ ...prev, team: [...v] }));
@@ -264,9 +269,12 @@ export function useSprintBoardFilters(
         if (!editStateFilter.has(effectiveState)) return false;
       }
       if (issueTypeFilter.size > 0 && !issueTypeFilter.has(t.type)) return false;
+      // t.testDocState is already the effective (pending-edits-overlaid) value:
+      // the board applies applyPendingEdits before this hook receives the list.
+      if (testDocFilter.size > 0 && !testDocFilter.has(t.testDocState ?? "missing")) return false;
       return true;
     });
-  }, [allTickets, statusFilter, epicFilter, assigneeFilter, editStateFilter, issueTypeFilter]);
+  }, [allTickets, statusFilter, epicFilter, assigneeFilter, editStateFilter, issueTypeFilter, testDocFilter]);
 
   const metaFiltered = useMemo(() => {
     if (readinessFilter.size === 0 && gapsFilter.size === 0) return coreFiltered;
@@ -415,7 +423,7 @@ export function useSprintBoardFilters(
     return sorted;
   }, [filteredTickets, sortField, sortDir, poPriorityOrder, readinessMap]);
 
-  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || readinessFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0 || teamFilter.size > 0 || gapsFilter.size > 0;
+  const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || readinessFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0 || teamFilter.size > 0 || gapsFilter.size > 0 || testDocFilter.size > 0;
 
   const handleColumnToggle = useCallback((id: InlineTagId, show: boolean) => {
     setVisibleTags((prev) => {
@@ -436,10 +444,11 @@ export function useSprintBoardFilters(
     gaps: [...gapsFilter],
     team: [...teamFilter],
     sprint: [...sprintFilter],
-  }), [statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter, gapsFilter, teamFilter, sprintFilter]);
+    testDoc: [...testDocFilter],
+  }), [statusFilter, epicFilter, assigneeFilter, readinessFilter, editStateFilter, issueTypeFilter, gapsFilter, teamFilter, sprintFilter, testDocFilter]);
 
   const resetFilters = useCallback(() => {
-    setStoredFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] });
+    setStoredFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [], testDoc: [] });
   }, [setStoredFilters]);
 
   // Filter the All view down to a single epic. Writes straight to the All-view
@@ -452,7 +461,7 @@ export function useSprintBoardFilters(
   // Navigation clears only the sprint working set; the All view's remembered filters are left
   // untouched so they survive switching sprints and reopen when the PO returns to All.
   const resetSprintViewFilters = useCallback(() => {
-    setSprintViewFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] });
+    setSprintViewFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [], testDoc: [] });
   }, [setSprintViewFilters]);
 
   const handleSaveView = useCallback((title: string) => {
@@ -493,6 +502,7 @@ export function useSprintBoardFilters(
       gaps: view.filters.gaps ?? [],
       team: view.filters.team ?? [],
       sprint: view.filters.sprint ?? [],
+      testDoc: view.filters.testDoc ?? [],
     });
     setStoredSort({ field: view.sort.field, direction: view.sort.direction });
     if (view.columnConfig && onApplyColumnConfig) {
@@ -548,6 +558,8 @@ export function useSprintBoardFilters(
     searchScopeCount: scopeFiltered.length,
     gapsFilter,
     setGapsFilter,
+    testDocFilter,
+    setTestDocFilter,
     savedViews,
     setSavedViews,
     activeViewId,
