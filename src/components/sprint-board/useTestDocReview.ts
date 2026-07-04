@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSWRConfig } from "swr";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { parseTestDoc, coerceClassification, type TestDocClassification } from "@/lib/parse-test-doc";
-import { getCachedTestDoc, primeTestDocCache, invalidateTestDocCache } from "@/lib/test-doc-prefetch";
+import { getCachedTestDoc, primeTestDocCache, invalidateTestDocCache, revalidateTestDocViews } from "@/lib/test-doc-prefetch";
 import { tickets as ticketsApi, workspaceTasks, ApiError } from "@/lib/api-client";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 import { patchTicketDetailCache } from "@/lib/ticket-cache";
@@ -76,10 +75,18 @@ function makeEntry(status: EntryState["status"]): EntryState {
 export function useTestDocReview({
   keys,
   autoGenerate,
+  regenerateOnOpen = false,
   onClose,
 }: {
   keys: string[];
   autoGenerate: boolean;
+  /**
+   * Open with a regeneration already queued (BRDG-468): the cached doc still
+   * seeds the versions, then a fresh generation lands next to it, exactly like
+   * pressing the footer's Regenerate. Single-key only; a not-needed marker
+   * still wins (never auto-generates, BRDG-467).
+   */
+  regenerateOnOpen?: boolean;
   onClose: () => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -95,21 +102,8 @@ export function useTestDocReview({
   // editing); the textarea is one Edit click away. Auto-opens for results
   // that require hand-work (unstructured output, needs_input).
   const [editing, setEditing] = useState(false);
-  const { mutate } = useSWRConfig();
-
-  // A test-doc write changes both the board-row marker (`/api/tickets*`) AND the
-  // sprint bundle's buckets (`/api/sprints/<id>/test-docs`). The bundle is
-  // usually UNMOUNTED while this modal is open (opening the review closes it),
-  // so we invalidate its key too: mutating an unmounted key clears SWR's dedup
-  // marker, so the bundle refetches fresh the moment it re-opens — no manual
-  // refresh needed (BRDG-461).
-  const revalidateTestDocViews = useCallback(() => {
-    void mutate(
-      (k) =>
-        typeof k === "string" &&
-        (k.startsWith("/api/tickets") || (k.startsWith("/api/sprints/") && k.endsWith("/test-docs"))),
-    );
-  }, [mutate]);
+  // View revalidation (board lists + sprint bundle) lives in test-doc-prefetch
+  // so the detail-view quick actions (BRDG-468) share the exact same sweep.
 
   const currentKey = keys[index] ?? null;
   // Event callbacks (SSE results for background prefetches) must know which
@@ -159,6 +153,8 @@ export function useTestDocReview({
   // accepted save) shows immediately instead of costing a regeneration; only
   // keys without any cached doc are queued for generation.
   const checkedRef = useRef<Set<string>>(new Set());
+  // Single-key only: a bulk queue must never mass-regenerate cached docs.
+  const regenOnOpen = regenerateOnOpen && keys.length === 1;
   useEffect(() => {
     for (const key of keys) {
       if (checkedRef.current.has(key)) continue;
@@ -192,7 +188,10 @@ export function useTestDocReview({
               });
             }
             patchEntry(key, {
-              status: "ready",
+              // regenOnOpen queues a fresh generation with the cached doc
+              // seeded as versions: the scheduler starts it and the result
+              // lands as a "New" version, exactly like the footer Regenerate.
+              status: regenOnOpen ? "queued" : "ready",
               doc: cached.markdown,
               classification: coerceClassification(cached.classification),
               source: data.draft ? "draft" : "saved",
@@ -212,15 +211,16 @@ export function useTestDocReview({
               storyUpdatedAt: data.storyUpdatedAt ?? null,
             });
           } else {
-            patchEntry(key, { status: autoGenerate ? "queued" : "idle" });
+            // A regenerate intent on a cache miss degrades to a plain generate.
+            patchEntry(key, { status: autoGenerate || regenOnOpen ? "queued" : "idle" });
           }
         })
         .catch(() => {
           // Cache lookup failure reads as a miss.
-          patchEntry(key, { status: autoGenerate ? "queued" : "idle" });
+          patchEntry(key, { status: autoGenerate || regenOnOpen ? "queued" : "idle" });
         });
     }
-  }, [keys, patchEntry, autoGenerate]);
+  }, [keys, patchEntry, autoGenerate, regenOnOpen]);
 
   // Scheduler: keep up to MAX_CONCURRENT_GENERATIONS running ahead of the
   // review. startedRef guards double-starts (the effect re-runs on every
@@ -318,7 +318,7 @@ export function useTestDocReview({
           });
       }
     },
-    [revalidateTestDocViews],
+    [],
   );
 
   const handleTaskError = useCallback(
@@ -390,7 +390,7 @@ export function useTestDocReview({
         error: err instanceof ApiError ? err.message : "Failed to save test documentation",
       });
     }
-  }, [advance, currentKey, entry, revalidateTestDocViews, patchEntry]);
+  }, [advance, currentKey, entry, patchEntry]);
 
   // PO judgement call: this ticket needs no test documentation at all.
   // Bridge-only marker (no doc, no Jira write); the sprint bundle lists it
@@ -423,7 +423,7 @@ export function useTestDocReview({
         error: err instanceof ApiError ? err.message : "Failed to mark as not needed",
       });
     }
-  }, [advance, currentKey, entry, revalidateTestDocViews, patchEntry]);
+  }, [advance, currentKey, entry, patchEntry]);
 
   // Inverse of handleNotNeeded (BRDG-467): remove the marker and land in the
   // neutral idle state. Deliberately no advance and no queue — the PO decides
@@ -450,7 +450,7 @@ export function useTestDocReview({
         error: err instanceof ApiError ? err.message : "Failed to remove the marker",
       });
     }
-  }, [currentKey, entry, revalidateTestDocViews, patchEntry]);
+  }, [currentKey, entry, patchEntry]);
 
   // Regenerate bypasses the concurrency cap: the PO is actively waiting on
   // this one, unlike the background prefetch. Existing versions are KEPT —

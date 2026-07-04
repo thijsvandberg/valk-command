@@ -13,7 +13,10 @@ import {
   getCachedTestDoc,
   primeTestDocCache,
   invalidateTestDocCache,
+  revalidateTestDocViews,
 } from "./test-doc-prefetch";
+import { registerScopedMutate, __resetScopedMutateForTests } from "./swr-scoped-mutate";
+import type { ScopedMutator } from "swr";
 
 const RESPONSE = {
   storyUpdatedAt: null,
@@ -76,5 +79,23 @@ describe("test-doc-prefetch", () => {
     prefetchTestDoc("A-1");
     await vi.runAllTimersAsync();
     expect(getCachedTestDoc("A-1")).toBeNull();
+  });
+
+  it("revalidateTestDocViews sweeps board lists, detail caches and sprint bundles only", () => {
+    const mutate = vi.fn();
+    registerScopedMutate(mutate as unknown as ScopedMutator);
+    try {
+      revalidateTestDocViews();
+      const [matcher] = mutate.mock.calls[0] as [(k: unknown) => boolean];
+      expect(matcher("/api/tickets")).toBe(true);
+      expect(matcher("/api/tickets?sprint=6361")).toBe(true);
+      expect(matcher("/api/tickets/VPL-1")).toBe(true);
+      expect(matcher("/api/sprints/9/test-docs")).toBe(true);
+      expect(matcher("/api/sprints/9/details")).toBe(false);
+      expect(matcher("/api/settings/sprint-board-filters")).toBe(false);
+      expect(matcher(42)).toBe(false);
+    } finally {
+      __resetScopedMutateForTests();
+    }
   });
 });

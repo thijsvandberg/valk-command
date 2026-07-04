@@ -52,6 +52,12 @@ interface TestDocReviewModalProps {
    * generate actions (bulk toolbar, context menu, generate-missing) pass true.
    */
   autoGenerate?: boolean;
+  /**
+   * Open with a regeneration already queued for the (single) key (BRDG-468):
+   * cached versions stay, the fresh result lands next to them. Ignored for
+   * bulk queues and not-needed tickets.
+   */
+  regenerateOnOpen?: boolean;
   onClose: () => void;
 }
 
@@ -65,7 +71,7 @@ interface TestDocReviewModalProps {
  * PO reviews — advancing to an already-finished doc is instant. All the state
  * lives in {@link useTestDocReview}; this component is layout + wiring.
  */
-export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle = false, onClose }: TestDocReviewModalProps) {
+export function TestDocReviewModal({ keys, autoGenerate = true, regenerateOnOpen = false, returnsToBundle = false, onClose }: TestDocReviewModalProps) {
   // Adjustable pane split (PO preference varies per story length); persisted.
   const { splitPct, splitRef, handleSplitDrag } = usePersistedSplit(SPLIT_STORAGE_KEY, {
     min: SPLIT_MIN,
@@ -101,7 +107,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, returnsToBundle 
     handleRegenerate,
     handleSwitchVersion,
     handleDocChange,
-  } = useTestDocReview({ keys, autoGenerate, onClose });
+  } = useTestDocReview({ keys, autoGenerate, regenerateOnOpen, onClose });
 
   if (!currentKey || !entry) return null;
 

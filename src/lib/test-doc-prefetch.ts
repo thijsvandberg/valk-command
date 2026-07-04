@@ -1,4 +1,5 @@
 import { tickets as ticketsApi } from "@/lib/api-client";
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 
 type TestDocResponse = Awaited<ReturnType<typeof ticketsApi.getTestDoc>>;
 
@@ -41,4 +42,20 @@ export function primeTestDocCache(key: string, data: TestDocResponse): void {
 
 export function invalidateTestDocCache(key: string): void {
   cache.delete(key);
+}
+
+/**
+ * A test-doc write changes both the board-row marker (`/api/tickets*`, a prefix
+ * that also covers the per-key detail caches) AND the sprint bundle's buckets
+ * (`/api/sprints/<id>/test-docs`). The bundle is usually UNMOUNTED while the
+ * review modal is open, so its key is mutated too: that clears SWR's dedup
+ * marker and the bundle refetches fresh the moment it re-opens (BRDG-461).
+ * Shared by the review modal hook and the detail-view quick actions (BRDG-468).
+ */
+export function revalidateTestDocViews(): void {
+  void scopedMutate(
+    (k) =>
+      typeof k === "string" &&
+      (k.startsWith("/api/tickets") || (k.startsWith("/api/sprints/") && k.endsWith("/test-docs"))),
+  );
 }

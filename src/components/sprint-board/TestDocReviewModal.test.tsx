@@ -43,10 +43,12 @@ vi.mock("@/hooks/useTaskStream", () => ({
   },
 }));
 
+const mockRevalidateTestDocViews = vi.fn();
 vi.mock("@/lib/test-doc-prefetch", () => ({
   getCachedTestDoc: () => null,
   primeTestDocCache: vi.fn(),
   invalidateTestDocCache: vi.fn(),
+  revalidateTestDocViews: (...args: unknown[]) => mockRevalidateTestDocViews(...args),
 }));
 
 vi.mock("@/components/shared/TicketRefPill", () => ({
@@ -126,6 +128,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     mockUnmarkNotNeeded.mockResolvedValue({ saved: true, notNeeded: false });
     mockCancelTask.mockResolvedValue({ ok: true });
     mockMutate.mockReset();
+    mockRevalidateTestDocViews.mockReset();
     mockPatchTicketDetailCache.mockReset();
     __resetPendingEdits();
   });
@@ -377,12 +380,11 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
       expect(mockSaveTestDoc).not.toHaveBeenCalled();
 
-      // The write must also invalidate the sprint bundle key, so a bundle it was
-      // opened from reflects the not-needed marker the instant it re-opens
-      // (BRDG-461) — not only after a manual refresh.
-      const matchers = mockMutate.mock.calls.map(([arg]) => arg).filter((a) => typeof a === "function");
-      expect(matchers.some((fn) => fn("/api/sprints/6361/test-docs"))).toBe(true);
-      expect(matchers.some((fn) => fn("/api/tickets?sprint=6361"))).toBe(true);
+      // The write must also sweep the board lists + sprint bundle keys, so a
+      // bundle it was opened from reflects the not-needed marker the instant it
+      // re-opens (BRDG-461). The key matcher itself is unit-tested in
+      // test-doc-prefetch.test.ts.
+      expect(mockRevalidateTestDocViews).toHaveBeenCalled();
     });
 
     it("bulk: advances to the next item after marking", async () => {
@@ -437,10 +439,8 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: null });
 
       // Board lists and the sprint bundle revalidate so the reset is visible
-      // without a hard refresh.
-      const matchers = mockMutate.mock.calls.map(([arg]) => arg).filter((a) => typeof a === "function");
-      expect(matchers.some((fn) => fn("/api/sprints/6361/test-docs"))).toBe(true);
-      expect(matchers.some((fn) => fn("/api/tickets?sprint=6361"))).toBe(true);
+      // without a hard refresh (matcher unit-tested in test-doc-prefetch.test.ts).
+      expect(mockRevalidateTestDocViews).toHaveBeenCalled();
 
       // Back to the normal footer action.
       expect(screen.getByText("No test doc needed")).toBeInTheDocument();
@@ -534,6 +534,60 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "not_needed", confirmed: true }),
       );
       expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: "not_needed" });
+    });
+  });
+
+  describe("regenerateOnOpen (BRDG-468)", () => {
+    const SAVED_DOC = {
+      storyUpdatedAt: null,
+      saved: { markdown: "**Accepted**\n\n- Saved doc", classification: "ok", updatedAt: "2026-07-01T09:00:00.000Z" },
+      draft: null,
+    };
+
+    it("queues a fresh generation while keeping the cached doc as a version", async () => {
+      mockGetTestDoc.mockResolvedValue(SAVED_DOC);
+      render(<TestDocReviewModal keys={["VPL-1"]} autoGenerate={false} regenerateOnOpen onClose={() => {}} />);
+
+      await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1"));
+      expect(mockGenerateTestDoc).toHaveBeenCalledTimes(1);
+      await emitResult("VPL-1", DOC);
+
+      // The fresh result lands NEXT TO the saved version, never over it.
+      expect(screen.getByText("Saved", { selector: "button" })).toBeInTheDocument();
+      expect(screen.getByText("New", { selector: "button" })).toBeInTheDocument();
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Confirm the thing");
+    });
+
+    it("degrades to a plain generate on a cache miss", async () => {
+      render(<TestDocReviewModal keys={["VPL-1"]} autoGenerate={false} regenerateOnOpen onClose={() => {}} />);
+
+      await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1"));
+      await emitResult("VPL-1", DOC);
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Confirm the thing");
+    });
+
+    it("never regenerates a not-needed ticket (BRDG-467 invariant wins)", async () => {
+      mockGetTestDoc.mockResolvedValue({
+        storyUpdatedAt: null,
+        notNeeded: true,
+        notNeededAt: "2026-07-01T09:00:00.000Z",
+        saved: null,
+        draft: null,
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} autoGenerate={false} regenerateOnOpen onClose={() => {}} />);
+
+      await waitFor(() => expect(screen.getByTestId("test-doc-not-needed")).toBeInTheDocument());
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
+    });
+
+    it("is ignored for bulk queues", async () => {
+      mockGetTestDoc.mockResolvedValue(SAVED_DOC);
+      render(<TestDocReviewModal keys={["VPL-1", "VPL-2"]} autoGenerate={false} regenerateOnOpen onClose={() => {}} />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
+      );
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
     });
   });
 
