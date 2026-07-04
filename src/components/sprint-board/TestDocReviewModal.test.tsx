@@ -7,6 +7,7 @@ const mockGetTestDoc = vi.fn();
 const mockSaveTestDocDraft = vi.fn();
 const mockMarkNotNeeded = vi.fn();
 const mockCancelTask = vi.fn();
+const mockMutate = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   ApiError: class ApiError extends Error {},
   tickets: {
@@ -55,7 +56,7 @@ vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
 }));
 
 vi.mock("swr", () => ({
-  useSWRConfig: () => ({ mutate: vi.fn() }),
+  useSWRConfig: () => ({ mutate: mockMutate }),
 }));
 
 import { TestDocReviewModal } from "./TestDocReviewModal";
@@ -108,6 +109,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     mockMarkNotNeeded.mockReset();
     mockMarkNotNeeded.mockResolvedValue({ saved: true, notNeeded: true });
     mockCancelTask.mockResolvedValue({ ok: true });
+    mockMutate.mockReset();
   });
 
   it("renders the doc editor and the story side by side after generation", async () => {
@@ -356,6 +358,13 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       expect(mockCancelTask).toHaveBeenCalledWith(taskIdFor("VPL-1"));
       await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
       expect(mockSaveTestDoc).not.toHaveBeenCalled();
+
+      // The write must also invalidate the sprint bundle key, so a bundle it was
+      // opened from reflects the not-needed marker the instant it re-opens
+      // (BRDG-461) — not only after a manual refresh.
+      const matchers = mockMutate.mock.calls.map(([arg]) => arg).filter((a) => typeof a === "function");
+      expect(matchers.some((fn) => fn("/api/sprints/6361/test-docs"))).toBe(true);
+      expect(matchers.some((fn) => fn("/api/tickets?sprint=6361"))).toBe(true);
     });
 
     it("bulk: advances to the next item after marking", async () => {

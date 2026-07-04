@@ -88,6 +88,20 @@ export function useTestDocReview({
   const [editing, setEditing] = useState(false);
   const { mutate } = useSWRConfig();
 
+  // A test-doc write changes both the board-row marker (`/api/tickets*`) AND the
+  // sprint bundle's buckets (`/api/sprints/<id>/test-docs`). The bundle is
+  // usually UNMOUNTED while this modal is open (opening the review closes it),
+  // so we invalidate its key too: mutating an unmounted key clears SWR's dedup
+  // marker, so the bundle refetches fresh the moment it re-opens — no manual
+  // refresh needed (BRDG-461).
+  const revalidateTestDocViews = useCallback(() => {
+    void mutate(
+      (k) =>
+        typeof k === "string" &&
+        (k.startsWith("/api/tickets") || (k.startsWith("/api/sprints/") && k.endsWith("/test-docs"))),
+    );
+  }, [mutate]);
+
   const currentKey = keys[index] ?? null;
   // Event callbacks (SSE results for background prefetches) must know which
   // item is on screen without re-binding on every advance.
@@ -262,11 +276,11 @@ export function useTestDocReview({
         invalidateTestDocCache(key);
         ticketsApi
           .saveTestDocDraft(key, { markdown: doc, classification })
-          .then(() => mutate((k) => typeof k === "string" && k.startsWith("/api/tickets")))
+          .then(() => revalidateTestDocViews())
           .catch(() => {});
       }
     },
-    [mutate],
+    [revalidateTestDocViews],
   );
 
   const handleTaskError = useCallback(
@@ -312,10 +326,10 @@ export function useTestDocReview({
         classification: entry.classification,
       });
       invalidateTestDocCache(currentKey);
-      // Refresh an open detail panel and the board lists (the row's test-doc
-      // marker flips to accepted); the server cache is already invalidated.
-      void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
-      void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
+      // Refresh the detail panel, the board rows (the marker flips to accepted)
+      // AND any sprint bundle it was opened from; the server cache is already
+      // invalidated.
+      revalidateTestDocViews();
       setSaving(false);
       if (result.conflict) {
         // Bridge copy is saved; the description merge stays as a local edit for
@@ -330,7 +344,7 @@ export function useTestDocReview({
         error: err instanceof ApiError ? err.message : "Failed to save test documentation",
       });
     }
-  }, [advance, currentKey, entry, mutate, patchEntry]);
+  }, [advance, currentKey, entry, revalidateTestDocViews, patchEntry]);
 
   // PO judgement call: this ticket needs no test documentation at all.
   // Bridge-only marker (no doc, no Jira write); the sprint bundle lists it
@@ -346,8 +360,7 @@ export function useTestDocReview({
       }
       await ticketsApi.markTestDocNotNeeded(currentKey);
       invalidateTestDocCache(currentKey);
-      void mutate(`/api/tickets/${encodeURIComponent(currentKey)}`);
-      void mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
+      revalidateTestDocViews();
       setSaving(false);
       advance();
     } catch (err) {
@@ -356,7 +369,7 @@ export function useTestDocReview({
         error: err instanceof ApiError ? err.message : "Failed to mark as not needed",
       });
     }
-  }, [advance, currentKey, entry, mutate, patchEntry]);
+  }, [advance, currentKey, entry, revalidateTestDocViews, patchEntry]);
 
   // Regenerate bypasses the concurrency cap: the PO is actively waiting on
   // this one, unlike the background prefetch. Existing versions are KEPT —
