@@ -36,6 +36,13 @@ const POLL_INTERVAL_MS = 3000;
 // keeps a server-side loop alive indefinitely.
 const MAX_ATTEMPTS = 120;
 
+// Read at call time (not module init, unlike query-timer's resolveThreshold)
+// so tests can stub the env per case without re-importing the module.
+function readEnvInt(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -53,7 +60,11 @@ export async function persistTestDocDraftWhenDone(
   taskId: string,
   opts: { pollIntervalMs?: number; maxAttempts?: number; sleepFn?: (ms: number) => Promise<void> } = {},
 ): Promise<void> {
-  const { pollIntervalMs = POLL_INTERVAL_MS, maxAttempts = MAX_ATTEMPTS, sleepFn = sleep } = opts;
+  const {
+    pollIntervalMs = readEnvInt("TEST_DOC_POLL_INTERVAL_MS", POLL_INTERVAL_MS),
+    maxAttempts = readEnvInt("TEST_DOC_POLL_MAX_ATTEMPTS", MAX_ATTEMPTS),
+    sleepFn = sleep,
+  } = opts;
   try {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await sleepFn(pollIntervalMs);
@@ -61,7 +72,13 @@ export async function persistTestDocDraftWhenDone(
       // Transient poll errors are not fatal; keep trying until attempts run out.
       if (!poll.ok) continue;
       const status = poll.data?.status;
-      if (status === "failed" || status === "cancelled") return;
+      // Cancellation is a deliberate PO action (the review modal cancels
+      // in-flight tasks on close); only a genuine failure deserves an error.
+      if (status === "cancelled") return;
+      if (status === "failed") {
+        logger.error("generate-test-doc", `Background generation failed for ${key} (task ${taskId})`);
+        return;
+      }
       if (status !== "completed") continue;
 
       const output = typeof poll.data?.output === "string" ? poll.data.output : "";
@@ -74,11 +91,11 @@ export async function persistTestDocDraftWhenDone(
       }
       return;
     }
-    logger.warn("generate-test-doc", `Background capture timed out for ${key} (task ${taskId})`);
+    logger.error("generate-test-doc", `Background capture timed out for ${key} (task ${taskId})`);
   } catch (err) {
-    logger.warn(
+    logger.error(
       "generate-test-doc",
-      `Background capture failed for ${key}: ${err instanceof Error ? err.message : "unknown"}`,
+      `Background capture failed for ${key} (task ${taskId}): ${err instanceof Error ? err.message : "unknown"}`,
     );
   }
 }

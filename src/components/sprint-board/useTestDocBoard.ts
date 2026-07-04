@@ -61,7 +61,11 @@ export function useTestDocBoard({
     setBackgroundGenerating((prev) => new Set(prev).add(key));
     try {
       await ticketsApi.generateTestDoc(key);
-      // ~6 min at 3s, matching the server-side capture window.
+      // ~6 min at 3s, matching the server-side capture window's DEFAULTS. The
+      // server tunables (TEST_DOC_POLL_*) don't reach the client, so a raised
+      // server window can outlive this one — the warning below may then fire
+      // for a draft that still lands later (BRDG-470, documented trade-off).
+      let landed = false;
       for (let attempt = 0; attempt < 120 && !unmountedRef.current; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 3000));
         const data = await ticketsApi.getTestDoc(key).catch(() => null);
@@ -70,8 +74,13 @@ export function useTestDocBoard({
           // rows carry the new testDocState flashes the stale Generate button.
           await mutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
           showToast(`Test doc ready for ${key} — review it via the status line`);
+          landed = true;
           break;
         }
+      }
+      // A silent miss reads as "generated" to the PO; say that it wasn't.
+      if (!landed && !unmountedRef.current) {
+        showToast(`Test doc generation for ${key} did not complete — try again from the ticket`);
       }
     } catch {
       showToast(`Test doc generation failed for ${key}`);

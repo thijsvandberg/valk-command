@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -22,6 +22,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { persistTestDocDraftWhenDone } from "./test-doc-background";
+import { logger } from "@/lib/logger";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -82,5 +83,70 @@ describe("persistTestDocDraftWhenDone", () => {
 
     expect(mockAgentFetch).toHaveBeenCalledTimes(3);
     expect(getMetadata("VPL-10")).toBeUndefined();
+  });
+
+  describe("env tunables + error logging (BRDG-470)", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("respects TEST_DOC_POLL_MAX_ATTEMPTS from the environment", async () => {
+      vi.stubEnv("TEST_DOC_POLL_MAX_ATTEMPTS", "2");
+      mockAgentFetch.mockResolvedValue({ ok: true, data: { status: "running" } });
+
+      await persistTestDocDraftWhenDone("VPL-10", "task-1", { sleepFn: noSleep });
+
+      expect(mockAgentFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("lets explicit opts win over the environment", async () => {
+      vi.stubEnv("TEST_DOC_POLL_MAX_ATTEMPTS", "5");
+      mockAgentFetch.mockResolvedValue({ ok: true, data: { status: "running" } });
+
+      await persistTestDocDraftWhenDone("VPL-10", "task-1", { sleepFn: noSleep, maxAttempts: 3 });
+
+      expect(mockAgentFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it("falls back to the default on invalid env values", async () => {
+      vi.stubEnv("TEST_DOC_POLL_INTERVAL_MS", "banana");
+      vi.stubEnv("TEST_DOC_POLL_MAX_ATTEMPTS", "0");
+      const sleeps: number[] = [];
+      const recordingSleep = (ms: number) => {
+        sleeps.push(ms);
+        return Promise.resolve();
+      };
+      mockAgentFetch.mockResolvedValueOnce({ ok: true, data: { status: "completed", output: "raw" } });
+
+      await persistTestDocDraftWhenDone("VPL-10", "task-1", { sleepFn: recordingSleep });
+
+      expect(sleeps[0]).toBe(3000);
+      expect(mockAgentFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("logs an error with key and task id on timeout", async () => {
+      mockAgentFetch.mockResolvedValue({ ok: true, data: { status: "running" } });
+
+      await persistTestDocDraftWhenDone("VPL-10", "task-1", { sleepFn: noSleep, maxAttempts: 2 });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "generate-test-doc",
+        expect.stringMatching(/VPL-10.*task-1/),
+      );
+    });
+
+    it("logs an error with key and task id on a failed task, but not on cancelled", async () => {
+      mockAgentFetch.mockResolvedValueOnce({ ok: true, data: { status: "failed" } });
+      await persistTestDocDraftWhenDone("VPL-10", "task-1", { sleepFn: noSleep });
+      expect(logger.error).toHaveBeenCalledWith(
+        "generate-test-doc",
+        expect.stringMatching(/VPL-10.*task-1/),
+      );
+
+      vi.mocked(logger.error).mockClear();
+      mockAgentFetch.mockResolvedValueOnce({ ok: true, data: { status: "cancelled" } });
+      await persistTestDocDraftWhenDone("VPL-10", "task-2", { sleepFn: noSleep });
+      expect(logger.error).not.toHaveBeenCalled();
+    });
   });
 });

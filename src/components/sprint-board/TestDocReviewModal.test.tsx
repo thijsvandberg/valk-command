@@ -537,6 +537,83 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     });
   });
 
+  // Verifies the saved-doc tracking (hasSavedRef) cannot go stale: suppression
+  // of the draft flip is per key within one session, and the ref's lifetime is
+  // one modal mount so a later session re-derives it from the fresh GET.
+  describe("hasSavedRef lifecycle (BRDG-470)", () => {
+    const SAVED = {
+      storyUpdatedAt: null,
+      saved: { markdown: "**Accepted**\n\n- Saved doc", classification: "ok", updatedAt: "2026-07-01T09:00:00.000Z" },
+      draft: null,
+    };
+
+    function mockPerKey(map: Record<string, unknown>) {
+      mockGetTestDoc.mockImplementation((key: string) =>
+        Promise.resolve(map[key] ?? { storyUpdatedAt: null, saved: null, draft: null }),
+      );
+    }
+
+    it("bulk: an accepted doc suppresses only its own key's draft flip, and marking it not needed does not leak", async () => {
+      mockPerKey({ "VPL-1": SAVED });
+      render(<TestDocReviewModal keys={["VPL-1", "VPL-2"]} onClose={() => {}} />);
+      await waitFor(() =>
+        expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
+      );
+
+      // Regenerating the accepted key caches the draft but never flips its marker.
+      fireEvent.click(screen.getByText("Regenerate"));
+      await emitResult("VPL-1", DOC);
+      await waitFor(() =>
+        expect(mockSaveTestDocDraft).toHaveBeenCalledWith("VPL-1", expect.anything()),
+      );
+      expect(findMarkerEdit("VPL-1")).toBeUndefined();
+
+      // Save → not-needed on VPL-1, then the queue advances; VPL-2's fresh
+      // generation must still flip to draft (per-key isolation of the ref).
+      fireEvent.click(screen.getByText("No test doc needed"));
+      await waitFor(() =>
+        expect(screen.getByTestId("test-doc-queue-position")).toHaveTextContent("2 / 2"),
+      );
+      await emitResult("VPL-2", DOC);
+      await waitFor(() =>
+        expect(findMarkerEdit("VPL-2")).toMatchObject({ value: "draft", confirmed: true }),
+      );
+      expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "not_needed" });
+    });
+
+    it("a new modal session never inherits suppression from a previous one", async () => {
+      mockPerKey({ "VPL-1": SAVED });
+      const first = render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await waitFor(() =>
+        expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
+      );
+      fireEvent.click(screen.getByText("Regenerate"));
+      await emitResult("VPL-1", DOC);
+      await waitFor(() => expect(mockSaveTestDocDraft).toHaveBeenCalled());
+      expect(findMarkerEdit("VPL-1")).toBeUndefined();
+      first.unmount();
+      __resetPendingEdits();
+      mockSaveTestDocDraft.mockClear();
+      streamsByTask = {};
+
+      // Meanwhile the doc is gone (marker set elsewhere); the next session's
+      // ref must re-derive from the GET, not remember the old accepted doc.
+      mockPerKey({
+        "VPL-1": { storyUpdatedAt: null, saved: null, draft: null, notNeeded: true, notNeededAt: "2026-07-01T09:00:00.000Z" },
+      });
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await waitFor(() => expect(screen.getByTestId("test-doc-not-needed")).toBeInTheDocument());
+      fireEvent.click(screen.getByText("Remove 'not needed' marker"));
+      await waitFor(() => expect(screen.getByTestId("test-doc-idle")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText("Generate test doc"));
+      await emitResult("VPL-1", DOC);
+      await waitFor(() =>
+        expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "draft", confirmed: true }),
+      );
+    });
+  });
+
   describe("view mode (autoGenerate=false)", () => {
     it("opens idle without starting a generation; the explicit button generates", async () => {
       render(<TestDocReviewModal keys={["VPL-1"]} autoGenerate={false} onClose={() => {}} />);

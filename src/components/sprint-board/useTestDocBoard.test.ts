@@ -1,7 +1,8 @@
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Ticket } from "@/types/ticket";
 import { useTestDocBoard } from "./useTestDocBoard";
+import { tickets as ticketsApi } from "@/lib/api-client";
 import { shouldAutoEnableTestDocTag } from "@/components/sprint-board/sprint-board-utils";
 
 // The hook reads localStorage-backed marker state and a provider-bound SWR
@@ -154,5 +155,64 @@ describe("useTestDocBoard - BRDG-463 not-needed confirm gate", () => {
     expect(result.current.testDocConfirm).toBeNull();
     expect(result.current.testDocQueue).toBeNull();
     expect(showToast).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useTestDocBoard - background generation capture window (BRDG-470)", () => {
+  const generateTestDoc = vi.mocked(ticketsApi.generateTestDoc);
+  const getTestDoc = vi.mocked(ticketsApi.getTestDoc);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    generateTestDoc.mockReset();
+    getTestDoc.mockReset();
+    generateTestDoc.mockResolvedValue({ taskId: "task-1" } as never);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("warns when the capture window exhausts without a draft landing", async () => {
+    getTestDoc.mockResolvedValue({ draft: null, saved: null } as never);
+    const { result, showToast } = setup([makeTicket("A", null)]);
+
+    await act(async () => {
+      const run = result.current.startBackgroundGeneration("A");
+      await vi.advanceTimersByTimeAsync(361_000);
+      await run;
+    });
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining("Test doc generation for A did not complete"));
+    expect(result.current.backgroundGenerating.size).toBe(0);
+  });
+
+  it("toasts ready (and never the warning) when the draft lands mid-window", async () => {
+    getTestDoc
+      .mockResolvedValueOnce({ draft: null, saved: null } as never)
+      .mockResolvedValue({ draft: { markdown: "doc" }, saved: null } as never);
+    const { result, showToast } = setup([makeTicket("A", null)]);
+
+    await act(async () => {
+      const run = result.current.startBackgroundGeneration("A");
+      await vi.advanceTimersByTimeAsync(10_000);
+      await run;
+    });
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining("Test doc ready for A"));
+  });
+
+  it("keeps the existing failure toast when the generate POST rejects", async () => {
+    generateTestDoc.mockRejectedValue(new Error("boom"));
+    const { result, showToast } = setup([makeTicket("A", null)]);
+
+    await act(async () => {
+      await result.current.startBackgroundGeneration("A");
+    });
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining("Test doc generation failed for A"));
   });
 });

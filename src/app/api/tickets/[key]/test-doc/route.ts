@@ -126,6 +126,12 @@ export async function PUT(
     notNeeded?: boolean;
   };
 
+  // markdown and notNeeded are mutually exclusive intents; the notNeeded
+  // branch used to win silently. Reject the ambiguity instead (BRDG-470).
+  if (markdown !== undefined && notNeeded !== undefined) {
+    return errorResponse("Provide either markdown or notNeeded, not both", 400);
+  }
+
   // Explicit "no test documentation needed" marker (PO judgement): Bridge-only,
   // no doc, no Jira write. The sprint bundle lists these separately and the
   // missing overview skips them, so the ticket is never re-reviewed.

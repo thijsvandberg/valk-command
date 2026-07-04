@@ -267,6 +267,12 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   `src/lib/test-doc-background.ts`) polls the workspace task server-side and persists the
   draft on completion, so it survives navigation; the board polls the cheap local
   GET `test-doc` to flip the line to "View test doc" (with a Generating… state) and toast.
+  Failures are never silent (BRDG-470): a failed task or exhausted server capture
+  error-logs with ticket key + task id, and the board toasts a warning when its own
+  capture window ends without a draft landing. The server poll is tunable via
+  `TEST_DOC_POLL_INTERVAL_MS` / `TEST_DOC_POLL_MAX_ATTEMPTS` (defaults 3000 / 120);
+  the client window stays hardcoded at the defaults (the vars are server-only), so
+  raising the server attempts can make the board warn while the draft still lands later.
 - **View mode**: the row marker and the status line's View button open the modal with
   `autoGenerate: false` — a key without any cached doc lands IDLE with an explicit Generate
   button; opening the modal never silently starts an agent task. Explicit generate entry

@@ -42,6 +42,11 @@ const envSchema = z.object({
   // declared here so the knob is documented alongside the rest of the env.
   QUERY_SLOW_MS: z.string().default(""),
 
+  // Server-side test-doc background capture poll (BRDG-470). Read directly in
+  // test-doc-background at call time; declared here so the knobs are documented.
+  TEST_DOC_POLL_INTERVAL_MS: z.string().default(""),
+  TEST_DOC_POLL_MAX_ATTEMPTS: z.string().default(""),
+
   // Auth (Clerk) — CLERK_SECRET_KEY is read by @clerk/nextjs directly from process.env
   CLERK_ORG_ID: z.string().default(""),
 });

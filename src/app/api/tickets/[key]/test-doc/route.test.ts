@@ -84,6 +84,19 @@ describe("PUT /api/tickets/[key]/test-doc", () => {
     }
   });
 
+  it("rejects bodies combining markdown with notNeeded and writes nothing (BRDG-470)", async () => {
+    seedTicket("VPL-10");
+    for (const body of [
+      { markdown: DOC, notNeeded: true },
+      { markdown: DOC, notNeeded: false },
+    ]) {
+      const response = await PUT(makeRequest("VPL-10", body), makeParams("VPL-10"));
+      expect(response.status).toBe(400);
+    }
+    expect(getMetadata("VPL-10")).toBeUndefined();
+    expect(mockPushToJira).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when the ticket does not exist", async () => {
     const response = await PUT(makeRequest("VPL-999", { markdown: DOC }), makeParams("VPL-999"));
     expect(response.status).toBe(404);
