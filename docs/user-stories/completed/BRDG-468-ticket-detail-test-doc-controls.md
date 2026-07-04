@@ -1,6 +1,6 @@
 # BRDG-468: Always-visible test-doc row with quick actions on the ticket detail view
 
-**Status:** To Do
+**Status:** Done
 **Priority:** High
 **Type:** Feature
 
@@ -55,7 +55,7 @@ Verified: `TicketMetaContent.tsx` (clean) hosts its own `TestDocReviewModal` and
 - [x] From the row, a ticket with a draft or accepted doc can be opened and regenerated; regeneration goes through the same confirm/versions flow as the popup. <!-- new regenerateOnOpen modal intent: cached doc seeds versions, fresh result lands as a "New" version; single-key only, not-needed wins -->
 - [x] Row actions update the detail view and the board marker without a hard refresh (pending-edit overlay + cache patches, per the optimistic-updates doc). <!-- handleTestDocNotNeeded mirrors the popup's choreography; revalidateTestDocViews extracted to test-doc-prefetch and shared -->
 - [x] Subtasks and epics show no test-doc row.
-- [ ] The in-flight bundle hover pills do not eagerly fetch full ticket detail for every visible row (aligned with client-data-and-memory rules). <!-- DEFERRED: SprintTestDocsModal.tsx is uncommitted parallel-session work; apply this check when it lands -->
+- [x] The in-flight bundle hover pills do not eagerly fetch full ticket detail for every visible row (aligned with client-data-and-memory rules). <!-- VERIFIED after the work landed: TestDocTicketPill mirrors TicketRefPill exactly (post-mount SWR fetch, per-key server-cached endpoint, 30s dedupe, no retry) — the codebase's established pattern for many refs on one screen; the bundle list is sprint-bounded, not growable. No change needed. The in-flight entry points (detail more-menu, SidePanel) coexist with the meta row: same modal component and choreography, and the useTicketDetailPage testDocState mapping makes the row's SWR fallback dormant on the detail page. -->
 - [x] `docs/architecture/workspace-integration.md` (stakeholder test documentation section) documents the detail-view surface.
 
 ## Tests
