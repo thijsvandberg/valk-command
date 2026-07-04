@@ -13,9 +13,9 @@ $ARGUMENTS should be a story ID like `BRDG-XXX`. Find the matching file in `docs
 - If the story references other files (PRD, architecture docs), read those too
 - **If all checkboxes are already `[x]`**: report that the story is already complete and stop.
 
-### 2. Plan with Opus (no mode switch)
+### 2. Plan (no mode switch)
 
-Before writing any code, launch an **Agent** subagent with `model: "opus"` and `subagent_type: "Plan"` to create the implementation plan. The agent's prompt must include:
+Before writing any code, launch an **Agent** subagent with `subagent_type: "Plan"` to create the implementation plan. The agent's prompt must include:
 
 - The full content of the story file
 - The content of any referenced architecture/PRD docs

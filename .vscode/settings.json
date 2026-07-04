@@ -1,0 +1,20 @@
+{
+  // Next.js rebuilds .next constantly; watching it (and node_modules) wastes
+  // memory and CPU for no benefit in a PO/agent-driven workflow.
+  "files.watcherExclude": {
+    "**/.next/**": true,
+    "**/node_modules/**": true,
+    "**/.git/objects/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/coverage/**": true
+  },
+  "search.exclude": {
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/coverage": true,
+    "**/package-lock.json": true
+  }
+}
