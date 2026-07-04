@@ -1,6 +1,6 @@
 # BRDG-466: Jira is source of truth for accepted test docs (sync reconciles local copy)
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Bugfix
 
