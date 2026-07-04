@@ -63,7 +63,7 @@ function renderModal(overrides: Partial<Parameters<typeof SprintTestDocsModal>[0
 
 describe("buildTestDocDocument", () => {
   it("joins documented blocks with Jira key links behind titles, Misc trailing", () => {
-    const doc = buildTestDocDocument(BASE);
+    const doc = buildTestDocDocument(BASE.documented, BASE.internal);
     expect(doc).toBe(
       "**Big feature** ([VPL-2](https://new-story.atlassian.net/browse/VPL-2))\n\n- Confirm A\n\n" +
       "**Flagged** ([VPL-1](https://new-story.atlassian.net/browse/VPL-1))\n\n- Confirm B\n\n" +
@@ -72,8 +72,17 @@ describe("buildTestDocDocument", () => {
   });
 
   it("omits the Misc section when there are no internal docs", () => {
-    const doc = buildTestDocDocument({ ...BASE, internal: [] });
+    const doc = buildTestDocDocument(BASE.documented, []);
     expect(doc).not.toContain("**Misc**");
+  });
+
+  it("includes docs passed in and omits ones left out (opt-in unfinished docs)", () => {
+    const unfinished = {
+      key: "VPL-8", type: "story", title: "Open", status: "IN PROGRESS",
+      storyPoints: null, epic: null, doc: "**Open feature**\n\n- Confirm C",
+    };
+    expect(buildTestDocDocument([...BASE.documented, unfinished], BASE.internal)).toContain("Open feature");
+    expect(buildTestDocDocument(BASE.documented, BASE.internal)).not.toContain("Open feature");
   });
 });
 
@@ -117,7 +126,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     fireEvent.click(screen.getByText("Copy document"));
 
     await waitFor(() => expect(props.showToast).toHaveBeenCalledWith("Test document copied to clipboard"));
-    expect(writeText).toHaveBeenCalledWith(buildTestDocDocument(BASE));
+    expect(writeText).toHaveBeenCalledWith(buildTestDocDocument(BASE.documented, BASE.internal));
   });
 
   it("shows the empty state and disables Copy when nothing is documented", () => {
@@ -138,7 +147,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     const section = screen.getByTestId("test-docs-not-needed");
     expect(section).toHaveTextContent("No test documentation needed (1)");
     expect(section).toHaveTextContent("VPL-7");
-    expect(buildTestDocDocument(BASE)).not.toContain("DB partitions chore");
+    expect(buildTestDocDocument(BASE.documented, BASE.internal)).not.toContain("DB partitions chore");
     expect(screen.getByTestId("test-docs-missing")).not.toHaveTextContent("VPL-7");
   });
 
@@ -204,6 +213,70 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(section).toHaveTextContent("VPL-6");
     fireEvent.click(within(section).getByText("Generate"));
     expect(props.onGenerateMissing).toHaveBeenCalledWith(["VPL-6"]);
+  });
+
+  it("shows an include checkbox only on unfinished rows that already have a doc (BRDG-465)", () => {
+    mockData = {
+      ...BASE,
+      other: [
+        { key: "VPL-6", type: "story", title: "Still open", status: "IN PROGRESS", storyPoints: null, epic: null, doc: null },
+        { key: "VPL-8", type: "story", title: "Open with doc", status: "IN PROGRESS", storyPoints: null, epic: null, doc: "**Open feature**\n\n- Confirm C", internalDoc: false },
+      ],
+    };
+    renderModal();
+    const section = screen.getByTestId("test-docs-other");
+    const checkboxes = within(section).getAllByRole("checkbox");
+    expect(checkboxes).toHaveLength(1);
+    expect(checkboxes[0]).toHaveAttribute("aria-label", "Include VPL-8 in the document");
+  });
+
+  it("ticking an unfinished doc folds it into the Documented preview and the copy; unticking removes both (BRDG-465)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    mockData = {
+      ...BASE,
+      other: [
+        { key: "VPL-8", type: "story", title: "Open with doc", status: "IN PROGRESS", storyPoints: null, epic: null, doc: "**Open feature**\n\n- Confirm C", internalDoc: false },
+      ],
+    };
+    renderModal();
+
+    // Excluded by default: 2 auto blocks, not in the copy.
+    expect(screen.getAllByTestId("test-docs-block")).toHaveLength(2);
+    fireEvent.click(screen.getByText("Copy document"));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0][0]).not.toContain("Open feature");
+
+    // Tick: a provisional block appears (tagged) and joins the copy.
+    fireEvent.click(within(screen.getByTestId("test-docs-other")).getByRole("checkbox"));
+    const blocks = screen.getAllByTestId("test-docs-block");
+    expect(blocks).toHaveLength(3);
+    const provisional = blocks.find((b) => b.textContent?.includes("Open feature")) as HTMLElement;
+    expect(provisional).toHaveTextContent("not finished yet");
+    writeText.mockClear();
+    fireEvent.click(screen.getByText("Copy document"));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0][0]).toContain("Open feature");
+
+    // Untick: gone from preview and copy again.
+    fireEvent.click(within(screen.getByTestId("test-docs-other")).getByRole("checkbox"));
+    expect(screen.getAllByTestId("test-docs-block")).toHaveLength(2);
+    writeText.mockClear();
+    fireEvent.click(screen.getByText("Copy document"));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0][0]).not.toContain("Open feature");
+  });
+
+  it("routes a ticked internal unfinished doc into the Misc section (BRDG-465)", () => {
+    mockData = {
+      ...BASE,
+      other: [
+        { key: "VPL-9", type: "story", title: "Open internal", status: "TODO", storyPoints: null, epic: null, doc: "Internal open one-liner", internalDoc: true },
+      ],
+    };
+    renderModal();
+    fireEvent.click(within(screen.getByTestId("test-docs-other")).getByRole("checkbox"));
+    expect(screen.getByTestId("test-docs-misc")).toHaveTextContent("Internal open one-liner");
   });
 
   it("shows an error state when the fetch fails", () => {

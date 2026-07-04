@@ -7,6 +7,7 @@ import { ModalHeader } from "@/components/shared/ModalHeader";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { Tag } from "@/components/shared/Tag";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { CaptionButton } from "@/components/sprint-board/CaptionButton";
@@ -55,13 +56,16 @@ function withJiraKeyLink(doc: string, key: string): string {
  * one-liners under a Misc header. Every block carries its ticket key behind
  * the title as a Jira link.
  */
-export function buildTestDocDocument(data: SprintTestDocs): string {
-  const parts: string[] = data.documented
+export function buildTestDocDocument(
+  documented: SprintTestDocItem[],
+  internal: SprintTestDocItem[],
+): string {
+  const parts: string[] = documented
     .filter((d) => d.doc)
     .map((d) => withJiraKeyLink(d.doc!, d.key));
-  const internal = data.internal.filter((d) => d.doc).map((d) => withJiraKeyLink(d.doc!, d.key));
-  if (internal.length > 0) {
-    parts.push(`**Misc**\n\n${internal.join("\n\n")}`);
+  const internalParts = internal.filter((d) => d.doc).map((d) => withJiraKeyLink(d.doc!, d.key));
+  if (internalParts.length > 0) {
+    parts.push(`**Misc**\n\n${internalParts.join("\n\n")}`);
   }
   return parts.join("\n\n");
 }
@@ -151,6 +155,72 @@ function RowActions({
 }
 
 /**
+ * One rendered doc block. Shared by the auto-included Documented cards, the
+ * lighter Misc entries (`variant="misc"`), and the opt-in "not finished yet"
+ * blocks (BRDG-465): `provisional` flags a ticked-but-unfinished story with a
+ * subtle tag + dashed border so the PO can tell it apart from a shipped
+ * deliverable in the preview.
+ */
+function TestDocBlock({
+  item,
+  onEditItem,
+  variant = "card",
+  provisional = false,
+}: {
+  item: SprintTestDocItem;
+  onEditItem: (key: string) => void;
+  variant?: "card" | "misc";
+  provisional?: boolean;
+}) {
+  const { title, body } = splitDocTitle(item.doc ?? "");
+  const isCard = variant === "card";
+  const header = (
+    <div
+      className={
+        isCard
+          ? "mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border-subtle pb-2"
+          : "mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1"
+      }
+    >
+      <span className={isCard ? "text-body-lg font-semibold text-text-primary" : "font-semibold text-text-primary"}>
+        {title ?? item.title}
+      </span>
+      <BridgeKeyLink item={item} />
+      {provisional && <Tag color="neutral">not finished yet</Tag>}
+      <CaptionButton
+        onClick={() => onEditItem(item.key)}
+        className="ml-auto"
+        title="Open this doc in the review modal; you return here when done"
+      >
+        Edit
+      </CaptionButton>
+    </div>
+  );
+  const content = (
+    <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
+  );
+  if (!isCard) {
+    return (
+      <div>
+        {header}
+        {content}
+      </div>
+    );
+  }
+  return (
+    <div
+      data-testid="test-docs-block"
+      className={`rounded-xl border bg-surface-base p-4 shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-600)_8%,transparent)] ${
+        provisional ? "border-dashed border-[var(--color-brand-400)]/40" : "border-border-default"
+      }`}
+    >
+      {header}
+      {content}
+    </div>
+  );
+}
+
+/**
  * Sprint-level test documentation bundle (BRDG-461): every validated per-story
  * doc in delivery order, the internal one-liners as a Misc tail, and the
  * missing overview so gaps are visible before the sprint is delivered.
@@ -167,6 +237,19 @@ export function SprintTestDocsModal({
   });
   const { mutate } = useSWRConfig();
   const [skippingKeys, setSkippingKeys] = useState<Set<string>>(new Set());
+  // Not-finished stories with a doc are opt-in for the delivery document: the PO
+  // ticks the ones that ship with this delivery (BRDG-465). Ephemeral, per
+  // modal session; a stale key self-heals because rendering intersects it with
+  // the current `other` list.
+  const [selectedUnfinished, setSelectedUnfinished] = useState<Set<string>>(new Set());
+  const toggleUnfinished = useCallback((key: string) => {
+    setSelectedUnfinished((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   // Skip = the Bridge-only "no test documentation needed" marker (same as the
   // review popup's button). Mark it, then refresh this bundle so the row moves
@@ -193,7 +276,25 @@ export function SprintTestDocsModal({
     [mutate, sprintId, showToast],
   );
 
-  const document = useMemo(() => (data ? buildTestDocDocument(data) : ""), [data]);
+  // Ticked not-finished docs fold into the Documented / Misc lists (mirroring the
+  // finished internal-vs-documented split) so the preview and the copy match.
+  const selectedOther = useMemo(
+    () => (data ? data.other.filter((o) => o.doc && selectedUnfinished.has(o.key)) : []),
+    [data, selectedUnfinished],
+  );
+  const documentedAll = useMemo(
+    () => [...(data?.documented ?? []), ...selectedOther.filter((o) => !o.internalDoc)],
+    [data, selectedOther],
+  );
+  const internalAll = useMemo(
+    () => [...(data?.internal ?? []), ...selectedOther.filter((o) => o.internalDoc)],
+    [data, selectedOther],
+  );
+
+  const document = useMemo(
+    () => buildTestDocDocument(documentedAll, internalAll),
+    [documentedAll, internalAll],
+  );
   const hasContent = document.trim().length > 0;
 
   const handleCopy = useCallback(() => {
@@ -265,7 +366,7 @@ export function SprintTestDocsModal({
                 </div>
               )}
 
-              {data.documented.length === 0 && data.internal.length === 0 && (
+              {documentedAll.length === 0 && internalAll.length === 0 && (
                 <EmptyState
                   className="py-8"
                   icon={<FileCheck2 size={20} strokeWidth={1.75} className="text-text-muted" />}
@@ -273,60 +374,35 @@ export function SprintTestDocsModal({
                 />
               )}
 
-              {data.documented.length > 0 && (
+              {documentedAll.length > 0 && (
                 <section className="flex flex-col gap-2.5">
-                  <SectionLabel>Documented ({data.documented.length})</SectionLabel>
-                  {data.documented.map((item) => {
-                    const { title, body } = splitDocTitle(item.doc ?? "");
-                    return (
-                      <div
-                        key={item.key}
-                        data-testid="test-docs-block"
-                        className="rounded-xl border border-border-default bg-surface-base p-4 shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-600)_8%,transparent)]"
-                      >
-                        <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border-subtle pb-2">
-                          <span className="text-body-lg font-semibold text-text-primary">{title ?? item.title}</span>
-                          <BridgeKeyLink item={item} />
-                          <CaptionButton
-                            onClick={() => onEditItem(item.key)}
-                            className="ml-auto"
-                            title="Open this doc in the review modal; you return here when done"
-                          >
-                            Edit
-                          </CaptionButton>
-                        </div>
-                        <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
-                      </div>
-                    );
-                  })}
+                  <SectionLabel>Documented ({documentedAll.length})</SectionLabel>
+                  {documentedAll.map((item) => (
+                    <TestDocBlock
+                      key={item.key}
+                      item={item}
+                      onEditItem={onEditItem}
+                      provisional={selectedUnfinished.has(item.key)}
+                    />
+                  ))}
                 </section>
               )}
 
-              {data.internal.length > 0 && (
+              {internalAll.length > 0 && (
                 <div data-testid="test-docs-misc" className="rounded-xl border border-border-default bg-surface-base p-4 shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-600)_8%,transparent)]">
                   <div className="mb-2.5 border-b border-border-subtle pb-2">
-                    <SectionLabel>Misc ({data.internal.length})</SectionLabel>
+                    <SectionLabel>Misc ({internalAll.length})</SectionLabel>
                   </div>
                   <div className="flex flex-col gap-3">
-                    {data.internal.map((item) => {
-                      const { title, body } = splitDocTitle(item.doc ?? "");
-                      return (
-                        <div key={item.key}>
-                          <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                            <span className="font-semibold text-text-primary">{title ?? item.title}</span>
-                            <BridgeKeyLink item={item} />
-                            <CaptionButton
-                              onClick={() => onEditItem(item.key)}
-                              className="ml-auto"
-                              title="Open this doc in the review modal; you return here when done"
-                            >
-                              Edit
-                            </CaptionButton>
-                          </div>
-                          <div className="description-content">{renderMarkdown(title === null ? item.doc ?? "" : body)}</div>
-                        </div>
-                      );
-                    })}
+                    {internalAll.map((item) => (
+                      <TestDocBlock
+                        key={item.key}
+                        item={item}
+                        onEditItem={onEditItem}
+                        variant="misc"
+                        provisional={selectedUnfinished.has(item.key)}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
@@ -355,13 +431,13 @@ export function SprintTestDocsModal({
               )}
 
               {/* Not in DONE/Test yet, so not counted as missing — but the PO
-                  decides what ships: an unfinished story that goes along in the
-                  delivery gets its doc via the per-row actions. */}
+                  decides what ships: generate a doc, then tick the story to fold
+                  it into the delivery document (BRDG-465). */}
               {data.other.length > 0 && (
                 <div data-testid="test-docs-other" className="rounded-xl border border-border-subtle bg-surface-base/60 p-3.5">
                   <SectionLabel>Not finished yet ({data.other.length})</SectionLabel>
                   <p className="mt-1 text-body-sm text-text-muted">
-                    Generate anyway if it ships with this delivery.
+                    Ships with this delivery? Generate a doc, then tick it to include it in the document.
                   </p>
                   <ul className="mt-2.5 flex flex-col gap-1">
                     {data.other.map((m) => (
@@ -369,13 +445,33 @@ export function SprintTestDocsModal({
                         key={m.key}
                         item={m}
                         trailing={
-                          <RowActions
-                            item={m}
-                            onOpen={onEditItem}
-                            onGenerate={(k) => onGenerateMissing([k])}
-                            onSkip={handleSkip}
-                            skipping={skippingKeys.has(m.key)}
-                          />
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            {m.doc && (
+                              <div
+                                role="checkbox"
+                                aria-checked={selectedUnfinished.has(m.key)}
+                                aria-label={`Include ${m.key} in the document`}
+                                tabIndex={0}
+                                onClick={() => toggleUnfinished(m.key)}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Enter") {
+                                    e.preventDefault();
+                                    toggleUnfinished(m.key);
+                                  }
+                                }}
+                                className="flex cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                              >
+                                <Checkbox checked={selectedUnfinished.has(m.key)} />
+                              </div>
+                            )}
+                            <RowActions
+                              item={m}
+                              onOpen={onEditItem}
+                              onGenerate={(k) => onGenerateMissing([k])}
+                              onSkip={handleSkip}
+                              skipping={skippingKeys.has(m.key)}
+                            />
+                          </span>
                         }
                       />
                     ))}
