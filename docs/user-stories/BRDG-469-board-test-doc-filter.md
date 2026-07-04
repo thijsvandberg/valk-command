@@ -32,20 +32,35 @@ Decided behaviour:
 - No saved-view presets beyond what the existing filter persistence already provides.
 - No coverage stat on the "All" view (the toggle is per-sprint by design).
 
+## Implementation Plan
+
+Verified: the filter hook (`useSprintBoardFilters`) already receives the pending-edits-overlaid ticket list (`applyPendingEdits` runs upstream in SprintBoard), and `testDocState` is a registered editable field, so overlay correctness comes for free. The live filter UI is `FilterControlsPanel.tsx` (the old `FilterBar.tsx` is an unmounted leftover, skipped). GroupStatBar's two parents (`SingleSprintHeader`, `TicketTable`) are clean files and already receive `visibleTags = effectiveVisibleTags`, which contains `testDoc` only when a single sprint's toggle is on — gating on that hides the stat on the All view structurally.
+
+1. `filter-bar-types.ts`: `TEST_DOC_FILTER_OPTIONS` (missing/draft/accepted/not_needed, dot classes reusing TestDocMarker tokens); optional `testDoc` in `SavedView.filters`.
+2. `useSprintBoardFilters.ts`: `testDoc: string[]` in `StoredFilters` + defaults; derived `testDocFilter` Set with `?? []` legacy guard; setter; predicate in `coreFiltered` (`(t.testDocState ?? "missing")`); include in `hasActiveFilters`, snapshot, `resetFilters`, `resetSprintViewFilters`, saved-view apply; export both.
+3. `FilterControlsPanel.tsx`: optional `testDocFilter`/`onTestDocFilterChange` props; `TestDocDot` renderer; "Test doc" category after gaps, gated on the props (inbox reuse renders unchanged).
+4. **DEFERRED until the parallel session lands** — `SprintBoard.tsx` (~3 lines, dirty file): pass the two props in `filterControlsProps`, add `testDocFilter` to `activeFilterCount`. Everything else ships and works without it; only panel visibility on the board + funnel badge wait on this.
+5. `GroupStatBar.tsx`: optional `showDocCoverage` prop; compute from `liveTickets` excluding subtasks; N = accepted, M = eligible minus not_needed; Tooltip-wrapped StatPill "N/M docs" with four-line breakdown, container-query shedding like siblings; skip when the group has nothing eligible.
+6. `SingleSprintHeader.tsx` + 7. `TicketTable.tsx`: pass `showDocCoverage={visibleTags.has("testDoc")}`.
+8-10. Tests in `useSprintBoardFilters.test.ts` (options, combos, persistence, reset, legacy object, overlay bucket-move), `FilterControlsPanel.test.tsx` (category, toggle callback, absent without props), `GroupStatBar.test.tsx` (counts, tooltip, hidden when off, soft-deleted excluded).
+11. Docs: `filter-persistence.md` compound-object note.
+
+Open call flagged by planning: DEPRECATED tickets stay in the coverage denominator (story names only subtasks + not_needed); compare view (own GroupStatBars, no sprint toggle context) is out of scope.
+
 ## Acceptance Criteria
 
-- [ ] The filter bar offers a "Test doc" filter with Missing / Draft / Accepted / Not needed; selecting values filters the rows accordingly on every view.
-- [ ] The filter persists across reloads like the other board filters, and is included in the existing clear-filters affordance.
-- [ ] Filtering respects in-flight optimistic state: a ticket whose doc was just generated moves between filter buckets without a refresh.
-- [ ] Group headers show an accurate "N/M docs" coverage stat with a breakdown tooltip when the sprint's "Test documentation" field toggle is on, and nothing when it is off.
-- [ ] Subtasks and not-needed tickets do not count toward the coverage denominator.
-- [ ] Relevant docs updated (filter-persistence and/or workspace-integration sections).
+- [ ] The filter bar offers a "Test doc" filter with Missing / Draft / Accepted / Not needed; selecting values filters the rows accordingly on every view. <!-- predicate + panel category DONE; the ~3-line SprintBoard.tsx wiring (pass testDocFilter/onTestDocFilterChange + funnel badge count) is DEFERRED until the parallel session's uncommitted SprintBoard work lands -->
+- [x] The filter persists across reloads like the other board filters, and is included in the existing clear-filters affordance. <!-- StoredFilters.testDoc + snapshot/reset/saved-view paths; legacy objects read as empty via ?? [] -->
+- [x] Filtering respects in-flight optimistic state: a ticket whose doc was just generated moves between filter buckets without a refresh. <!-- the hook receives the applyPendingEdits-overlaid list; covered by an overlay test -->
+- [x] Group headers show an accurate "N/M docs" coverage stat with a breakdown tooltip when the sprint's "Test documentation" field toggle is on, and nothing when it is off. <!-- GroupStatBar showDocCoverage, wired from SingleSprintHeader + TicketTable via visibleTags.has("testDoc") -->
+- [x] Subtasks and not-needed tickets do not count toward the coverage denominator.
+- [x] Relevant docs updated (filter-persistence and/or workspace-integration sections).
 
 ## Tests
 
-- [ ] Filter predicate unit tests: each state option, combinations, effective-state via pending-edits overlay.
-- [ ] Filter bar renders the new filter, persists selection, and clear-filters resets it.
-- [ ] GroupStatBar: counts (denominator excludes subtasks + not needed), tooltip breakdown, hidden when the toggle is off.
+- [x] Filter predicate unit tests: each state option, combinations, effective-state via pending-edits overlay.
+- [x] Filter bar renders the new filter, persists selection, and clear-filters resets it.
+- [x] GroupStatBar: counts (denominator excludes subtasks + not needed), tooltip breakdown, hidden when the toggle is off.
 
 ## Related
 

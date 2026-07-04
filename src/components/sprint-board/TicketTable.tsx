@@ -1056,6 +1056,7 @@ export function TicketTable({
                 onMetricToggleColumn={onMetricToggleColumn}
                 spColumnHidden={!visibleTags.has("storyPoints")}
                 bvColumnHidden={!visibleTags.has("businessValue")}
+                showDocCoverage={visibleTags.has("testDoc")}
                 // Collapse the label zone to its own width so the item count sits
                 // tight against each group name instead of leaving dead space
                 // before a fixed-width alignment column.

@@ -965,3 +965,51 @@ describe("GroupStatBar", () => {
     });
   });
 });
+
+describe("GroupStatBar - test-doc coverage (BRDG-469)", () => {
+  const DOC_TICKETS: Ticket[] = [
+    makeTicket({ key: "VPL-1", testDocState: "accepted" }),
+    makeTicket({ key: "VPL-2", testDocState: "accepted" }),
+    makeTicket({ key: "VPL-3", testDocState: "draft" }),
+    makeTicket({ key: "VPL-4", testDocState: null }),
+    makeTicket({ key: "VPL-5", testDocState: "not_needed" }),
+    // Subtasks never carry docs and must not count in any bucket.
+    makeTicket({ key: "VPL-6", type: "subtask", testDocState: null }),
+  ];
+
+  it("shows N/M excluding subtasks and not-needed from the target", () => {
+    render(<GroupStatBar tickets={DOC_TICKETS} showDocCoverage />);
+    // 5 eligible non-subtasks minus 1 not-needed = 4 needed; 2 accepted.
+    expect(screen.getByText("2/4 docs")).toBeTruthy();
+  });
+
+  it("renders nothing without showDocCoverage (the per-sprint toggle is off)", () => {
+    render(<GroupStatBar tickets={DOC_TICKETS} />);
+    expect(screen.queryByText(/docs/)).toBeNull();
+  });
+
+  it("excludes soft-deleted tickets from the coverage counts", () => {
+    const tickets = [
+      makeTicket({ key: "VPL-1", testDocState: "accepted" }),
+      makeTicket({ key: "VPL-2", testDocState: "accepted", removedFromJiraAt: "2026-06-20T00:00:00Z" }),
+      makeTicket({ key: "VPL-3", testDocState: null }),
+    ];
+    render(<GroupStatBar tickets={tickets} showDocCoverage />);
+    expect(screen.getByText("1/2 docs")).toBeTruthy();
+  });
+
+  it("breaks the coverage down per state in the hover tooltip", () => {
+    vi.useFakeTimers();
+    try {
+      render(<GroupStatBar tickets={DOC_TICKETS} showDocCoverage />);
+      fireEvent.mouseEnter(screen.getByText("2/4 docs").parentElement!);
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(screen.getByText("Accepted: 2")).toBeInTheDocument();
+      expect(screen.getByText("Draft: 1")).toBeInTheDocument();
+      expect(screen.getByText("Missing: 1")).toBeInTheDocument();
+      expect(screen.getByText("Not needed: 1")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

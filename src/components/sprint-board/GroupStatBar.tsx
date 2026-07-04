@@ -85,6 +85,12 @@ export interface GroupStatBarProps {
   showMetrics?: boolean;
   /** When false, the "avg N" business-value average next to the BV total is hidden. */
   showBvAvg?: boolean;
+  /**
+   * Test-doc delivery coverage "N/M docs" (BRDG-469). Hosts pass the sprint's
+   * per-sprint "Test documentation" field-toggle state, so the stat appears and
+   * disappears together with the row markers (and never on the All view).
+   */
+  showDocCoverage?: boolean;
   /** When provided, renders a pin toggle next to the label (used to pin a sprint group to the tab bar). */
   onPin?: () => void;
   isPinned?: boolean;
@@ -152,6 +158,27 @@ export interface GroupStatBarProps {
 // A real double-click also fires two clicks, so a single click waits this long for a
 // possible second click before committing to the sort. Short enough to feel responsive.
 const METRIC_CLICK_DELAY_MS = 200;
+
+// Four-line breakdown behind the "N/M docs" coverage pill (BRDG-469), reusing the
+// metric-tooltip line anatomy with the TestDocMarker state colors.
+function docCoverageTooltip(accepted: number, draft: number, missing: number, notNeeded: number): ReactNode {
+  const lines: { label: string; count: number; color: string }[] = [
+    { label: "Accepted", count: accepted, color: "var(--color-status-success)" },
+    { label: "Draft", count: draft, color: "var(--color-status-warning)" },
+    { label: "Missing", count: missing, color: "var(--color-status-caution)" },
+    { label: "Not needed", count: notNeeded, color: "var(--color-text-muted)" },
+  ];
+  return (
+    <div className="flex flex-col gap-1.5">
+      {lines.map((l) => (
+        <span key={l.label} className="flex items-center gap-2 whitespace-nowrap">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: l.color }} aria-hidden />
+          {`${l.label}: ${l.count}`}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 // Two-row tooltip (total + average) styled like the estimate-hygiene warning tooltip:
 // a metric-colored dot per line for a tidier read than a single run-on sentence.
@@ -227,6 +254,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   showWarnings = true,
   showMetrics = true,
   showBvAvg = true,
+  showDocCoverage = false,
   onPin,
   isPinned = false,
   pinDisabled = false,
@@ -298,6 +326,14 @@ export const GroupStatBar = memo(function GroupStatBar({
   // default, so they must not inflate the header's item count, SP/BV totals, or
   // status pills — otherwise an empty sprint still reads as having items.
   const liveTickets = tickets.filter((t) => !t.removedFromJiraAt);
+  // Delivery-doc coverage (BRDG-469): subtasks never carry docs, and tickets the
+  // PO marked "not needed" don't count toward the target either.
+  const docEligible = showDocCoverage ? liveTickets.filter((t) => t.type !== "subtask") : [];
+  const docAccepted = docEligible.filter((t) => t.testDocState === "accepted").length;
+  const docDraft = docEligible.filter((t) => t.testDocState === "draft").length;
+  const docNotNeeded = docEligible.filter((t) => t.testDocState === "not_needed").length;
+  const docNeeded = docEligible.length - docNotNeeded;
+  const docMissing = docNeeded - docAccepted - docDraft;
   const totalPoints = liveTickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
   // Effective points (real SP wins, else the guestimation) feed the fullness meter
   // (BRDG-303) and the header's penciled SP+guestimate badge, so both reflect
@@ -537,6 +573,15 @@ export const GroupStatBar = memo(function GroupStatBar({
                   : undefined
             }
           />
+        </span>
+      )}
+      {showDocCoverage && docEligible.length > 0 && (
+        <span className="hidden @lg:inline-flex" data-testid="doc-coverage">
+          <Tooltip content={docCoverageTooltip(docAccepted, docDraft, docMissing, docNotNeeded)}>
+            <StatPill size="sm" variant="default">
+              {docAccepted}/{docNeeded} docs
+            </StatPill>
+          </Tooltip>
         </span>
       )}
       {planningOn && onPencilCapacityChange && (!isActive || capacityMeterShown) && (

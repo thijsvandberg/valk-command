@@ -20,7 +20,7 @@ interface NavigationDeps {
   sortDir: SortDir;
 }
 
-const emptyFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] };
+const emptyFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [], testDoc: [] };
 
 export function useSprintBoardNavigation(deps: NavigationDeps) {
   const { sprints, setStoredFilters, setStoredSort, setSavedViews, savedViews, activeViewId, currentFiltersSnapshot, sortField, sortDir } = deps;
@@ -151,6 +151,7 @@ export function useSprintBoardNavigation(deps: NavigationDeps) {
       gaps: view.filters.gaps ?? [],
       team: view.filters.team ?? [],
       sprint: view.filters.sprint ?? [],
+      testDoc: view.filters.testDoc ?? [],
     });
     setStoredSort({ field: view.sort.field as SortField, direction: view.sort.direction as SortDir });
     replaceParams({ view: view.id, sprint: null });

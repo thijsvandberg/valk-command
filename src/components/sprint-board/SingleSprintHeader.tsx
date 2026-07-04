@@ -137,6 +137,7 @@ export const SingleSprintHeader = memo(function SingleSprintHeader({
       onMetricToggleColumn={onMetricToggleColumn}
       spColumnHidden={!visibleTags.has("storyPoints")}
       bvColumnHidden={!visibleTags.has("businessValue")}
+      showDocCoverage={visibleTags.has("testDoc")}
       // Use the unfiltered sprint set so the status breakdown always shows every
       // pill — otherwise filtering down to one status hides the others and you
       // can no longer click to toggle the filter back off.

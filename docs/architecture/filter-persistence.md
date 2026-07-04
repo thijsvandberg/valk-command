@@ -25,7 +25,7 @@ All new keys use the `bridge:<view>:<purpose>` format:
 | `bridge:stakeholder-sprint` | Stakeholder | Last selected sprint ID |
 | `bridge:recently-viewed` | Nav panel | Last 10 viewed tickets (MRU list, BRDG-330) |
 
-Existing sprint-board keys (`sprint-board-filters`, `sprint-board-sort`, `sprint-board-columns`, `sprint-board-saved-views`) predate this convention and are left unchanged to avoid discarding user data.
+Existing sprint-board keys (`sprint-board-filters`, `sprint-board-sort`, `sprint-board-columns`, `sprint-board-saved-views`) predate this convention and are left unchanged to avoid discarding user data. The compound filter object grew a `testDoc` key (BRDG-469, values `missing`/`draft`/`accepted`/`not_needed`); stored objects and saved views without it are read as an empty selection (`?? []`), so persisted data needs no migration.
 
 ## Hook usage
 
