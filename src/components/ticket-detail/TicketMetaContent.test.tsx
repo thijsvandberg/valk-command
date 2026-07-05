@@ -13,7 +13,7 @@ import { userInitials, userColor } from "@/lib/user-utils";
 vi.mock("lucide-react", () => {
   const stub = () => null;
   return Object.fromEntries(
-    ["ChevronDown", "AlertTriangle", "Play", "Gem", "Boxes", "FileCheck2", "FileX2", "RefreshCw", "Undo2", "Bookmark"].map((n) => [n, stub]),
+    ["ChevronDown", "AlertTriangle", "Play", "Gem", "Boxes", "FileCheck2", "FileX2", "RefreshCw", "Undo2", "Bookmark", "X"].map((n) => [n, stub]),
   );
 });
 

@@ -5,7 +5,7 @@ import type { Ticket, TicketReadiness, TicketDetail, JiraStatus } from "@/types/
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, AlertTriangle, Play, Boxes, FileCheck2, FileX2, RefreshCw, Undo2 } from "lucide-react";
+import { ChevronDown, AlertTriangle, Play, Boxes, FileCheck2, FileX2, RefreshCw, Undo2, X } from "lucide-react";
 import useSWR from "swr";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets, jira, apiFetch, swrFetcher } from "@/lib/api-client";
@@ -302,7 +302,7 @@ export function TicketMetaContent({
   }, [ticket.key, jiraStatus, onMutate, reportEditFailure]);
 
   const handleSprintChange = useCallback(async (sprintId: string | null) => {
-    if (!sprintId) return;
+    const target = sprintId ?? "__backlog__";
     const prev = currentSprintId;
     setCurrentSprintId(sprintId);
     // Move the row between sprint lists at once so it leaves the current
@@ -311,9 +311,9 @@ export function TicketMetaContent({
     // caches in next dev, so a bare revalidation re-reads the stale 30s list and
     // the row briefly pops back. The optimistic cache writes are authoritative
     // until the natural refresh reconciles. Mirrors the board's bulk-move handler.
-    moveTicketSprintCaches(ticket, sprintId);
+    moveTicketSprintCaches(ticket, target);
     try {
-      await jira.moveSprint({ issueKeys: [ticket.key], targetSprintId: sprintId });
+      await jira.moveSprint({ issueKeys: [ticket.key], targetSprintId: target });
     } catch (err) {
       setCurrentSprintId(prev);
       moveTicketSprintCaches(ticket, prev ?? "__backlog__");
@@ -559,17 +559,28 @@ export function TicketMetaContent({
           {!isSubtask && parentCard}
           {ticket.type !== "epic" && (
             <DetailRow label="Sprint">
-              <div className="relative">
+              <div className="group/sprint relative flex items-center gap-0.5 -mr-2">
                 <button
                   ref={sprintTriggerRef}
                   type="button"
                   onClick={() => sprintModalOpen ? setSprintModalOpen(false) : handleOpenSprintModal()}
                   title={currentSprintId ? `Sprint: ${sprints?.find((s) => String(s.id) === currentSprintId)?.name ?? currentSprintId}` : "No sprint"}
-                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 -mr-2 text-body-sm text-text-secondary cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-body-sm text-text-secondary cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
                   style={{ transition: "background-color 0.15s ease" }}
                 >
                   <span className="truncate">{sprints?.find((s) => String(s.id) === currentSprintId)?.name ?? "None"}</span>
                 </button>
+                {currentSprintId && (
+                  <button
+                    type="button"
+                    onClick={() => handleSprintChange(null)}
+                    title="Remove from sprint"
+                    className="opacity-0 group-hover/sprint:opacity-100 inline-flex items-center justify-center w-5 h-5 rounded text-text-tertiary hover:text-text-primary hover:bg-overlay-subtle focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                    style={{ transition: "opacity 0.15s ease, background-color 0.15s ease" }}
+                  >
+                    <X size={12} strokeWidth={2} />
+                  </button>
+                )}
                 {sprintModalOpen && sprintModalPos && (
                   <SprintListModal
                     onClose={() => setSprintModalOpen(false)}
