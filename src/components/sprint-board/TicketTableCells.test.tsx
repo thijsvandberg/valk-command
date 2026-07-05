@@ -65,15 +65,15 @@ describe("QualityBadge", () => {
     expect(dot).toBeInTheDocument();
   });
 
-  it("shows title with score value", () => {
+  it("shows the score value", () => {
     render(<QualityBadge score={92} />);
-    expect(screen.getByTitle("Quality: 92/100")).toBeInTheDocument();
+    expect(screen.getByText("92")).toBeInTheDocument();
   });
 
   it("calls onTogglePopover when clickable", () => {
     const toggle = vi.fn();
     render(<QualityBadge score={75} ticketKey="PROJ-1" onTogglePopover={toggle} />);
-    fireEvent.click(screen.getByTitle("Quality: 75/100"));
+    fireEvent.click(screen.getByRole("button"));
     expect(toggle).toHaveBeenCalledOnce();
   });
 

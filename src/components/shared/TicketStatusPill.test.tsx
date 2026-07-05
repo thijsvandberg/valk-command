@@ -695,7 +695,7 @@ describe("TicketStatusPill hover card", () => {
     );
     openCard(container);
     expect(screen.getByTitle("Sprint: Sprint 42")).toBeTruthy();
-    expect(screen.getByTitle("Epic: Onboarding")).toBeTruthy();
+    expect(screen.getByText("Onboarding")).toBeTruthy();
     expect(screen.getByTitle("Assignee: Alice")).toBeTruthy();
   });
 
@@ -747,7 +747,7 @@ describe("TicketStatusPill hover card", () => {
     );
     openCard(container);
     expect(screen.getByTitle("Sprint: Sprint 42")).toBeTruthy();
-    expect(screen.getByTitle("Epic: Onboarding")).toBeTruthy();
+    expect(screen.getByText("Onboarding")).toBeTruthy();
     expect(screen.getByTitle("Assignee: Alice")).toBeTruthy();
   });
 

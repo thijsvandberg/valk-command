@@ -671,26 +671,28 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 rows={1}
                 className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-surface-elevated px-1.5 py-1 text-body-lg leading-snug text-text-primary shadow-lg outline-none focus:border-[var(--color-brand-500)]/70"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  const trimmed = editTitleValue.trim();
-                  if (trimmed && trimmed !== ticket.title) onTitleChange?.(ticket.key, trimmed);
-                  onEditingTitleKeyChange?.(null);
-                }}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-tertiary shadow-lg transition-colors duration-100 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                title="Save"
-              >
-                <Check size={14} strokeWidth={1.5} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onEditingTitleKeyChange?.(null)}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-tertiary shadow-lg transition-colors duration-100 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                title="Cancel"
-              >
-                <X size={14} strokeWidth={1.5} />
-              </button>
+              <Tooltip content="Save">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = editTitleValue.trim();
+                    if (trimmed && trimmed !== ticket.title) onTitleChange?.(ticket.key, trimmed);
+                    onEditingTitleKeyChange?.(null);
+                  }}
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-tertiary shadow-lg transition-colors duration-100 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                >
+                  <Check size={14} strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Cancel">
+                <button
+                  type="button"
+                  onClick={() => onEditingTitleKeyChange?.(null)}
+                  className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-tertiary shadow-lg transition-colors duration-100 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                >
+                  <X size={14} strokeWidth={1.5} />
+                </button>
+              </Tooltip>
             </div>
           ) : (
             <>
@@ -706,23 +708,24 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   </span>
                 )}
                 {onTitleChange && !isRemoved && (
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditTitleValue(ticket.title);
-                      onEditingTitleKeyChange?.(ticket.key);
-                      requestAnimationFrame(() => {
-                        const ta = titleInputRef.current;
-                        if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); autoSizeTextarea(ta); }
-                      });
-                    }}
-                    className="ml-0.5 hidden h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-text-muted transition-colors duration-100 group-hover/row:flex hover:!bg-overlay-default hover:!text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    title="Edit summary"
-                  >
-                    <Pencil size={11} strokeWidth={1.5} />
-                  </button>
+                  <Tooltip content="Edit summary">
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditTitleValue(ticket.title);
+                        onEditingTitleKeyChange?.(ticket.key);
+                        requestAnimationFrame(() => {
+                          const ta = titleInputRef.current;
+                          if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); autoSizeTextarea(ta); }
+                        });
+                      }}
+                      className="ml-0.5 hidden h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-text-muted transition-colors duration-100 group-hover/row:flex hover:!bg-overlay-default hover:!text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    >
+                      <Pencil size={11} strokeWidth={1.5} />
+                    </button>
+                  </Tooltip>
                 )}
               </div>
 
@@ -788,9 +791,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
 
               {/* Notes + refinement signals, placed just left of the epic chip. */}
               {tags.has("notes") && ticket.notes && (
-                <span className="shrink-0" title={ticket.notes}>
+                <Tooltip content={ticket.notes} className="shrink-0">
                   <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-                </span>
+                </Tooltip>
               )}
               {/* Test-documentation state (BRDG-426): opt-in signal for the sprint
                   delivery check. When toggled on, EVERY row shows one of the four
@@ -872,14 +875,15 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
 
               {/* Sprint name — only when several sprints are visible at once (All view / saved view). */}
               {showSprint && ticket.sprintId && (
-                <span
-                  className="inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-label leading-none text-text-tertiary"
-                  style={{ backgroundColor: "var(--color-overlay-subtle)" }}
-                  title={sprintNameMap[ticket.sprintId] ?? ticket.sprintId}
-                >
-                  <IterationCw size={10} strokeWidth={1.75} className="shrink-0 opacity-70" />
-                  {sprintNameMap[ticket.sprintId] ?? ticket.sprintId}
-                </span>
+                <Tooltip content={sprintNameMap[ticket.sprintId] ?? ticket.sprintId} className="min-w-0 shrink">
+                  <span
+                    className="inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-label leading-none text-text-tertiary"
+                    style={{ backgroundColor: "var(--color-overlay-subtle)" }}
+                  >
+                    <IterationCw size={10} strokeWidth={1.75} className="shrink-0 opacity-70" />
+                    {sprintNameMap[ticket.sprintId] ?? ticket.sprintId}
+                  </span>
+                </Tooltip>
               )}
 
               {/* Conditional inline tags (do not yield space). */}
@@ -963,14 +967,15 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               {/* Reporter — read-only "by <name>" chip rather than a second avatar,
                   so it is never mistaken for the editable assignee. */}
               {tags.has("creator") && ticket.reporter && (
-                <span
-                  className="inline-flex h-5 min-w-0 max-w-[140px] shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-label leading-none text-text-tertiary"
-                  style={{ backgroundColor: "var(--color-overlay-subtle)" }}
-                  title={`Reported by ${ticket.reporter.name}`}
-                >
-                  <span className="shrink-0 opacity-60">by</span>
-                  <span className="truncate">{ticket.reporter.name}</span>
-                </span>
+                <Tooltip content={`Reported by ${ticket.reporter.name}`} className="min-w-0">
+                  <span
+                    className="inline-flex h-5 min-w-0 max-w-[140px] shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-label leading-none text-text-tertiary"
+                    style={{ backgroundColor: "var(--color-overlay-subtle)" }}
+                  >
+                    <span className="shrink-0 opacity-60">by</span>
+                    <span className="truncate">{ticket.reporter.name}</span>
+                  </span>
+                </Tooltip>
               )}
 
               {/* Open in Story Writer pill (BRDG-395): sits at the right of the metadata
@@ -982,7 +987,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--color-brand-500)]/[0.1] px-3 py-1 text-body-sm font-medium leading-none text-[var(--color-brand-500)] transition-[opacity,transform] duration-150 hover:bg-[var(--color-brand-500)]/[0.16] hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-                  title="Open in Story Writer"
                 >
                   <NotebookPen size={13} strokeWidth={1.75} aria-hidden />
                   <span>Open in Story Writer</span>
@@ -1017,9 +1021,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                       variant="avatar"
                       avatarSize={26}
                       align="right"
+                      richTooltip
                     />
                   ) : ticket.assignee ? (
-                    <Avatar assignee={ticket.assignee} size={26} />
+                    <Avatar assignee={ticket.assignee} size={26} richTooltip />
                   ) : (
                     // Read-only and unassigned: reserve the avatar's width so the column stays
                     // aligned, but render nothing (no grey placeholder circle) (BRDG-325).
@@ -1051,7 +1056,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             >
               <button
                 type="button"
-                title="Clear session"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); onDiscard(ticket.key); }}
                 className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--color-status-error)_12%,transparent)] hover:text-[var(--color-status-error)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-status-error)_18%,transparent)]"
@@ -1071,7 +1075,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             >
               <button
                 type="button"
-                title="Mark as read"
                 aria-label="Mark as read"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); onMarkRead(ticket.key); }}

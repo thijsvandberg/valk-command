@@ -19,13 +19,14 @@ const CHIP = "inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-label
 export function EpicBadge({ epic, className = "max-w-[160px]" }: { epic: string; className?: string }) {
   const c = useEpicColor(epic);
   return (
-    <span
-      className={`${CHIP} truncate border-l-2 pl-1.5 pr-2 tracking-wide ${className}`}
-      style={{ backgroundColor: c.bg, color: c.text, borderLeftColor: c.text }}
-      title={epic}
-    >
-      {epic}
-    </span>
+    <Tooltip content={epic} className="min-w-0">
+      <span
+        className={`${CHIP} truncate border-l-2 pl-1.5 pr-2 tracking-wide ${className}`}
+        style={{ backgroundColor: c.bg, color: c.text, borderLeftColor: c.text }}
+      >
+        {epic}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -58,10 +59,12 @@ export function InRefinementBadge({ sessionNames }: { sessionNames?: string[] })
 export function SprintBadge({ name }: { name: string | null }) {
   if (!name) return null;
   return (
-    <span className={`${CHIP} gap-1 bg-overlay-subtle text-text-tertiary`} title={name}>
-      <IterationCw size={10} strokeWidth={1.75} className="shrink-0 opacity-70" />
-      <span className="max-w-[120px] truncate">{name}</span>
-    </span>
+    <Tooltip content={name}>
+      <span className={`${CHIP} gap-1 bg-overlay-subtle text-text-tertiary`}>
+        <IterationCw size={10} strokeWidth={1.75} className="shrink-0 opacity-70" />
+        <span className="max-w-[120px] truncate">{name}</span>
+      </span>
+    </Tooltip>
   );
 }
 

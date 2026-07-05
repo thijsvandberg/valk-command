@@ -149,17 +149,18 @@ describe("BoardRow (headerless, BRDG-239)", () => {
 
   it("renders the reporter chip only when the creator tag is on and a reporter exists (BRDG-358)", () => {
     const reporter = { name: "Alice", initials: "A", color: "#000" };
-    // Creator tag on + reporter present -> labelled chip shown.
+    // Creator tag on + reporter present -> labelled chip shown (name visible; the
+    // "Reported by …" label now lives in the styled tooltip).
     renderRow({ ticket: makeTicket({ reporter }), tags: new Set<InlineTagId>(["creator"]) });
-    expect(screen.getByTitle("Reported by Alice")).toBeInTheDocument();
+    expect(screen.getByText("Alice")).toBeInTheDocument();
 
-    // Creator tag off -> no creator avatar even though a reporter exists.
+    // Creator tag off -> no creator chip even though a reporter exists.
     renderRow({ ticket: makeTicket({ reporter }), tags: new Set<InlineTagId>(["assignee"]) });
-    expect(screen.getAllByTitle("Reported by Alice")).toHaveLength(1);
+    expect(screen.getAllByText("Alice")).toHaveLength(1);
 
     // No reporter -> nothing, even with the tag on.
     renderRow({ ticket: makeTicket({ reporter: null }), tags: new Set<InlineTagId>(["creator"]) });
-    expect(screen.getAllByTitle("Reported by Alice")).toHaveLength(1);
+    expect(screen.getAllByText("Alice")).toHaveLength(1);
   });
 
   it("renders the Story Writer link only when showStoryWriterLink is set, pointing at /write (BRDG-395)", () => {

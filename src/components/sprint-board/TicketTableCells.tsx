@@ -85,23 +85,30 @@ export function QualityBadge({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   if (!ticketKey || !onTogglePopover) {
-    return <span title={score !== null ? `Quality: ${score}/100` : undefined}>{content}</span>;
+    return score !== null ? (
+      <Tooltip content={`Quality: ${score}/100`}>
+        <span>{content}</span>
+      </Tooltip>
+    ) : (
+      <span>{content}</span>
+    );
   }
 
   return (
     <>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onTogglePopover();
-        }}
-        className="cursor-pointer rounded px-1 py-0.5 leading-none hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-strong"
-        title={score !== null ? `Quality: ${score}/100` : "No review"}
-      >
-        {content}
-      </button>
+      <Tooltip content={score !== null ? `Quality: ${score}/100` : "No review"}>
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePopover();
+          }}
+          className="cursor-pointer rounded px-1 py-0.5 leading-none hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-strong"
+        >
+          {content}
+        </button>
+      </Tooltip>
       {isPopoverOpen && (
         <ReviewPopover
           ticketKey={ticketKey}

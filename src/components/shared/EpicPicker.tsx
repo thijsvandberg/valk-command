@@ -99,7 +99,8 @@ function EpicPickerInner({
   return (
     <>
       <BasePicker.Trigger
-        title={value ? `Epic: ${value.name}` : emptyLabel}
+        // No native title: a set epic shows the styled EpicBadge tooltip; the
+        // empty state renders emptyLabel as visible text.
         className={
           value
             ? `inline-flex min-w-0 max-w-full items-center rounded-md cursor-pointer transition-[box-shadow,transform] duration-150 hover:ring-1 hover:ring-inset hover:ring-border-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]${triggerClassName ? ` ${triggerClassName}` : ""}`

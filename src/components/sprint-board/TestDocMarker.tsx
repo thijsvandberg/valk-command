@@ -2,6 +2,7 @@
 
 import { FileCheck2, FileX2 } from "lucide-react";
 import { prefetchTestDoc } from "@/lib/test-doc-prefetch";
+import { Tooltip } from "@/components/shared/Tooltip";
 
 export type TestDocMarkerState = "accepted" | "draft" | "not_needed" | null;
 
@@ -48,26 +49,29 @@ export function TestDocMarker({
 
   if (!onOpenReview) {
     return (
-      <span data-testid={`test-doc-state-${state ?? "none"}`} title={title} className="inline-flex shrink-0">
-        {icon}
-      </span>
+      <Tooltip content={title} className="shrink-0">
+        <span data-testid={`test-doc-state-${state ?? "none"}`} className="inline-flex shrink-0">
+          {icon}
+        </span>
+      </Tooltip>
     );
   }
 
   return (
-    <button
-      type="button"
-      data-testid={`test-doc-state-${state ?? "none"}`}
-      title={title}
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpenReview();
-      }}
-      onMouseEnter={() => prefetchTestDoc(ticketKey)}
-      onPointerDown={(e) => e.stopPropagation()}
-      className="grid h-6 w-6 -my-0.5 shrink-0 cursor-pointer place-items-center rounded-md outline-none transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-    >
-      {icon}
-    </button>
+    <Tooltip content={title} className="shrink-0">
+      <button
+        type="button"
+        data-testid={`test-doc-state-${state ?? "none"}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenReview();
+        }}
+        onMouseEnter={() => prefetchTestDoc(ticketKey)}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="grid h-6 w-6 -my-0.5 shrink-0 cursor-pointer place-items-center rounded-md outline-none transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+      >
+        {icon}
+      </button>
+    </Tooltip>
   );
 }

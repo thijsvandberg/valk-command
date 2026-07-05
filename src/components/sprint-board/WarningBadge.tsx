@@ -6,6 +6,7 @@ import type { Ticket } from "@/types/ticket";
 import { type WarningKind, WARNING_LABELS } from "@/components/sprint-board/warning-filter";
 import { IndicatorPopover } from "@/components/sprint-board/OpenSubtasksIndicator";
 import { AddSubtasksModal } from "@/components/sprint-board/AddSubtasksModal";
+import { Tooltip } from "@/components/shared/Tooltip";
 
 interface WarningBadgeProps {
   kind: WarningKind;
@@ -68,16 +69,17 @@ function ClosedSubtasksBadge({
 
   return (
     <span className="relative inline-flex shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-        className={BADGE_BASE + BADGE_INTERACTIVE}
-        title={`${ticket.openSubtaskCount ?? 0} of ${ticket.totalSubtaskCount ?? 0} subtasks still open`}
-      >
-        {icon}
-        {label}
-      </button>
+      <Tooltip content={`${ticket.openSubtaskCount ?? 0} of ${ticket.totalSubtaskCount ?? 0} subtasks still open`}>
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+          className={BADGE_BASE + BADGE_INTERACTIVE}
+        >
+          {icon}
+          {label}
+        </button>
+      </Tooltip>
       {open && (
         <IndicatorPopover
           ticketKey={ticket.key}
@@ -107,15 +109,16 @@ function NoSubtasksBadge({
 
   return (
     <span className="inline-flex shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-        className={BADGE_BASE + BADGE_INTERACTIVE}
-        title="Add subtasks"
-      >
-        {icon}
-        {label}
-      </button>
+      <Tooltip content="Add subtasks">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+          className={BADGE_BASE + BADGE_INTERACTIVE}
+        >
+          {icon}
+          {label}
+        </button>
+      </Tooltip>
       {open && (
         <AddSubtasksModal
           open

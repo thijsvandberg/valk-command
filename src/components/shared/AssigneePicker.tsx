@@ -39,6 +39,7 @@ export function AssigneePicker({
   textClass = "text-body-lg",
   variant = "default",
   avatarSize = 18,
+  richTooltip = false,
 }: {
   value: Assignee | null;
   onChange: (user: AssignableUser | null) => void;
@@ -51,10 +52,12 @@ export function AssigneePicker({
   // default trigger shows the assignee name alongside the avatar.
   variant?: "default" | "avatar";
   avatarSize?: number;
+  // Opt-in styled Tooltip on the trigger instead of the native title (BRDG board rows).
+  richTooltip?: boolean;
 }) {
   return (
     <BasePicker.Root portal={true} align={align} popoverHeight={440} onOpenChange={onOpenChange}>
-      <AssigneePickerInner value={value} onChange={onChange} textClass={textClass} variant={variant} avatarSize={avatarSize} />
+      <AssigneePickerInner value={value} onChange={onChange} textClass={textClass} variant={variant} avatarSize={avatarSize} richTooltip={richTooltip} />
     </BasePicker.Root>
   );
 }
@@ -65,12 +68,14 @@ function AssigneePickerInner({
   textClass,
   variant,
   avatarSize,
+  richTooltip,
 }: {
   value: Assignee | null;
   onChange: (user: AssignableUser | null) => void;
   textClass: string;
   variant: "default" | "avatar";
   avatarSize: number;
+  richTooltip: boolean;
 }) {
   const { open, query, handleClose } = BasePicker.useContext();
   const [teamFilter, setTeamFilter] = useState<string | null>(null);
@@ -125,24 +130,32 @@ function AssigneePickerInner({
     );
   }
 
+  // richTooltip routes the label through the inner Avatar's styled Tooltip (the
+  // name), so the trigger drops its native title to avoid a double tooltip.
+  const titleText = value
+    ? `Assignee: ${value.name}`
+    : variant === "avatar"
+      ? "Unassigned. Click to assign."
+      : "Unassigned";
+
   return (
     <>
       {variant === "avatar" ? (
         <BasePicker.Trigger
-          title={value ? `Assignee: ${value.name}` : "Unassigned. Click to assign."}
+          title={richTooltip ? undefined : titleText}
           className="inline-flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
           style={{ transition: "opacity 0.15s ease" }}
         >
-          <Avatar assignee={value} size={avatarSize} />
+          <Avatar assignee={value} size={avatarSize} richTooltip={richTooltip} />
         </BasePicker.Trigger>
       ) : (
         <BasePicker.Trigger
-          title={value ? `Assignee: ${value.name}` : "Unassigned"}
+          title={richTooltip ? undefined : titleText}
           className="inline-flex items-center gap-2 rounded-lg px-2 py-1 -mr-2 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
           style={{ transition: "background-color 0.15s ease" }}
         >
           <span className={`truncate ${textClass} text-text-secondary`}>{value?.name ?? "Unassigned"}</span>
-          <Avatar assignee={value} size={20} />
+          <Avatar assignee={value} size={20} richTooltip={richTooltip} />
         </BasePicker.Trigger>
       )}
 

@@ -82,7 +82,14 @@ trap Tab and handle Escape (launcher + nested ConfirmDialog). Options:
 - `Tooltip` — the one text tooltip: hover/focus with delay, centered placement via the
   anchored-position engine, `z-tooltip`. Rich interactive hover cards
   (TicketStatusPill card, RefinementGemHoverCard) are hover *panels*, not tooltips —
-  separate components on the tooltip layer.
+  separate components on the tooltip layer. Prefer it over the native `title` attribute
+  on board-row markers (test-doc, notes, sprint/reporter chips, warning/quality badges,
+  EpicBadge/SprintBadge, Avatar). Pickers and the Avatar expose an opt-in `richTooltip`
+  prop (`title={richTooltip ? undefined : text}` + wrap the trigger in `Tooltip`) so the
+  board row swaps the native title for the styled one while other usages keep the plain
+  title — Estimate/BV/SP, `AssigneePicker`/`Avatar` support it; the epic pill relies on
+  `EpicBadge`'s own tooltip. Skip elements that already own a hover *panel* (issue pill,
+  refinement gem) — a second tooltip would collide.
 
 ## Menus
 
