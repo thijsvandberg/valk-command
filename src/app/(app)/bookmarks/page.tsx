@@ -24,6 +24,7 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { CONTENT_MAX } from "@/lib/layout";
 
 const SidePanel = dynamic(
   () => import("@/components/sprint-board/SidePanel").then((m) => ({ default: m.SidePanel })),
@@ -43,7 +44,7 @@ export default function BookmarksPage() {
   usePageTitle("Bookmarks");
   const { toast, showToast, dismissToast } = useToast();
   const { data: allTickets, error, isLoading, mutate: mutateTickets } = useTickets("__all__");
-  const { data: order } = useSWR<BookmarkEntry[]>(ticketsApi.bookmarksUrl(), swrFetcher, { revalidateOnFocus: false });
+  const { data: order, isLoading: orderLoading } = useSWR<BookmarkEntry[]>(ticketsApi.bookmarksUrl(), swrFetcher, { revalidateOnFocus: false });
   const { sprints: rawSprints } = useJiraSprints();
 
   const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
@@ -53,15 +54,16 @@ export default function BookmarksPage() {
     return m;
   }, [sprints]);
 
-  // Bookmarked subset with the optimistic overlay applied (so a toggle reflects here),
-  // ordered by the batch endpoint's bookmarkedAt-desc order.
+  // The /api/bookmarks batch is the authoritative "what is bookmarked" set (already
+  // bookmarkedAt-desc); hydrate each entry with the full ticket from the All-view list
+  // so rows render readiness/epic/etc. Deriving from the batch (not `allTickets`
+  // filtered) means any un-bookmark — from the row menu, bulk bar or the side panel —
+  // drops the row as soon as the batch revalidates, and the open panel auto-closes
+  // when its row disappears.
   const rows = useMemo(() => {
-    const bm = (allTickets ?? []).filter((t) => t.bookmarked);
-    if (order && order.length) {
-      const idx = new Map(order.map((b, i) => [b.key, i]));
-      bm.sort((a, b) => (idx.get(a.key) ?? Number.MAX_SAFE_INTEGER) - (idx.get(b.key) ?? Number.MAX_SAFE_INTEGER));
-    }
-    return bm;
+    if (!order) return [];
+    const byKey = new Map((allTickets ?? []).map((t) => [t.key, t]));
+    return order.map((e) => byKey.get(e.key)).filter((t): t is Ticket => Boolean(t));
   }, [allTickets, order]);
 
   // --- Selection ---
@@ -140,7 +142,7 @@ export default function BookmarksPage() {
 
   const contentBody = () => {
     if (error) return <DataErrorState error={error} variant="full" onRetry={() => void mutateTickets()} />;
-    if (isLoading && rows.length === 0) return <LoadingState variant="spinner" label="Loading bookmarks..." />;
+    if ((isLoading || orderLoading) && rows.length === 0) return <LoadingState variant="spinner" label="Loading bookmarks..." />;
     if (rows.length === 0) {
       return (
         <EmptyState
@@ -184,6 +186,7 @@ export default function BookmarksPage() {
                 showSprint
                 sprintNameMap={sprintNameMap}
                 readinessMap={readinessMap}
+                hideEmptyAssignee
                 selectedTicket={selectedKey}
                 onSelectTicket={(key) => setSelectedKey(key)}
                 onCheckboxClick={(key, clickIdx, shiftKey) => handleRowCheckbox(key, clickIdx, shiftKey)}
@@ -216,7 +219,7 @@ export default function BookmarksPage() {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className={`flex-1 overflow-y-auto px-8 py-5 ${checkedKeys.size > 0 ? "pb-28" : ""}`}>
-            {contentBody()}
+            <div className={CONTENT_MAX}>{contentBody()}</div>
           </div>
         </div>
 

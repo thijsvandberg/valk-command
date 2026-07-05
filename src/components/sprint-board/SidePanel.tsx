@@ -39,6 +39,8 @@ import {
   Layers,
   ClipboardCheck,
   FileCheck2,
+  Bookmark,
+  BookmarkX,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -460,6 +462,22 @@ export function SidePanel({
           </button>
         </Tooltip>
       )}
+
+      {/* Bookmark toggle (BRDG-355): a header action so a story can be un-bookmarked
+          straight from this side view once reviewed. Violet BookmarkX signals removal. */}
+      <Tooltip content={h.bookmarked ? "Remove bookmark" : "Bookmark for quick reference"}>
+        <button
+          type="button"
+          onClick={() => void h.handleToggleBookmark()}
+          aria-pressed={h.bookmarked}
+          aria-label={h.bookmarked ? "Remove bookmark" : "Bookmark"}
+          className={iconBtnClass}
+        >
+          {h.bookmarked
+            ? <BookmarkX size={14} strokeWidth={2} className="text-[var(--meta-bv-fg)]" />
+            : <Bookmark size={14} strokeWidth={2} />}
+        </button>
+      </Tooltip>
 
       <div className="relative">
         <button
