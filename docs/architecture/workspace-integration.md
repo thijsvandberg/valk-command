@@ -235,7 +235,7 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   without a doc). "Copy document" puts the stakeholder markdown on the clipboard; "Generate
   missing" feeds all gap keys back into the BRDG-426 validation queue. Each row on the gap
   lists (missing + "Not finished yet") carries its per-item actions (`RowActions`) collapsed
-  behind a single "..." overflow so the row reads as a document line (BRDG-472): **Open**/**Edit**
+  behind a single "..." overflow so the row reads as a document line (BRDG-480): **Open**/**Edit**
   (the review popup in view mode, returns to the bundle; "Edit" once a doc exists, else "Open"),
   **Generate**/**Regenerate** (the review popup with auto-start; "Regenerate" once a saved doc or
   an unreviewed draft exists), and **Skip** (marks the story "no test doc needed" inline via
@@ -277,6 +277,29 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   `TEST_DOC_POLL_INTERVAL_MS` / `TEST_DOC_POLL_MAX_ATTEMPTS` (defaults 3000 / 120);
   the client window stays hardcoded at the defaults (the vars are server-only), so
   raising the server attempts can make the board warn while the draft still lands later.
+- **Auto-generation on move-to-Test (BRDG-471)**: when a ticket in a PINNED sprint transitions
+  into Test, Bridge kicks off generation automatically — no click. `maybeAutoGenerateTestDoc`
+  (`src/lib/test-doc-background.ts`) fires fire-and-forget from BOTH transition detection points —
+  the Jira-origin sync (`upsertIssue`, after the transaction commits) and the Bridge-origin
+  `PUT /api/tickets/[key]/status` (past the Jira-rejection guard) — sharing the route's
+  context-gather + dispatch via the extracted `kickoffTestDocGeneration`. It no-ops unless EVERY
+  gate holds: a real (non-DRAFT) key, the ticket sits in a pinned sprint (`ticket_sprint` joined to
+  `sprint_slot`), no existing doc/draft/not-needed marker (`deriveTestDocState === null`), and no
+  generation already in flight (a per-process `Set` guard cleared in `persistTestDocDraftWhenDone`'s
+  finally). It only ever writes a draft; acceptance (which writes Jira) stays a deliberate PO action.
+  `writeTestDocDraft` emits a `test_doc` ticket event so an open board revalidates and surfaces the
+  draft without the client-side poll the manual flow relies on.
+- **Persistent "draft ready to accept" board line (BRDG-471)**: a waiting draft is a fourth,
+  STATE-DERIVED reason in the status-change queue (`listUnseenStatusChanges`,
+  `status-changes-query.ts`) — a ticket with `test_doc_draft` set and no accepted `test_doc`
+  surfaces a line reading "Test doc draft ready to accept" with a warning-tinted **Review test doc**
+  action, distinct from an accepted doc's neutral **View test doc** (`StatusChangeLine`). Having no
+  seen-key it is NOT dismissible and persists until the draft is accepted or the ticket is marked
+  not-needed; dismissing a co-occurring status change collapses the row to the standalone
+  draft-ready line. `useStatusChanges` lists `test_doc` among its revalidate kinds so it appears
+  live. The queue is scoped to the currently-viewed sprint's keys and hidden when the board's
+  "updates" toggle is collapsed, so the detail-view banner + coverage badge remain the always-on
+  surfaces for a pending draft.
 - **View mode**: the row marker and the status line's View button open the modal with
   `autoGenerate: false` — a key without any cached doc lands IDLE with an explicit Generate
   button; opening the modal never silently starts an agent task. Explicit generate entry
@@ -289,7 +312,10 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   marker (direct PUTs using the popup's overlay + cache choreography via the shared
   `revalidateTestDocViews` in `test-doc-prefetch`), and Regenerate (modal with
   `regenerateOnOpen`, which queues a fresh generation next to the cached versions; single-key
-  only, and a not-needed marker still suppresses it per BRDG-467).
+  only, and a not-needed marker still suppresses it per BRDG-467). A pending draft additionally
+  raises a prominent warning-tinted banner at the TOP of the meta panel ("Test doc draft ready
+  for review", with a Review & accept action opening the modal); it is additive to the row and
+  clears with the same overlay/cache choreography on accept or not-needed (BRDG-471).
 - **Bundle layout (2026-07-04 redesign)**: the sprint bundle renders as ONE editorial
   document, not a card stack — a sticky contents rail on the left (state-dotted outline;
   entries scroll the document pane via `bundleAnchorId`) and a bounded reading column on
