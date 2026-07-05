@@ -137,6 +137,10 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   // qualityStale removed in BRDG-017: staleness is now computed from local edits vs Jira mirror
   effortScores: text("effort_scores"),
   poNotes: text("po_notes"),
+  // BRDG-355: manual, persistent PO bookmark. ISO timestamp so the bookmark list
+  // gets free most-recently-bookmarked-first ordering; null = not bookmarked.
+  // Bridge-local, never synced to Jira. The bookmark's optional note reuses poNotes.
+  bookmarkedAt: text("bookmarked_at"),
   poPriority: integer("po_priority"),
   testStatus: text("test_status", {
     enum: ["untested", "pass", "fail"],
