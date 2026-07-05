@@ -6,7 +6,7 @@ import { InlineAlert } from "@/components/shared/InlineAlert";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { CaptionButton } from "@/components/sprint-board/CaptionButton";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
-import { relativeDate } from "@/lib/date-utils";
+import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import type { EntryState } from "@/components/sprint-board/useTestDocReview";
 
 interface TestDocReviewPaneProps {
@@ -64,19 +64,21 @@ export function TestDocReviewPane({
           yourself below to enable saving.
         </InlineAlert>
       )}
-      {/* A doc that exists but is NOT saved must be unmissable; a saved doc only
-          gets a quiet provenance line (below, in the toolbar row) — the old
-          explanatory banner said nothing (PO feedback). */}
-      {(entry.source === "draft" || entry.source === "fresh") && !generating && entry.doc.trim() && (
-        <InlineAlert variant="warning">
-          Generated{entry.cachedAt ? ` ${new Date(entry.cachedAt).toLocaleString()}` : ""} — <strong>not saved yet</strong>.
-          Save it to count for the sprint delivery.
-        </InlineAlert>
-      )}
+      {/* The unsaved state is a quiet chip in the toolbar row (not a loud banner —
+          PO feedback). The one thing that DOES warrant an alert is a story that
+          changed after the doc was generated: that draft may no longer cover it. */}
       {!generating && docIsStale && (
         <InlineAlert variant="warning">
-          The story content was updated{entry.storyUpdatedAt ? ` ${new Date(entry.storyUpdatedAt).toLocaleString()}` : ""} —
-          AFTER this doc was made. Check whether it still covers the story, or Regenerate.
+          The story changed{" "}
+          {entry.storyUpdatedAt && (
+            <Tooltip content={formatAbsoluteDate(entry.storyUpdatedAt)}>
+              <span className="underline decoration-dotted underline-offset-2">
+                {relativeDate(entry.storyUpdatedAt)}
+              </span>
+            </Tooltip>
+          )}{" "}
+          — after this {entry.source === "saved" ? "doc was saved" : "draft was generated"}.
+          It may no longer cover the story; review or regenerate before saving.
         </InlineAlert>
       )}
       {entry.error && <InlineAlert variant="error">{entry.error}</InlineAlert>}
@@ -97,13 +99,33 @@ export function TestDocReviewPane({
           {entry.source === "saved" && entry.cachedAt && (
             // The timestamp lives in the tooltip (absolute + relative); the
             // toolbar only carries the quiet state chip.
-            <Tooltip content={`Saved ${new Date(entry.cachedAt).toLocaleString()} · ${relativeDate(entry.cachedAt)}`}>
+            <Tooltip content={`Saved ${formatAbsoluteDate(entry.cachedAt)} · ${relativeDate(entry.cachedAt)}`}>
               <span
                 data-testid="test-doc-saved-at"
                 className="inline-flex items-center gap-1.5 rounded-md bg-overlay-subtle px-2 py-0.5 text-caption font-medium text-text-tertiary"
               >
                 <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-status-success)]" />
                 Saved
+              </span>
+            </Tooltip>
+          )}
+          {(entry.source === "draft" || entry.source === "fresh") && (
+            // Unsaved draft: the quiet counterpart to the Saved chip. Amber-tinted
+            // so it reads as "attention" without shouting; the generated timestamp
+            // (absolute) lives in the tooltip, the relative age on the chip.
+            <Tooltip
+              content={
+                entry.cachedAt
+                  ? `Generated ${formatAbsoluteDate(entry.cachedAt)} · ${relativeDate(entry.cachedAt)}`
+                  : "Not saved yet"
+              }
+            >
+              <span
+                data-testid="test-doc-not-saved"
+                className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-warning-subtle)] px-2 py-0.5 text-caption font-medium text-[var(--color-status-warning)]"
+              >
+                <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-status-warning)]" />
+                Not saved yet{entry.cachedAt ? ` · ${relativeDate(entry.cachedAt)}` : ""}
               </span>
             </Tooltip>
           )}

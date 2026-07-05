@@ -292,8 +292,8 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("From last time"),
       );
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
-      // An unsaved doc must be unmissable.
-      expect(screen.getByText(/not saved yet/)).toBeInTheDocument();
+      // An unsaved doc shows a quiet "Not saved yet" chip (not a loud banner).
+      expect(screen.getByTestId("test-doc-not-saved")).toHaveTextContent("Not saved yet");
     });
 
     it("shows the accepted doc when no draft exists, offering regenerate", async () => {
@@ -310,7 +310,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
       // Saved docs get a quiet state chip (timestamp in its tooltip), not a banner.
       expect(screen.getByTestId("test-doc-saved-at")).toHaveTextContent("Saved");
-      expect(screen.queryByText(/not saved yet/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId("test-doc-not-saved")).not.toBeInTheDocument();
       expect(screen.getByText("Regenerate").closest("button")).not.toBeDisabled();
     });
 
@@ -323,7 +323,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       });
       render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
 
-      await waitFor(() => expect(screen.getByText(/AFTER this doc was made/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/review or regenerate before saving/i)).toBeInTheDocument());
     });
 
     it("does not warn when the story change is only the doc save echo", async () => {
@@ -336,7 +336,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
 
       await waitFor(() => expect(screen.getByTestId("test-doc-preview")).toBeInTheDocument());
-      expect(screen.queryByText(/AFTER this doc was made/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/review or regenerate before saving/i)).not.toBeInTheDocument();
     });
 
     it("Regenerate from a cached doc triggers a fresh generation", async () => {
