@@ -755,3 +755,17 @@ Key bottlenecks / lessons:
 - **Browser verification caught a state bug unit tests structurally could not.** `useTicketDetailPage` built its `Ticket` from the detail payload but omitted `bookmarked`, so the single-view toggle always rendered un-bookmarked. The `TicketMetaContent` test passed `bookmarked` directly via its fixture, so it never exercised the page's mapper. Only clicking through `/tickets/[key]` in the browser revealed it.
 - **Working-tree hygiene under an active parallel session:** BRDG-473/474 was committing to shared files (incl. `BoardRow.tsx`) throughout. Held back the one overlapping edit (`BoardRow.tsx` badge render) until they committed, then committed it clean; put `BookmarkBadge` in a new file to avoid the dirty `IssueMetaBadges.tsx`. Nothing entangled.
 - **Out-of-scope failure blocks the shared gate:** BRDG-474 introduced a focusless `<button>` in `StatusChangeLine.tsx`, tripping the BRDG-421 ratchet (8 > 7). Flagged in `docs/investigations/2026-07-05-brdg421-focusless-ratchet-regression.md` rather than patched (another feature's active file). It is the sole remaining full-suite failure; all bookmark tests pass.
+
+## BRDG-475 — Quick optional note when bookmarking (2026-07-05)
+
+Medium UI story: metadata GET route + a global `BookmarkNoteProvider` hosting one transient capture card (`ToastCard` + shared `TextInput`), wired at both bookmark-on choke points (the `useRowActions.runFieldEdit` single-item path + the two header toggles). 45 new tests, full suite green (7838), build green. Smooth implement; the two friction points below were both external/tooling, not the feature.
+
+| Phase | Note |
+|-------|------|
+| Plan (subagent) | High-value: mapped both bookmark-on choke points and confirmed `ticketsApi.getMetadata` was dead (no GET route), so pre-fill needed a new GET. Pre-called the async-clobber ref pitfall the pre-fill test now guards. |
+| Implement | Per-checkbox commits, lint+typecheck green throughout. Card state machine (timer / engage / pre-fill guard / save-vs-dismiss) landed clean. |
+| Verify | Full suite surfaced a pre-existing red; browser E2E confirmed the card end-to-end (DB write) after a timer/coordinate fight. |
+
+Key bottlenecks / lessons:
+- **The shared full-suite gate was already red from parallel work.** The BRDG-421 focusless-button ratchet was at 8>7 due to `StatusChangeLine.tsx`'s `INLINE_LINK` (a real a11y miss from BRDG-474, flagged-not-fixed by the earlier BRDG-355 run). My own new `<button>` was correctly focus-bearing (verified with the scanner). Applied the one-line `focus-visible:` fix to the shared const (drops back to 7, baseline unchanged) rather than leave `dev` red. Lesson: when a guard trips after your change, run the scanner on YOUR file first before assuming it's yours.
+- **A transient auto-dismissing card races browser automation.** The card's ~6s untouched-dismiss timer fired between my separate `find`/`screenshot`/`click` calls (model latency > TTL), so refs went stale and manual clicks hit empty space (leaving `po_notes` null on the first attempt). Fix: collapse trigger→click-input→type→Enter into ONE `browser_batch` so no inter-call latency intervenes; then confirm the write at the DB layer. Also hit the screenshot-space (1400w) vs viewport-space (1456w) coordinate mismatch — element `ref` clicks are scaling-proof, but the card's short TTL made even a find-then-click race the dismiss.
