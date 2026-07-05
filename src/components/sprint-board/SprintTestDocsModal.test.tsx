@@ -481,6 +481,24 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(screen.getByRole("button", { name: "Copy document (4)" })).toBeInTheDocument();
   });
 
+  it("offers a Jump to first draft link that scrolls to the draft block", () => {
+    const scrollIntoView = vi.fn();
+    // jsdom does not implement scrollIntoView; stub it so jumpTo can run.
+    Element.prototype.scrollIntoView = scrollIntoView;
+    mockData = {
+      ...BASE,
+      documented: [
+        ...BASE.documented,
+        { key: "VPL-9", type: "story", title: "Draft story", status: "DONE", storyPoints: null, epic: null, doc: "**Draft feature**\n\n- Confirm D", isDraft: true },
+      ],
+    };
+    renderModal();
+    const notice = screen.getByTestId("test-docs-draft-notice");
+    fireEvent.click(within(notice).getByText("Jump to first draft"));
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect((scrollIntoView.mock.instances[0] as HTMLElement).id).toBe("bundle-block-VPL-9");
+  });
+
   it("counts a ticked unfinished doc toward the Copy button total", () => {
     mockData = {
       ...BASE,

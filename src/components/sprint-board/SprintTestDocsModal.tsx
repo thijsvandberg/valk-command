@@ -498,6 +498,11 @@ export function SprintTestDocsModal({
       documentedAll.filter((i) => i.isDraft).length + internalAll.filter((i) => i.isDraft).length,
     [documentedAll, internalAll],
   );
+  // First draft block in reading order, so the notice can scroll straight to it.
+  const firstDraftKey = useMemo(
+    () => [...documentedAll, ...internalAll].find((i) => i.isDraft)?.key ?? null,
+    [documentedAll, internalAll],
+  );
 
   const document = useMemo(
     () => buildTestDocDocument(documentedAll, internalAll, includeDrafts),
@@ -681,9 +686,21 @@ export function SprintTestDocsModal({
                       data-testid="test-docs-draft-notice"
                       className="mb-8 border-l-2 border-[var(--color-brand-400)]/45 pl-4"
                     >
-                      <p className="text-body-sm font-medium text-text-secondary">
-                        {draftCount} {draftCount === 1 ? "story still has" : "stories still have"} a draft test doc
-                      </p>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="text-body-sm font-medium text-text-secondary">
+                          {draftCount} {draftCount === 1 ? "story still has" : "stories still have"} a draft test doc
+                        </p>
+                        {firstDraftKey && (
+                          <button
+                            type="button"
+                            onClick={() => jumpTo(`block-${firstDraftKey}`)}
+                            className="shrink-0 cursor-pointer text-body-sm text-text-tertiary underline-offset-2 hover:text-[var(--color-brand-400)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                            style={{ transition: "color 0.15s ease" }}
+                          >
+                            Jump to first draft
+                          </button>
+                        )}
+                      </div>
                       <p className="mt-0.5 text-body-sm text-text-muted">
                         Included below, marked as draft — review to finalize. Use “Include drafts” to copy them.
                       </p>
