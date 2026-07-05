@@ -272,6 +272,10 @@ export interface Ticket {
   businessValue: number | null;
   editState: TicketEditState;
   notes: string;
+  // BRDG-355: whether the PO has bookmarked this ticket. Summary flag derived
+  // from ticketMetadata.bookmarkedAt; drives the board-row badge and toggle state.
+  // Optional like the neighbouring metadata fields; the API always populates it.
+  bookmarked?: boolean;
   // Stakeholder test documentation state (BRDG-426): accepted doc, unreviewed
   // draft cache, explicit "no doc needed" marker, or nothing. Drives the
   // toggleable board-row marker.

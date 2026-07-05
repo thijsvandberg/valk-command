@@ -174,6 +174,19 @@ describe("GET /api/tickets", () => {
     expect(data[0].qualityScore).toBe(85);
   });
 
+  it("exposes bookmarked as a boolean derived from bookmarkedAt (BRDG-355)", async () => {
+    seedTicket(testDb, "VPL-100");
+    seedTicket(testDb, "VPL-101");
+    testDb.insert(ticketMetadata).values([
+      { jiraKey: "VPL-100", bookmarkedAt: new Date().toISOString() },
+    ]).run();
+
+    const data = await (await GET(new Request("http://localhost:3100/api/tickets"))).json();
+    const byKey = Object.fromEntries(data.map((t: { key: string; bookmarked: boolean }) => [t.key, t.bookmarked]));
+    expect(byKey["VPL-100"]).toBe(true);
+    expect(byKey["VPL-101"]).toBe(false);
+  });
+
   it("derives testDocState from the metadata doc/draft columns (BRDG-426)", async () => {
     seedTicket(testDb, "VPL-100");
     seedTicket(testDb, "VPL-101");

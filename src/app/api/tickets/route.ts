@@ -148,6 +148,7 @@ async function getTickets(request: Request) {
       businessValue: meta?.businessValue ?? null,
       editState,
       notes: meta?.poNotes ?? "",
+      bookmarked: meta?.bookmarkedAt != null,
       testDocState: deriveTestDocState(meta),
       jiraRank: t.jiraRank ?? null,
       sprintId: t.sprintName || undefined,

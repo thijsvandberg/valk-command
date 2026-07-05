@@ -157,6 +157,7 @@ function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof run
     businessValue: meta?.businessValue ?? null,
     editState,
     notes: meta?.poNotes ?? "",
+    bookmarked: meta?.bookmarkedAt != null,
     testDocState: deriveTestDocState(meta),
     sprintId: t.sprintName ?? undefined,
     removedFromJiraAt: t.removedFromJiraAt ?? null,
