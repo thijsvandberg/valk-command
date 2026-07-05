@@ -738,3 +738,20 @@ Key bottlenecks / lessons:
 - **`nohup ... &` alone does not survive Ctrl+C on macOS/bash: npm installs its own SIGINT handler**, overriding the inherited ignore-disposition, so group-wide SIGINT killed VRW. Fix: start the child in its own session (`nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' -- npm ...`). Verified empirically before and after.
 - **Parallel work broke typecheck on `dev` mid-run:** commit `d4cbfe5d` (BRDG-460 exploration sandbox) has a TS error in `src/app/dev/exploration/story-writer-chrome/page.tsx`, so `npm run verify` failed on tsc. Triaged with two throwaway-worktree typechecks: clean at my feat commit, red at dev HEAD. Left untouched (active parallel work, out of scope); tests were run directly instead.
 - **`npm run build` deliberately skipped:** zero app code changed, and the PO's live prod server serves from this checkout's shared `.next` — a rebuild under a running `next start` risks taking prod down for no verification value.
+
+## BRDG-355 — Bookmark a story for easy reference (2026-07-05)
+
+Large UI story: schema + service + endpoint + overlay + row-actions dispatch + badge + 6 toggle surfaces + launcher list + /bookmarks page + a post-review UX polish pass. Went smoothly overall (7816 tests green, build green); notable friction below.
+
+| Phase | Note |
+|-------|------|
+| Implement (units 1-11) | Per-checkbox commits, all green as I went. |
+| Full-suite verify | Surfaced 3 failures the per-file runs missed (see below). |
+| Post-review polish | Icon-only toggles, shared tooltips, direct bulk action, inbox hover, /bookmarks → standard BoardRow table. |
+| Browser E2E | Caught 1 real bug unit tests missed. |
+
+Key bottlenecks / lessons:
+- **Adding a field/prop breaks distant test mocks that only the FULL suite catches.** Surfacing `bookmarked` on `Ticket` + `computeBookmarkState`/`bulkSetBookmarked` on the row-actions hook + a `Bookmark` lucide icon broke: the hand-written `useRowActions` mock in `SprintBoard.moveMeter.test.tsx`, the `routes.test.tsx` manifest (new `/bookmarks` page), and the `lucide-react` stubs in `TicketMetaContent.test.tsx` + `BoardRow.test.tsx`. Per-file test runs during implementation were green; only `npm run verify` (full suite) caught them. Lesson: run the full suite before declaring done, and when adding a widely-consumed field, grep for hand-rolled mocks of the touched hooks/modules.
+- **Browser verification caught a state bug unit tests structurally could not.** `useTicketDetailPage` built its `Ticket` from the detail payload but omitted `bookmarked`, so the single-view toggle always rendered un-bookmarked. The `TicketMetaContent` test passed `bookmarked` directly via its fixture, so it never exercised the page's mapper. Only clicking through `/tickets/[key]` in the browser revealed it.
+- **Working-tree hygiene under an active parallel session:** BRDG-473/474 was committing to shared files (incl. `BoardRow.tsx`) throughout. Held back the one overlapping edit (`BoardRow.tsx` badge render) until they committed, then committed it clean; put `BookmarkBadge` in a new file to avoid the dirty `IssueMetaBadges.tsx`. Nothing entangled.
+- **Out-of-scope failure blocks the shared gate:** BRDG-474 introduced a focusless `<button>` in `StatusChangeLine.tsx`, tripping the BRDG-421 ratchet (8 > 7). Flagged in `docs/investigations/2026-07-05-brdg421-focusless-ratchet-regression.md` rather than patched (another feature's active file). It is the sole remaining full-suite failure; all bookmark tests pass.
