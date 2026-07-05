@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownToLine, Check, FileCheck2, Loader2, Rocket } from "lucide-react";
+import { ArrowDownToLine, Check, Loader2, Rocket } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo } from "@/hooks/usePipelines";
@@ -34,11 +34,107 @@ function StatusWord({ status }: { status: JiraStatus }) {
 const ACTION_BTN =
   "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-caption font-medium text-text-secondary transition-colors duration-150";
 
-// BRDG-471: a waiting draft needs a call-to-action, not the neutral outline. A
-// warning-tinted fill (same hue as the detail row's "Draft pending review") makes
-// "Review test doc" read as an action, distinct from an accepted doc's passive View.
-const REVIEW_BTN =
-  "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-status-warning)]/35 bg-[var(--color-status-warning)]/[0.08] px-2 py-1 text-caption font-medium text-[var(--color-status-warning)] transition-colors duration-150 hover:bg-[var(--color-status-warning)]/[0.15] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
+// Shared inline-link recipe for the woven-in clauses (new comments, story edit,
+// "please review"): same tone as the sentence, underline + brighten on hover.
+const INLINE_LINK = "cursor-pointer underline-offset-2 hover:text-text-secondary hover:underline";
+
+// A muted amber for the "changed since" note: warmer and more visible than the quiet
+// grey sentence, but softened from the full warning orange so it reads as a gentle
+// heads-up rather than an alert (PO feedback, BRDG-474).
+const STALE_NOTE_COLOR = "color-mix(in srgb, var(--color-status-warning) 78%, var(--color-text-muted))";
+
+// storyVersion.createdAt is stored in SQLite UTC format ("YYYY-MM-DD HH:MM:SS", no zone);
+// normalise to a real UTC instant so woven-in relative/absolute times aren't skewed by the
+// viewer's timezone. A zoned Jira ISO (comments) already has a `T` and passes through.
+function toIso(s: string): string {
+  return s.includes("T") ? s : `${s.replace(" ", "T")}Z`;
+}
+
+// BRDG-474: the test-doc-ready message reads as plain sentence text (PO feedback),
+// not a button. "please review" opens the review modal; when the story or comments
+// moved after the draft was generated, a muted-amber "changed since" note flags that
+// the generated doc may be out of date, with a tooltip carrying when + who changed it.
+function TestDocReviewClause({
+  ticketKey,
+  onReview,
+  showTime,
+  generatedAt,
+  staleStoryAt,
+  staleStoryBy,
+  staleCommentAt,
+  staleCommentBy,
+}: {
+  ticketKey: string;
+  onReview?: () => void;
+  /** Weave the generation time into the sentence — only when this clause leads a
+   *  standalone draft-ready line (a combined line already carries the change time). */
+  showTime: boolean;
+  generatedAt: string | null;
+  /** Non-null => that source changed after generation; carries when (+ who, if known). */
+  staleStoryAt: string | null;
+  staleStoryBy: string | null;
+  staleCommentAt: string | null;
+  staleCommentBy: string | null;
+}) {
+  const staleStory = !!staleStoryAt;
+  const staleComments = !!staleCommentAt;
+  const staleNote =
+    staleStory && staleComments ? "the story and comments changed since"
+    : staleStory ? "the story changed since"
+    : staleComments ? "new comments since"
+    : null;
+
+  const staleTip = staleNote ? (
+    <span className="flex flex-col gap-0.5">
+      {staleStoryAt && (
+        <span>
+          Story edited {relativeDate(toIso(staleStoryAt))} on {formatAbsoluteDate(toIso(staleStoryAt), { weekday: true })}
+          {staleStoryBy ? ` by ${staleStoryBy}` : ""}.
+        </span>
+      )}
+      {staleCommentAt && (
+        <span>
+          New comment {relativeDate(toIso(staleCommentAt))} on {formatAbsoluteDate(toIso(staleCommentAt), { weekday: true })}
+          {staleCommentBy ? ` by ${staleCommentBy}` : ""}.
+        </span>
+      )}
+    </span>
+  ) : null;
+
+  return (
+    <>
+      Test documentation generated
+      {showTime && generatedAt && (
+        <>
+          {" "}
+          <Tooltip content={formatAbsoluteDate(generatedAt, { weekday: true })}>
+            <span className="cursor-default">{relativeDate(generatedAt)}</span>
+          </Tooltip>
+        </>
+      )}
+      {", "}
+      {onReview ? (
+        <Tooltip content="Review the draft test doc next to the story and accept it">
+          <button type="button" onClick={onReview} onMouseEnter={() => prefetchTestDoc(ticketKey)} className={INLINE_LINK}>
+            please review
+          </button>
+        </Tooltip>
+      ) : (
+        "please review"
+      )}
+      {staleNote && (
+        <>
+          {" — "}
+          <Tooltip content={staleTip}>
+            <span className="cursor-default font-medium" style={{ color: STALE_NOTE_COLOR }}>
+              {staleNote}
+            </span>
+          </Tooltip>
+        </>
+      )}
+    </>
+  );
+}
 
 function DeploySignal({ deploy }: { deploy: LastDeployedInfo }) {
   if (!deploy.environment) return null;
@@ -130,6 +226,10 @@ export function StatusChangeLine({
   // or the ticket is marked not-needed.
   const draftReady = change.testDocReady === true;
   const draftReadyOnly = draftReady && !hasStatus && !sprintAdd && !deployAdded;
+  // BRDG-474: whether to weave in the "please review" clause. The query flag is the
+  // source of truth; the client testDocState is a fallback for a Test/Done row whose
+  // draft landed before the queue revalidated.
+  const showReviewClause = draftReady || (showsTestDoc && testDocState === "draft");
   const attribution = sprintAdd ? sprintAdd.changedBy : change.changedBy;
   const attributionAt = deployOnly && deployAdded ? deployAdded.completedAt : sprintAdd ? sprintAdd.changedAt : change.changedAt;
 
@@ -168,63 +268,101 @@ export function StatusChangeLine({
         className="pointer-events-none absolute left-[53px] bottom-[calc(50%+2px)] h-3 w-3.5 rounded-bl-[6px] border-b border-l border-border-strong"
       />
 
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
-        <span className="text-caption text-text-tertiary">
+      {/* min-h-7 matches the h-7 action buttons (dismiss / move-to-bottom): a button-less
+          line (e.g. a draft-only "please review") then reserves the same height, so its
+          items-center text and elbow keep the same gap below the row as every other line
+          instead of riding up tight against the title (BRDG-474). */}
+      <div className="flex min-h-7 min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
+        <span className="text-body-sm text-text-tertiary">
           {draftReadyOnly ? (
-            <>Test doc draft ready to accept</>
-          ) : deployOnly ? (
-            <>New version on UAT</>
-          ) : sprintAdd && hasStatus ? (
-            <>
-              Added to sprint and moved from <StatusWord status={change.fromStatus as JiraStatus} /> to{" "}
-              <StatusWord status={change.toStatus as JiraStatus} />
-            </>
-          ) : sprintAdd ? (
-            <>Added to sprint</>
+            // A standalone draft-ready line IS the review clause, with the generation
+            // time woven in (BRDG-474).
+            <TestDocReviewClause
+              ticketKey={change.ticketKey}
+              onReview={onViewTestDoc}
+              showTime
+              generatedAt={change.testDocGeneratedAt}
+              staleStoryAt={change.testDocStaleStoryAt}
+              staleStoryBy={change.testDocStaleStoryBy}
+              staleCommentAt={change.testDocStaleCommentAt}
+              staleCommentBy={change.testDocStaleCommentBy}
+            />
           ) : (
             <>
-              Updated from <StatusWord status={change.fromStatus as JiraStatus} /> to{" "}
-              <StatusWord status={change.toStatus as JiraStatus} />
-            </>
-          )}
-          {attribution && (
-            <>
-              {" by "}
-              {attribution}
-            </>
-          )}
-          {" "}
-          {/* Relative time woven into the sentence; hover shows the exact time. */}
-          <Tooltip content={formatAbsoluteDate(attributionAt, { weekday: true })}>
-            <span className="cursor-default">{relativeDate(attributionAt)}</span>
-          </Tooltip>
-
-          {/* What's new since reads as a natural clause continuing the sentence, in the SAME tone
-              as the rest (no separate colour) so the whole line is one quiet sentence. Each part
-              links out, with a fluent hover tooltip carrying the relative + exact time (BRDG-446). */}
-          {(change.newCommentCount > 0 || storyEditedIso) && (
-            <>
-              {", with "}
-              {change.newCommentCount > 0 && (
-                <Tooltip
-                  content={`${change.newCommentCount} new comment${change.newCommentCount === 1 ? "" : "s"}${
-                    change.lastCommentAt
-                      ? `, last ${relativeDate(change.lastCommentAt)} on ${formatAbsoluteDate(change.lastCommentAt, { weekday: true })}`
-                      : ""
-                  }. Click to open the comments.`}
-                >
-                  <Link href={buildTicketDetailUrl(change.ticketKey)} className="cursor-pointer underline-offset-2 hover:text-text-secondary hover:underline">
-                    {change.newCommentCount} new comment{change.newCommentCount === 1 ? "" : "s"}
-                  </Link>
-                </Tooltip>
+              {deployOnly ? (
+                <>New version on UAT</>
+              ) : sprintAdd && hasStatus ? (
+                <>
+                  Added to sprint and moved from <StatusWord status={change.fromStatus as JiraStatus} /> to{" "}
+                  <StatusWord status={change.toStatus as JiraStatus} />
+                </>
+              ) : sprintAdd ? (
+                <>Added to sprint</>
+              ) : (
+                <>
+                  Updated from <StatusWord status={change.fromStatus as JiraStatus} /> to{" "}
+                  <StatusWord status={change.toStatus as JiraStatus} />
+                </>
               )}
-              {change.newCommentCount > 0 && storyEditedIso && " and "}
-              {storyEditedIso && (
-                <Tooltip content={`The story was edited ${relativeDate(storyEditedIso)}, on ${formatAbsoluteDate(storyEditedIso, { weekday: true })}. Click to open the history.`}>
-                  <Link href={buildTicketDetailUrl(change.ticketKey, { tab: "history" })} className="cursor-pointer underline-offset-2 hover:text-text-secondary hover:underline">
-                    a story edit
-                  </Link>
-                </Tooltip>
+              {attribution && (
+                <>
+                  {" by "}
+                  {attribution}
+                </>
+              )}
+              {" "}
+              {/* Relative time woven into the sentence; hover shows the exact time. */}
+              <Tooltip content={formatAbsoluteDate(attributionAt, { weekday: true })}>
+                <span className="cursor-default">{relativeDate(attributionAt)}</span>
+              </Tooltip>
+
+              {/* What's new since reads as a natural clause continuing the sentence, in the SAME tone
+                  as the rest (no separate colour) so the whole line is one quiet sentence. Each part
+                  links out, with a fluent hover tooltip carrying the relative + exact time (BRDG-446). */}
+              {(change.newCommentCount > 0 || storyEditedIso) && (
+                <>
+                  {", with "}
+                  {change.newCommentCount > 0 && (
+                    <Tooltip
+                      content={`${change.newCommentCount} new comment${change.newCommentCount === 1 ? "" : "s"}${
+                        change.lastCommentAt
+                          ? `, last ${relativeDate(change.lastCommentAt)} on ${formatAbsoluteDate(change.lastCommentAt, { weekday: true })}`
+                          : ""
+                      }. Click to open the comments.`}
+                    >
+                      <Link href={buildTicketDetailUrl(change.ticketKey)} className={INLINE_LINK}>
+                        {change.newCommentCount} new comment{change.newCommentCount === 1 ? "" : "s"}
+                      </Link>
+                    </Tooltip>
+                  )}
+                  {change.newCommentCount > 0 && storyEditedIso && " and "}
+                  {storyEditedIso && (
+                    <Tooltip content={`The story was edited ${relativeDate(storyEditedIso)}, on ${formatAbsoluteDate(storyEditedIso, { weekday: true })}. Click to open the history.`}>
+                      <Link href={buildTicketDetailUrl(change.ticketKey, { tab: "history" })} className={INLINE_LINK}>
+                        a story edit
+                      </Link>
+                    </Tooltip>
+                  )}
+                </>
+              )}
+
+              {/* BRDG-474: a combined line (status/sprint/deploy + a pending draft) also carries
+                  the review clause as trailing text, so dismissing the change collapses the row to
+                  a standalone draft-ready line instead of dropping the review affordance. */}
+              {showReviewClause && (
+                <>
+                  {". "}
+                  <TestDocReviewClause
+                    ticketKey={change.ticketKey}
+                    onReview={onViewTestDoc}
+                    showTime={false}
+                    generatedAt={change.testDocGeneratedAt}
+                    staleStoryAt={change.testDocStaleStoryAt}
+                    staleStoryBy={change.testDocStaleStoryBy}
+                    staleCommentAt={change.testDocStaleCommentAt}
+                    staleCommentBy={change.testDocStaleCommentBy}
+                  />
+                </>
               )}
             </>
           )}
@@ -248,21 +386,8 @@ export function StatusChangeLine({
         )}
 
         <span className="flex items-center gap-1.5">
-          {/* A waiting draft (BRDG-471) needs a review+accept action; shown even on a
-              status-less draft-only line. Distinct from an accepted doc's passive View. */}
-          {(draftReady || (showsTestDoc && testDocState === "draft")) && onViewTestDoc && (
-            <Tooltip content="Review the draft test doc next to the story and accept it">
-              <button
-                type="button"
-                onClick={onViewTestDoc}
-                onMouseEnter={() => prefetchTestDoc(change.ticketKey)}
-                className={REVIEW_BTN}
-              >
-                <FileCheck2 className="h-3 w-3 shrink-0" strokeWidth={2} />
-                Review test doc
-              </button>
-            </Tooltip>
-          )}
+          {/* A waiting draft (BRDG-471) is surfaced as the inline "please review" clause
+              in the sentence above (BRDG-474), not as a button here. */}
           {showsTestDoc && testDocState === "accepted" && onViewTestDoc && (
             <Tooltip content="View and edit the test documentation next to the story">
               <button

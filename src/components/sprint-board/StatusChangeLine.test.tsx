@@ -30,6 +30,11 @@ function makeChange(overrides: Partial<StatusChangeItem> = {}): StatusChangeItem
     sprintAdded: null,
     deployAdded: null,
     testDocReady: false,
+    testDocGeneratedAt: null,
+    testDocStaleStoryAt: null,
+    testDocStaleStoryBy: null,
+    testDocStaleCommentAt: null,
+    testDocStaleCommentBy: null,
     ...overrides,
   };
 }
@@ -82,7 +87,7 @@ describe("StatusChangeLine (BRDG-414)", () => {
       expect(screen.queryAllByText("Generate test doc")).toHaveLength(1);
     });
 
-    it("reads View for an accepted doc, Review for a draft (distinct action), and hides for not_needed (BRDG-471)", () => {
+    it("reads View for an accepted doc, an inline 'please review' clause for a draft, and hides for not_needed (BRDG-471/474)", () => {
       const onGenerate = vi.fn();
       const onView = vi.fn();
       const { rerender } = render(
@@ -91,20 +96,23 @@ describe("StatusChangeLine (BRDG-414)", () => {
       fireEvent.click(screen.getByText("View test doc"));
       expect(onView).toHaveBeenCalledTimes(1);
       expect(onGenerate).not.toHaveBeenCalled();
-      expect(screen.queryByText("Review test doc")).not.toBeInTheDocument();
+      expect(screen.queryByText("please review")).not.toBeInTheDocument();
 
-      // A waiting draft gets the needs-action "Review test doc", not the passive View.
+      // A waiting draft reads as inline sentence text (BRDG-474), not a button.
       rerender(
         <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} onViewTestDoc={onView} testDocState="draft" />,
       );
-      expect(screen.getByText("Review test doc")).toBeInTheDocument();
+      expect(screen.getByText(/Test documentation generated/)).toBeInTheDocument();
+      fireEvent.click(screen.getByText("please review"));
+      expect(onView).toHaveBeenCalledTimes(2);
       expect(screen.queryByText("View test doc")).not.toBeInTheDocument();
+      expect(screen.queryByText("Review test doc")).not.toBeInTheDocument();
 
       rerender(
         <StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} onGenerateTestDoc={onGenerate} onViewTestDoc={onView} testDocState="not_needed" />,
       );
       expect(screen.queryByText("View test doc")).not.toBeInTheDocument();
-      expect(screen.queryByText("Review test doc")).not.toBeInTheDocument();
+      expect(screen.queryByText("please review")).not.toBeInTheDocument();
       expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
     });
 
@@ -134,28 +142,30 @@ describe("StatusChangeLine (BRDG-414)", () => {
     });
   });
 
-  describe("draft-ready line (BRDG-471)", () => {
-    it("renders a standalone 'draft ready to accept' line with a Review action and NO dismiss check", () => {
+  describe("draft-ready line (BRDG-471/474)", () => {
+    it("renders a standalone 'Test documentation generated, please review' line with NO dismiss check", () => {
       const onView = vi.fn();
       render(
         <StatusChangeLine
-          change={makeChange({ id: null, fromStatus: null, toStatus: null, changedBy: null, testDocReady: true })}
+          change={makeChange({ id: null, fromStatus: null, toStatus: null, changedBy: null, testDocReady: true, testDocGeneratedAt: "2026-06-27T09:00:00.000Z" })}
           onSeen={noop}
           onMoveToBottom={noop}
           onViewTestDoc={onView}
           testDocState="draft"
         />,
       );
-      expect(screen.getByText(/Test doc draft ready to accept/)).toBeInTheDocument();
-      fireEvent.click(screen.getByText("Review test doc"));
+      expect(screen.getByText(/Test documentation generated/)).toBeInTheDocument();
+      fireEvent.click(screen.getByText("please review"));
       expect(onView).toHaveBeenCalledTimes(1);
+      // The old button copy is gone.
+      expect(screen.queryByText("Review test doc")).not.toBeInTheDocument();
       // Dismiss != accept: a draft-only line offers no seen-check.
       expect(screen.queryByRole("button", { name: "Mark as seen" })).not.toBeInTheDocument();
       // No status copy leaks in.
       expect(screen.queryByText(/Updated from/)).not.toBeInTheDocument();
     });
 
-    it("rides on a real move-to-Test line as Review while keeping the dismiss check", () => {
+    it("appends the inline review clause to a real move-to-Test line while keeping the dismiss check", () => {
       render(
         <StatusChangeLine
           change={makeChange({ toStatus: "TEST", testDocReady: true })}
@@ -166,9 +176,33 @@ describe("StatusChangeLine (BRDG-414)", () => {
         />,
       );
       expect(screen.getByText(/Updated from In Progress to Test/)).toBeInTheDocument();
-      expect(screen.getByText("Review test doc")).toBeInTheDocument();
+      expect(screen.getByText("please review")).toBeInTheDocument();
       // A combined line still carries a real status change to dismiss.
       expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
+    });
+
+    it("flags a draft whose story/comments moved after it was generated (BRDG-474)", () => {
+      const base = { id: null, fromStatus: null, toStatus: null, changedBy: null, testDocReady: true, testDocGeneratedAt: "2026-06-27T09:00:00.000Z" } as const;
+      const { rerender } = render(
+        <StatusChangeLine change={makeChange({ ...base, testDocStaleStoryAt: "2026-06-27 11:30:00", testDocStaleStoryBy: "Carol Smit" })} onSeen={noop} onMoveToBottom={noop} onViewTestDoc={vi.fn()} testDocState="draft" />,
+      );
+      expect(screen.getByText(/the story changed since/)).toBeInTheDocument();
+
+      rerender(
+        <StatusChangeLine change={makeChange({ ...base, testDocStaleCommentAt: "2026-06-27T11:45:00.000Z", testDocStaleCommentBy: "Bob" })} onSeen={noop} onMoveToBottom={noop} onViewTestDoc={vi.fn()} testDocState="draft" />,
+      );
+      expect(screen.getByText(/new comments since/)).toBeInTheDocument();
+
+      rerender(
+        <StatusChangeLine change={makeChange({ ...base, testDocStaleStoryAt: "2026-06-27 11:30:00", testDocStaleCommentAt: "2026-06-27T11:45:00.000Z" })} onSeen={noop} onMoveToBottom={noop} onViewTestDoc={vi.fn()} testDocState="draft" />,
+      );
+      expect(screen.getByText(/the story and comments changed since/)).toBeInTheDocument();
+
+      // Fresh draft (no later activity) carries no stale note.
+      rerender(
+        <StatusChangeLine change={makeChange(base)} onSeen={noop} onMoveToBottom={noop} onViewTestDoc={vi.fn()} testDocState="draft" />,
+      );
+      expect(screen.queryByText(/changed since|new comments since/)).not.toBeInTheDocument();
     });
   });
 

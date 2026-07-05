@@ -337,6 +337,10 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
       expect(rows[0].toStatus).toBeNull();
       // Falls back to the draft's generation time so the line is never timeless.
       expect(rows[0].changedAt).toBe("2026-06-27T11:00:00.000Z");
+      // BRDG-474: the generation instant is surfaced; a fresh draft is not stale.
+      expect(rows[0].testDocGeneratedAt).toBe("2026-06-27T11:00:00.000Z");
+      expect(rows[0].testDocStaleStoryAt).toBeNull();
+      expect(rows[0].testDocStaleCommentAt).toBeNull();
     });
 
     it("persists after the status change is dismissed (state-derived, no seen-key)", async () => {
@@ -370,6 +374,56 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
       addTestDoc("VPL-1", { testDocDraft: "" });
 
       expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
+    });
+
+    describe("staleness — story/comments moved after generation (BRDG-474)", () => {
+      it("flags a story edit made after the draft was generated, with who/when for the tooltip", async () => {
+        addTicket("VPL-1", { status: "TEST" });
+        addTestDoc("VPL-1", { testDocDraft: "**Doc**", testDocDraftGeneratedAt: "2026-06-27T11:00:00.000Z" });
+        // An older post-generation edit plus the latest one: the latest supplies who/when.
+        testDb.insert(storyVersion).values({ id: "v0", jiraKey: "VPL-1", description: "d", contentHash: "h0", updatedBy: "Old Editor", createdAt: "2026-06-27 11:10:00" }).run();
+        testDb.insert(storyVersion).values({ id: "v1", jiraKey: "VPL-1", description: "d", contentHash: "h1", updatedBy: "Carol Smit", createdAt: "2026-06-27 11:30:00" }).run();
+
+        const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+        expect(rows[0].testDocStaleStoryAt).toBe("2026-06-27 11:30:00");
+        expect(rows[0].testDocStaleStoryBy).toBe("Carol Smit");
+        expect(rows[0].testDocStaleCommentAt).toBeNull();
+      });
+
+      it("flags comments made after generation, including the acting user's own (no self-exclusion)", async () => {
+        addTicket("VPL-1", { status: "TEST" });
+        addTestDoc("VPL-1", { testDocDraft: "**Doc**", testDocDraftGeneratedAt: "2026-06-27T11:00:00.000Z" });
+        // Authored by the acting PO (Robin Banffer): still counts — the doc is generated from it.
+        testDb.insert(jiraComment).values({ id: "c1", ticketKey: "VPL-1", jiraCommentId: "j1", authorName: "Robin Banffer", content: "x", createdAt: "2026-06-27T11:45:00.000Z" }).run();
+
+        const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+        expect(rows[0].testDocStaleCommentAt).toBe("2026-06-27T11:45:00.000Z");
+        expect(rows[0].testDocStaleCommentBy).toBe("Robin Banffer");
+        expect(rows[0].testDocStaleStoryAt).toBeNull();
+      });
+
+      it("does not flag activity that predates generation", async () => {
+        addTicket("VPL-1", { status: "TEST" });
+        addTestDoc("VPL-1", { testDocDraft: "**Doc**", testDocDraftGeneratedAt: "2026-06-27T11:00:00.000Z" });
+        testDb.insert(storyVersion).values({ id: "v1", jiraKey: "VPL-1", description: "d", contentHash: "h1", updatedBy: "Carol Smit", createdAt: "2026-06-27 10:00:00" }).run();
+        testDb.insert(jiraComment).values({ id: "c1", ticketKey: "VPL-1", jiraCommentId: "j1", authorName: "Carol Smit", content: "x", createdAt: "2026-06-27T10:30:00.000Z" }).run();
+
+        const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+        expect(rows[0].testDocStaleStoryAt).toBeNull();
+        expect(rows[0].testDocStaleCommentAt).toBeNull();
+      });
+
+      it("reports no staleness when the generation instant is unknown (legacy draft)", async () => {
+        addTicket("VPL-1", { status: "TEST" });
+        addTestDoc("VPL-1", { testDocDraft: "**Doc**" });
+        testDb.insert(storyVersion).values({ id: "v1", jiraKey: "VPL-1", description: "d", contentHash: "h1", updatedBy: "Carol Smit", createdAt: "2026-06-27 11:30:00" }).run();
+
+        const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+        expect(rows[0].testDocReady).toBe(true);
+        expect(rows[0].testDocGeneratedAt).toBeNull();
+        expect(rows[0].testDocStaleStoryAt).toBeNull();
+        expect(rows[0].testDocStaleCommentAt).toBeNull();
+      });
     });
   });
 });

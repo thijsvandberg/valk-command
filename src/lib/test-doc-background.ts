@@ -45,7 +45,7 @@ export async function writeTestDocDraft(
   // A server-side draft write (auto-generation, BRDG-471) has no client poll
   // behind it, so tell open views to revalidate the same way a sync does. The
   // status-change queue listens for "test_doc" and re-runs, surfacing the
-  // persistent "draft ready to accept" line without a manual refresh.
+  // persistent "Test documentation generated, please review" line without a manual refresh.
   emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["test_doc"], origin: null });
 }
 

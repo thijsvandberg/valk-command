@@ -216,8 +216,9 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   Regeneration is versioned: the new result lands NEXT to the existing doc (chips + a
   side-by-side Compare view); Save accepts the active version and discards the rest. A
   reopened ticket with both a saved doc and a newer draft seeds those as two versions.
-  The status-change line offers the flow on Test AND Done lines ("Generate test doc" →
-  "View test doc" once a doc/draft exists; hidden when marked not-needed).
+  The status-change line offers the flow on Test AND Done lines: "Generate test doc" when none
+  exists, the inline "please review" clause while a draft is pending (BRDG-474), and "View test
+  doc" once accepted; hidden when marked not-needed.
 - **Draft cache**: every completed generation is stored immediately in
   `ticket_metadata.test_doc_draft*` (PUT `test-doc-draft`, fire-and-forget from the modal), so
   an unreviewed doc survives closing the modal. On open the modal first checks GET `test-doc`:
@@ -289,14 +290,23 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   finally). It only ever writes a draft; acceptance (which writes Jira) stays a deliberate PO action.
   `writeTestDocDraft` emits a `test_doc` ticket event so an open board revalidates and surfaces the
   draft without the client-side poll the manual flow relies on.
-- **Persistent "draft ready to accept" board line (BRDG-471)**: a waiting draft is a fourth,
-  STATE-DERIVED reason in the status-change queue (`listUnseenStatusChanges`,
+- **Persistent "please review" board line (BRDG-471, refined by BRDG-474)**: a waiting draft is a
+  fourth, STATE-DERIVED reason in the status-change queue (`listUnseenStatusChanges`,
   `status-changes-query.ts`) — a ticket with `test_doc_draft` set and no accepted `test_doc`
-  surfaces a line reading "Test doc draft ready to accept" with a warning-tinted **Review test doc**
-  action, distinct from an accepted doc's neutral **View test doc** (`StatusChangeLine`). Having no
-  seen-key it is NOT dismissible and persists until the draft is accepted or the ticket is marked
-  not-needed; dismissing a co-occurring status change collapses the row to the standalone
-  draft-ready line. `useStatusChanges` lists `test_doc` among its revalidate kinds so it appears
+  surfaces the sentence **"Test documentation generated <time>, please review"**, where _please
+  review_ is an inline link (not a button) opening the review modal, matching the line's other
+  woven-in links (`StatusChangeLine`). An accepted doc still gets the neutral **View test doc**
+  button. Having no seen-key it is NOT dismissible and persists until the draft is accepted or the
+  ticket is marked not-needed; dismissing a co-occurring status change collapses the row to the
+  standalone draft-ready line — the client `markSeen` transforms rather than removes the row so the
+  line never flickers away (`useStatusChanges`). **Staleness (BRDG-474)**: the query compares the
+  draft's `test_doc_draft_generated_at` against the ticket's latest story edit / comment (NOT
+  24h-bounded, NOT self-excluded — a doc is generated from the story + comments, so any later change
+  can stale it) and surfaces the staling change's `testDocStaleStoryAt` / `...By` and
+  `testDocStaleCommentAt` / `...By`; the line then appends a **muted-amber** note ("the story changed
+  since" / "new comments since" / "the story and comments changed since") — softened from the full
+  warning orange so it reads as a gentle heads-up, with a hover tooltip carrying when + who changed
+  it. `useStatusChanges` lists `test_doc` among its revalidate kinds so it appears
   live. The queue is scoped to the currently-viewed sprint's keys and hidden when the board's
   "updates" toggle is collapsed, so the detail-view banner + coverage badge remain the always-on
   surfaces for a pending draft.

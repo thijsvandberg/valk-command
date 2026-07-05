@@ -8,10 +8,18 @@ import type { StatusChangeItem } from "@/lib/status-changes-query";
 
 // Ticket-event kinds that can change the status-change queue: a new transition, new
 // "what's new" activity, or a test-doc draft landing (BRDG-471, its own persistent
-// "draft ready to accept" line). A relevant event revalidates the queue so it updates
-// on an already-open board without a manual refresh (BRDG-414).
+// "Test documentation generated, please review" line). A relevant event revalidates the
+// queue so it updates on an already-open board without a manual refresh (BRDG-414).
 const REVALIDATE_KINDS = new Set(["status", "comment", "content", "sprint", "test_doc"]);
 const EMPTY: StatusChangeItem[] = [];
+
+// BRDG-474: dismissing another reason must NOT clear a pending test-doc draft — it has no
+// seen-key and persists until accepted/skipped. Collapse the row to its standalone draft-ready
+// form (what the server returns on refetch) rather than removing it, so the "please review"
+// line never flickers away when a status change on the same ticket is marked seen.
+function collapseToDraftOnly(r: StatusChangeItem): StatusChangeItem {
+  return { ...r, id: null, fromStatus: null, toStatus: null, sprintAdded: null, deployAdded: null, changedAt: r.testDocGeneratedAt ?? r.changedAt };
+}
 
 interface StatusChangesResponse {
   rows: StatusChangeItem[];
@@ -68,7 +76,17 @@ export function useStatusChanges(ticketKeys: string[]) {
     async (item: StatusChangeItem) => {
       const ids = [item.id, item.sprintAdded?.id, item.deployAdded?.id].filter((x): x is string => !!x);
       if (ids.length === 0) return;
-      await mutate((cur) => (cur ? { rows: cur.rows.filter((r) => r.ticketKey !== item.ticketKey) } : cur), { revalidate: false });
+      await mutate(
+        (cur) =>
+          cur
+            ? {
+                rows: cur.rows.flatMap((r) =>
+                  r.ticketKey !== item.ticketKey ? [r] : r.testDocReady ? [collapseToDraftOnly(r)] : [],
+                ),
+              }
+            : cur,
+        { revalidate: false },
+      );
       try {
         await apiFetch("/api/status-changes/seen", { method: "POST", body: { ids } });
       } finally {
@@ -81,7 +99,11 @@ export function useStatusChanges(ticketKeys: string[]) {
   const markAllSeen = useCallback(async () => {
     const ids = (data?.rows ?? []).flatMap((r) => [r.id, r.sprintAdded?.id, r.deployAdded?.id]).filter((x): x is string => !!x);
     if (ids.length === 0) return;
-    await mutate({ rows: [] }, { revalidate: false });
+    // Keep pending-draft rows (collapsed to their draft-only form); they carry no seen-key.
+    await mutate(
+      (cur) => (cur ? { rows: cur.rows.filter((r) => r.testDocReady).map(collapseToDraftOnly) } : { rows: [] }),
+      { revalidate: false },
+    );
     try {
       await apiFetch("/api/status-changes/seen", { method: "POST", body: { ids } });
     } finally {

@@ -41,6 +41,11 @@ function item(overrides: Partial<StatusChangeItem> = {}): StatusChangeItem {
     sprintAdded: null,
     deployAdded: null,
     testDocReady: false,
+    testDocGeneratedAt: null,
+    testDocStaleStoryAt: null,
+    testDocStaleStoryBy: null,
+    testDocStaleCommentAt: null,
+    testDocStaleCommentBy: null,
     ...overrides,
   };
 }
@@ -101,5 +106,15 @@ describe("useStatusChanges.markSeen (BRDG-439/446)", () => {
       await result.current.markSeen(item({ id: null, toStatus: null, sprintAdded: null, deployAdded: null, testDocReady: true }));
     });
     expect(apiFetch).not.toHaveBeenCalled();
+  });
+
+  it("marks only the status id for a status+draft line, never the draft (BRDG-474)", async () => {
+    // The draft carries no seen-key, so dismissing the status change must not clear it —
+    // the server keeps the row and it collapses to a standalone draft-ready line.
+    const { result } = renderHook(() => useStatusChanges(["VPL-1"]), { wrapper });
+    await act(async () => {
+      await result.current.markSeen(item({ id: "sc-1", toStatus: "TEST", testDocReady: true, testDocGeneratedAt: "2026-06-27T08:00:00.000Z" }));
+    });
+    expect(apiFetch).toHaveBeenCalledWith("/api/status-changes/seen", { method: "POST", body: { ids: ["sc-1"] } });
   });
 });

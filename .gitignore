@@ -17,3 +17,6 @@ backups/
 tools/scripts/dev-guard-restarts.log
 # prod server logs (local only)
 logs/
+
+# Dev-only snapshot from reset-status-change-seen.mjs
+tools/scripts/.status-change-seen-backup.json

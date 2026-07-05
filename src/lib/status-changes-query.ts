@@ -74,8 +74,21 @@ export interface StatusChangeItem {
   // BRDG-471: a test-doc draft is waiting for acceptance on this ticket. Purely
   // state-derived (no seen-key), so it is not dismissible and persists until the
   // draft is accepted or the ticket is marked not-needed. When it is the only
-  // reason, the line reads "Test doc draft ready to accept".
+  // reason, the line reads "Test documentation generated, please review".
   testDocReady: boolean;
+  // BRDG-474: when the pending draft was generated (ISO), and whether the story
+  // or comments moved AFTER that instant — the generated doc may now be stale.
+  // Drives the "please review — the story has changed since" clause. Null time
+  // means the generation instant is unknown (legacy draft), so staleness is
+  // reported as false.
+  testDocGeneratedAt: string | null;
+  // BRDG-474: the change(s) that post-date the draft, for the "changed since" note and
+  // its tooltip. A non-null timestamp means that source moved after generation; the
+  // matching *By carries who did it (when known). Both null on a fresh or legacy draft.
+  testDocStaleStoryAt: string | null;
+  testDocStaleStoryBy: string | null;
+  testDocStaleCommentAt: string | null;
+  testDocStaleCommentBy: string | null;
 }
 
 // jiraComment.createdAt is Jira ISO (with `T`); storyVersion.createdAt uses the SQLite
@@ -275,7 +288,7 @@ export async function listUnseenStatusChanges(
   // exactly (testDoc falsy, testDocDraft truthy). Unlike the reasons above it has
   // NO seen-key: it is not dismissible and persists until the draft is accepted or
   // the ticket is marked not-needed (both clear testDocDraft / set testDoc). So a
-  // dismissed status line collapses to this standalone "draft ready to accept" line.
+  // dismissed status line collapses to this standalone "please review" line (BRDG-474).
   const draftRows = await db
     .select({ ticketKey: ticketMetadata.jiraKey, generatedAt: ticketMetadata.testDocDraftGeneratedAt })
     .from(ticketMetadata)
@@ -290,6 +303,43 @@ export async function listUnseenStatusChanges(
     );
   const draftReadyByKey = new Map<string, string | null>();
   for (const r of draftRows) draftReadyByKey.set(r.ticketKey, r.generatedAt);
+
+  // BRDG-474: is a pending draft now stale? Compare its generation instant against
+  // the ticket's LATEST story edit / comment. Unlike the "what's new" clause this is
+  // deliberately NOT 24h-bounded and NOT self-excluded: a test doc is generated from
+  // the story + comments, so any later change (including the PO's own) can make the
+  // draft out of date. Only assessable when the generation instant is known.
+  const draftKeys = [...draftReadyByKey.keys()];
+  const staleStoryByKey = new Map<string, { at: string; by: string | null }>();
+  const staleCommentByKey = new Map<string, { at: string; by: string | null }>();
+  if (draftKeys.length > 0) {
+    // The latest story edit / comment per draft key (rows newest-first; take the first).
+    // If that latest change post-dates generation it IS the staling change, so it also
+    // supplies the who/when for the note's tooltip.
+    const storyRows = await db
+      .select({ jiraKey: storyVersion.jiraKey, createdAt: storyVersion.createdAt, updatedBy: storyVersion.updatedBy })
+      .from(storyVersion)
+      .where(inArray(storyVersion.jiraKey, draftKeys))
+      .orderBy(desc(storyVersion.createdAt));
+    const commentRows = await db
+      .select({ ticketKey: jiraComment.ticketKey, createdAt: jiraComment.createdAt, authorName: jiraComment.authorName })
+      .from(jiraComment)
+      .where(inArray(jiraComment.ticketKey, draftKeys))
+      .orderBy(desc(jiraComment.createdAt));
+    const latestStory = new Map<string, (typeof storyRows)[number]>();
+    for (const r of storyRows) if (!latestStory.has(r.jiraKey)) latestStory.set(r.jiraKey, r);
+    const latestComment = new Map<string, (typeof commentRows)[number]>();
+    for (const r of commentRows) if (!latestComment.has(r.ticketKey)) latestComment.set(r.ticketKey, r);
+    for (const key of draftKeys) {
+      const gen = draftReadyByKey.get(key);
+      if (!gen) continue;
+      const genMs = parseDbTime(gen);
+      const s = latestStory.get(key);
+      if (s && parseDbTime(s.createdAt) > genMs) staleStoryByKey.set(key, { at: s.createdAt, by: s.updatedBy });
+      const c = latestComment.get(key);
+      if (c && parseDbTime(c.createdAt) > genMs) staleCommentByKey.set(key, { at: c.createdAt, by: c.authorName });
+    }
+  }
 
   // A ticket gets a line if it has an unseen status change OR sprint-add OR fresh UAT
   // deploy OR a test-doc draft awaiting acceptance.
@@ -400,6 +450,11 @@ export async function listUnseenStatusChanges(
           }
         : null,
       testDocReady: draftReadyByKey.has(key),
+      testDocGeneratedAt: draftReadyByKey.get(key) ?? null,
+      testDocStaleStoryAt: staleStoryByKey.get(key)?.at ?? null,
+      testDocStaleStoryBy: staleStoryByKey.get(key)?.by ?? null,
+      testDocStaleCommentAt: staleCommentByKey.get(key)?.at ?? null,
+      testDocStaleCommentBy: staleCommentByKey.get(key)?.by ?? null,
     };
   });
 }
