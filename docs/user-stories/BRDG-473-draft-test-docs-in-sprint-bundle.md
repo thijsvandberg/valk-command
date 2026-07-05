@@ -1,4 +1,4 @@
-# BRDG-472: Draft test docs in the sprint test-doc bundle
+# BRDG-473: Draft test docs in the sprint test-doc bundle
 
 **Status:** To Do
 **Priority:** Medium

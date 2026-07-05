@@ -1,6 +1,6 @@
 # BRDG-471: Auto-generate a test doc when a pinned-sprint ticket moves to Test
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
