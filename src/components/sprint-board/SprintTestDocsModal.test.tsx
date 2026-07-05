@@ -494,7 +494,8 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     };
     renderModal();
     const notice = screen.getByTestId("test-docs-draft-notice");
-    fireEvent.click(within(notice).getByText("Jump to first draft"));
+    // One draft in play, so the inline link reads "jump to it".
+    fireEvent.click(within(notice).getByText("jump to it"));
     expect(scrollIntoView).toHaveBeenCalled();
     expect((scrollIntoView.mock.instances[0] as HTMLElement).id).toBe("bundle-block-VPL-9");
   });

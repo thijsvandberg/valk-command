@@ -686,23 +686,24 @@ export function SprintTestDocsModal({
                       data-testid="test-docs-draft-notice"
                       className="mb-8 border-l-2 border-[var(--color-brand-400)]/45 pl-4"
                     >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <p className="text-body-sm font-medium text-text-secondary">
-                          {draftCount} {draftCount === 1 ? "story still has" : "stories still have"} a draft test doc
-                        </p>
-                        {firstDraftKey && (
-                          <button
-                            type="button"
-                            onClick={() => jumpTo(`block-${firstDraftKey}`)}
-                            className="shrink-0 cursor-pointer text-body-sm text-text-tertiary underline-offset-2 hover:text-[var(--color-brand-400)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                            style={{ transition: "color 0.15s ease" }}
-                          >
-                            Jump to first draft
-                          </button>
-                        )}
-                      </div>
+                      <p className="text-body-sm font-medium text-text-secondary">
+                        {draftCount} {draftCount === 1 ? "story still has" : "stories still have"} a draft test doc
+                      </p>
                       <p className="mt-0.5 text-body-sm text-text-muted">
-                        Included below, marked as draft — review to finalize. Use “Include drafts” to copy them.
+                        {draftCount === 1 ? "It's" : "They're"} included below, marked as draft —{" "}
+                        {firstDraftKey && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => jumpTo(`block-${firstDraftKey}`)}
+                              className="cursor-pointer font-medium text-[var(--color-brand-400)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                            >
+                              {draftCount === 1 ? "jump to it" : "jump to the first"}
+                            </button>{" "}
+                            to review and finalize, or{" "}
+                          </>
+                        )}
+                        turn on “Include drafts” to copy {draftCount === 1 ? "it" : "them"} as-is.
                       </p>
                     </div>
                   )}
