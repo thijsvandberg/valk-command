@@ -510,6 +510,7 @@ export interface UpdateMetadataInput {
   poNotes?: string | null;
   businessValue?: number | null;
   guestimation?: number | null;
+  bookmarked?: boolean;
 }
 
 // Forward-planning guestimation (BRDG-303): same Fibonacci scale as story points.
@@ -618,6 +619,15 @@ export async function updateTicketMetadata(
     updates.guestimation = input.guestimation;
   }
 
+  if (input.bookmarked !== undefined) {
+    if (typeof input.bookmarked !== "boolean") {
+      throw new ValidationError("bookmarked must be a boolean");
+    }
+    // Public input is a boolean; the stored column is a timestamp so the bookmark
+    // list can order most-recently-bookmarked first (BRDG-355).
+    updates.bookmarkedAt = input.bookmarked ? new Date().toISOString() : null;
+  }
+
   if (existing) {
     await db
       .update(ticketMetadata)
@@ -636,6 +646,9 @@ export async function updateTicketMetadata(
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
+  if (input.bookmarked !== undefined) {
+    cache.invalidate("/api/bookmarks");
+  }
 
   const changedFields = Object.keys(updates).join(", ");
   await logActivity({

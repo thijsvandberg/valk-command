@@ -404,6 +404,27 @@ describe("updateTicketMetadata", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
+  it("sets bookmarkedAt to an ISO timestamp when bookmarked is true", async () => {
+    seedTicket(testDb, "VPL-1");
+    const result = await updateTicketMetadata("VPL-1", { bookmarked: true });
+    expect(result.bookmarkedAt).toBeTruthy();
+    expect(() => new Date(result.bookmarkedAt as string).toISOString()).not.toThrow();
+  });
+
+  it("clears bookmarkedAt to null when bookmarked is false", async () => {
+    seedTicket(testDb, "VPL-1");
+    await updateTicketMetadata("VPL-1", { bookmarked: true });
+    const result = await updateTicketMetadata("VPL-1", { bookmarked: false });
+    expect(result.bookmarkedAt).toBeNull();
+  });
+
+  it("throws ValidationError for a non-boolean bookmarked", async () => {
+    seedTicket(testDb, "VPL-1");
+    await expect(
+      updateTicketMetadata("VPL-1", { bookmarked: "yes" as unknown as boolean }),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
   it("stores a valid Fibonacci guestimation", async () => {
     seedTicket(testDb, "VPL-1");
     const result = await updateTicketMetadata("VPL-1", { guestimation: 5 });
