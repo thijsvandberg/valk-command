@@ -35,3 +35,11 @@ Give the `INLINE_LINK` const (or that button) a `focus-visible:` ring, e.g.
 `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`,
 which both fixes the a11y gap and satisfies the ratchet. Do **not** raise the BASELINE — the
 guard comment is explicit that it must never rise.
+
+## Resolution (2026-07-05, during BRDG-475)
+
+Fixed in commit `d4e66d75`. Added the exact suggested `focus-visible:` ring to the shared
+`INLINE_LINK` const in `StatusChangeLine.tsx` (which also covers its two `<Link>` usages),
+dropping the focusless count back to 7 without raising the BASELINE. The BRDG-475 run's full
+suite was blocked by this pre-existing failure, so the one-line a11y fix was applied rather
+than left red on `dev`. Guard green (8 tests pass).
