@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ChevronDown,
   History,
+  Bookmark,
   LogOut,
   User,
   Plus,
@@ -27,6 +28,7 @@ import { useStoryLauncher } from "@/contexts/StoryLauncherContext";
 import { useAccountMenuItems } from "@/components/sidebar/accountMenuItems";
 import { useSidebarData, type SidebarCount, type SidebarHeroData } from "@/hooks/useSidebarData";
 import { RecentlyViewedView } from "@/components/nav/RecentlyViewedView";
+import { BookmarksView } from "@/components/nav/BookmarksView";
 import { revealStyle } from "@/components/nav/revealStyle";
 
 type Tier = "primary" | "common" | "rare";
@@ -108,6 +110,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
   const { user } = useUser();
   const [accountOpen, setAccountOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const data = useSidebarData();
   const { openLauncher } = useStoryLauncher();
 
@@ -129,7 +132,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
       role="dialog"
       aria-label="Navigation"
       data-testid="nav-panel"
-      className={`nav-panel-enter absolute left-0 top-[calc(100%+10px)] z-dropdown max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-surface-floating/95 ${PANEL_SHADOW} ring-1 ring-border-strong backdrop-blur-2xl transition-[width] duration-200 ${recentOpen ? "w-[640px]" : "w-[360px]"}`}
+      className={`nav-panel-enter absolute left-0 top-[calc(100%+10px)] z-dropdown max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-surface-floating/95 ${PANEL_SHADOW} ring-1 ring-border-strong backdrop-blur-2xl transition-[width] duration-200 ${recentOpen || bookmarksOpen ? "w-[640px]" : "w-[360px]"}`}
     >
       {/* Top accent gradient + soft brand glow */}
       <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
@@ -142,12 +145,13 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
         <div
           role="button"
           tabIndex={0}
-          onClick={() => { setAccountOpen((v) => !v); setRecentOpen(false); }}
+          onClick={() => { setAccountOpen((v) => !v); setRecentOpen(false); setBookmarksOpen(false); }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setAccountOpen((v) => !v);
               setRecentOpen(false);
+              setBookmarksOpen(false);
             }
           }}
           aria-expanded={accountOpen}
@@ -174,6 +178,8 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
           <AccountView open={open} menuItems={menuItems} signOutItem={signOutItem} />
         ) : recentOpen ? (
           <RecentlyViewedView open={open} onBack={() => setRecentOpen(false)} onClose={onClose} />
+        ) : bookmarksOpen ? (
+          <BookmarksView open={open} onBack={() => setBookmarksOpen(false)} onClose={onClose} />
         ) : (
           <NavigationView
             open={open}
@@ -181,7 +187,8 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
             hero={data.hero}
             isActive={isActive}
             onNavigate={onClose}
-            onOpenRecent={() => setRecentOpen(true)}
+            onOpenRecent={() => { setRecentOpen(true); setBookmarksOpen(false); }}
+            onOpenBookmarks={() => { setBookmarksOpen(true); setRecentOpen(false); }}
             onNewStory={() => { onClose(); openLauncher(); }}
             counts={{ chat: data.chat, storyWriter: data.storyWriter, refinement: data.refinement, newStories: data.newStories }}
           />
@@ -198,6 +205,7 @@ function NavigationView({
   isActive,
   onNavigate,
   onOpenRecent,
+  onOpenBookmarks,
   onNewStory,
   counts,
 }: {
@@ -207,6 +215,7 @@ function NavigationView({
   isActive: (href: string) => boolean;
   onNavigate: () => void;
   onOpenRecent: () => void;
+  onOpenBookmarks: () => void;
   onNewStory: () => void;
   counts: Record<DataKey, SidebarCount>;
 }) {
@@ -329,7 +338,8 @@ function NavigationView({
         })}
       </div>
 
-      {/* Recently viewed: flips to the MRU ticket list, same anatomy as the rows above */}
+      {/* Quick-access siblings: Recently viewed (automatic) + Bookmarks (manual). Both
+          flip to their own list, same anatomy as the rows above (BRDG-355). */}
       <div className="px-1" style={revealStyle(open, 4)}>
         <button
           type="button"
@@ -341,6 +351,19 @@ function NavigationView({
           </span>
           <span className="flex-1 text-body-sm text-text-secondary transition-colors group-hover:text-text-primary">
             Recently viewed
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={1.5} />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenBookmarks}
+          className="group flex w-full items-center gap-3 border-t border-border-subtle py-3 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        >
+          <span className="shrink-0 text-[var(--meta-bv-fg)] transition-opacity group-hover:opacity-80">
+            <Bookmark className={ICON} strokeWidth={1.5} />
+          </span>
+          <span className="flex-1 text-body-sm text-text-secondary transition-colors group-hover:text-text-primary">
+            Bookmarks
           </span>
           <ChevronRight className="h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={1.5} />
         </button>
