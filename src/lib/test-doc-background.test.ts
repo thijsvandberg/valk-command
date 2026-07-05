@@ -21,6 +21,11 @@ vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
+const mockGetAutoGenerateTestDoc = vi.fn().mockResolvedValue(true);
+vi.mock("@/lib/auto-generate-test-doc-setting", () => ({
+  getAutoGenerateTestDoc: () => mockGetAutoGenerateTestDoc(),
+}));
+
 import { persistTestDocDraftWhenDone, maybeAutoGenerateTestDoc } from "./test-doc-background";
 import { logger } from "@/lib/logger";
 import { ticket, ticketMetadata, ticketSprint, sprintSlot } from "@/db/schema";
@@ -162,8 +167,18 @@ describe("maybeAutoGenerateTestDoc (BRDG-471)", () => {
     testDb = createTestDb();
     testDb.insert(ticket).values({ jiraKey: "VPL-10", title: "S", type: "story", status: "TEST" }).run();
     mockAgentFetch.mockReset();
+    mockGetAutoGenerateTestDoc.mockResolvedValue(true);
     // Kickoff fails so no background poll is scheduled; we only assert the gate.
     mockAgentFetch.mockResolvedValue({ ok: false, error: { error: "nope", code: "server_error" }, status: 500 });
+  });
+
+  it("no-ops when the auto-generate setting is disabled", async () => {
+    mockGetAutoGenerateTestDoc.mockResolvedValue(false);
+    pin("VPL-10");
+
+    await maybeAutoGenerateTestDoc("VPL-10");
+
+    expect(mockAgentFetch).not.toHaveBeenCalled();
   });
 
   it("fires generation for a pinned-sprint ticket in the null state", async () => {

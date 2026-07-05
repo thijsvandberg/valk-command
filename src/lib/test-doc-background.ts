@@ -16,6 +16,7 @@ import { parseTestDoc, type TestDocClassification } from "@/lib/parse-test-doc";
 import { emitTicketEvent } from "@/lib/ticket-events";
 import { isDraftKey } from "@/lib/draft-key";
 import { deriveTestDocState } from "@/lib/test-doc";
+import { getAutoGenerateTestDoc } from "@/lib/auto-generate-test-doc-setting";
 
 /**
  * Persist a generated (not yet reviewed) test doc into the Bridge draft cache
@@ -166,6 +167,7 @@ async function isInPinnedSprint(key: string): Promise<boolean> {
  */
 export async function maybeAutoGenerateTestDoc(key: string): Promise<void> {
   try {
+    if (!(await getAutoGenerateTestDoc())) return;
     if (isDraftKey(key)) return;
     if (autoGenInFlight.has(key)) return;
 

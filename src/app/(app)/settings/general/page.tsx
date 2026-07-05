@@ -9,6 +9,8 @@ import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { useDefaultTeam } from "@/hooks/useDefaultTeam";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { isBacklogSprintName, TEAMS } from "@/lib/sprint-utils";
+import { useAccountSetting } from "@/hooks/useAccountSetting";
+import { ToggleSwitch } from "@/components/shared/ToggleSwitch";
 
 export default function GeneralSettingsPage() {
   const [saving, setSaving] = useState(false);
@@ -27,6 +29,10 @@ export default function GeneralSettingsPage() {
 
   const { backlogTargetName, setBacklogTargetName } = useBacklogDropTarget();
   const { defaultTeam, setDefaultTeam } = useDefaultTeam();
+  const { value: autoGenerateTestDoc, setValue: setAutoGenerateTestDoc } = useAccountSetting<boolean>(
+    "/api/settings/auto-generate-test-doc",
+    true,
+  );
   const { sprints } = useJiraSprints();
   const backlogOptions = sprints.filter((s) => isBacklogSprintName(s.name));
   // The drop tile resolves the target by name; when the configured backlog is
@@ -207,6 +213,37 @@ export default function GeneralSettingsPage() {
 
       <p className="mt-4 text-label leading-relaxed text-text-muted">
         This is the source of truth for &ldquo;which team is mine&rdquo;. When set, views that group work by team put yours at the top; when unset, they fall back to plain ordering.
+      </p>
+
+      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-label text-text-secondary">
+        Test Docs
+      </h2>
+
+      <div className="rounded-xl border border-border-default bg-overlay-subtle p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-body-lg font-medium text-text-primary">Auto-generate on move to To Test</p>
+            <p className="mt-0.5 text-body-sm leading-relaxed text-text-tertiary">
+              Automatically kick off test doc generation when a pinned-sprint story moves to To Test status. The draft still requires manual review and acceptance before it is written to Jira.
+            </p>
+          </div>
+          <div className="shrink-0">
+            <ToggleSwitch
+              checked={autoGenerateTestDoc}
+              onChange={setAutoGenerateTestDoc}
+              ariaLabel="Auto-generate test doc on move to To Test"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-1.5 text-body-sm text-text-muted">
+          <Check size={12} strokeWidth={2} className="text-emerald-400/70" />
+          <span>{autoGenerateTestDoc ? "Enabled — drafts are generated automatically" : "Disabled — generate manually from the board or ticket detail"}</span>
+        </div>
+      </div>
+
+      <p className="mt-4 text-label leading-relaxed text-text-muted">
+        Only affects automatic background generation. Manual generation from the board or ticket detail is always available regardless of this setting.
       </p>
     </>
   );
