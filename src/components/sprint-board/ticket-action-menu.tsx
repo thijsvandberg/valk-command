@@ -29,7 +29,7 @@ export { MenuItem };
 
 // The root "menu" is the full right-click menu; "update"/"move"/"flag"/"assist" are the
 // group views the bar opens directly via `initialView`. Deeper pickers are hover flyouts.
-type MenuView = "menu" | "update" | "move" | "flag" | "bookmark" | "assist";
+type MenuView = "menu" | "update" | "move" | "flag" | "assist";
 
 /** Aggregate flag state of the targeted tickets, used to pick which flag item to show. */
 export type FlagState = "flagged" | "unflagged" | "mixed";
@@ -261,7 +261,6 @@ export function TicketActionMenuContent({
   if (initialView === "update") return <>{updateItems}</>;
   if (initialView === "move") return <>{moveItems}</>;
   if (initialView === "flag") return <>{flagItems}</>;
-  if (initialView === "bookmark") return <>{bookmarkItems}</>;
   if (initialView === "assist") return <>{assistItems}</>;
 
   // Root right-click menu, one divider between clusters: Triage · Move · (Flag + Update +

@@ -21,6 +21,7 @@ vi.mock("lucide-react", () => {
     Scissors: stub("scissors"),
     Clock: stub("clock"),
     NotebookPen: stub("notebook"),
+    Bookmark: stub("bookmark"),
     FileCheck2: stub("file-check"),
     FileX2: stub("file-x"),
   };
@@ -145,6 +146,24 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     const btn = screen.getByRole("button", { name: "Mark as read" });
     fireEvent.click(btn);
     expect(onMarkRead).toHaveBeenCalledWith("VPL-1");
+  });
+
+  it("renders a hover bookmark toggle only when onToggleBookmark is supplied, and fires the next state (BRDG-355)", () => {
+    renderRow();
+    expect(screen.queryByRole("button", { name: /bookmark/i })).toBeNull();
+
+    const onToggleBookmark = vi.fn();
+    renderRow({ onToggleBookmark });
+    // Not yet bookmarked -> the action offers "Bookmark" and requests next=true.
+    fireEvent.click(screen.getByRole("button", { name: "Bookmark" }));
+    expect(onToggleBookmark).toHaveBeenCalledWith("VPL-1", true);
+  });
+
+  it("the hover bookmark toggle offers removal and requests next=false when already bookmarked (BRDG-355)", () => {
+    const onToggleBookmark = vi.fn();
+    renderRow({ ticket: makeTicket({ bookmarked: true }), onToggleBookmark });
+    fireEvent.click(screen.getByRole("button", { name: "Remove bookmark" }));
+    expect(onToggleBookmark).toHaveBeenCalledWith("VPL-1", false);
   });
 
   it("renders the reporter chip only when the creator tag is on and a reporter exists (BRDG-358)", () => {

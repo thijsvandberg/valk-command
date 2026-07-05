@@ -536,26 +536,27 @@ export function TicketMetaContent({
       {/* Details */}
       <div className="space-y-3">
 
-        {/* Bookmark toggle (BRDG-355): a prominent, discoverable action at the top of
+        {/* Bookmark toggle (BRDG-355): a compact icon-only action at the top-right of
             the meta panel. The optional "why" note reuses the PO Note field below.
             Hidden for subtasks/epics, which the bookmark list does not include. */}
         {ticket.type !== "subtask" && ticket.type !== "epic" && (
           <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={handleBookmarkToggle}
-              aria-pressed={bookmarked}
-              title={bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}
-              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90 ${
-                bookmarked
-                  ? "border-[var(--meta-bv-fg)]/40 bg-[color-mix(in_srgb,var(--meta-bv-fg)_12%,transparent)] text-[var(--meta-bv-fg)]"
-                  : "border-border-subtle bg-transparent text-text-muted hover:border-border-default hover:text-text-secondary"
-              }`}
-              style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
-            >
-              <Bookmark size={13} strokeWidth={1.75} fill={bookmarked ? "currentColor" : "none"} aria-hidden />
-              {bookmarked ? "Bookmarked" : "Bookmark"}
-            </button>
+            <Tooltip content={bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}>
+              <button
+                type="button"
+                onClick={handleBookmarkToggle}
+                aria-pressed={bookmarked}
+                aria-label={bookmarked ? "Remove bookmark" : "Bookmark this story"}
+                className={`grid h-8 w-8 place-items-center rounded-lg border cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90 ${
+                  bookmarked
+                    ? "border-[var(--meta-bv-fg)]/40 bg-[color-mix(in_srgb,var(--meta-bv-fg)_12%,transparent)] text-[var(--meta-bv-fg)]"
+                    : "border-border-subtle bg-transparent text-text-muted hover:border-border-default hover:text-text-secondary"
+                }`}
+                style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
+              >
+                <Bookmark size={15} strokeWidth={1.75} fill={bookmarked ? "currentColor" : "none"} aria-hidden />
+              </button>
+            </Tooltip>
           </div>
         )}
 

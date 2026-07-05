@@ -660,6 +660,12 @@ function InboxView() {
                                   isNewSinceLastViewed={isNew(row)}
                                   hideEmptyAssignee
                                   onMarkRead={(key) => void markRead([key])}
+                                  onToggleBookmark={(key, next) => {
+                                    void ra.bulkSetBookmarked(next, new Set([key]));
+                                    // Bookmarking from the inbox is a triage action: it also
+                                    // clears the item (mark as read), per BRDG-355 feedback.
+                                    if (next) void markRead([key]);
+                                  }}
                                   isLastInCard={idx === group.rows.length - 1}
                                 />
                               ))}

@@ -336,13 +336,12 @@ export function BulkActionBar({
         />
       )}
       {onSetBookmarked && (
-        <GroupDropdown
-          label="Bookmark"
+        // A plain toggle, not a dropdown: bookmark has one action per state, so a
+        // single-item menu would be pointless (BRDG-355 feedback).
+        <IconAction
+          label={bookmarkState === "bookmarked" ? "Remove bookmark" : "Bookmark"}
           icon={Bookmark}
-          width="w-52"
-          render={(close) => (
-            <TicketActionMenuContent onSetBookmarked={onSetBookmarked} bookmarkState={bookmarkState} initialView="bookmark" close={close} />
-          )}
+          onClick={() => onSetBookmarked(bookmarkState !== "bookmarked")}
         />
       )}
       {hasAssist && (

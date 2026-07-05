@@ -12,7 +12,7 @@ import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock, NotebookPen } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock, NotebookPen, Bookmark } from "lucide-react";
 import { TestDocMarker } from "@/components/sprint-board/TestDocMarker";
 import { WarningBadge } from "@/components/sprint-board/WarningBadge";
 import { type WarningKind } from "@/components/sprint-board/warning-filter";
@@ -142,6 +142,12 @@ export interface BoardRowBaseProps {
    * which never passes it.
    */
   onMarkRead?: (key: string) => void;
+  /**
+   * Bookmark from a hover action (BRDG-355): renders a hover-revealed trailing
+   * bookmark toggle next to "Mark as read", so the inbox can bookmark without
+   * opening the row. `next` is the desired state (the row knows the current one).
+   */
+  onToggleBookmark?: (key: string, next: boolean) => void;
   /**
    * Freshly inline-created story (BRDG-395): renders an always-visible "Open in Story
    * Writer" pill next to the title, linking to /tickets/{key}/write. Set by the list host
@@ -296,6 +302,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onActivate,
     onDiscard,
     onMarkRead,
+    onToggleBookmark,
     showStoryWriterLink = false,
     createdAtLabel,
     sessionTimeAgo,
@@ -1070,23 +1077,44 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             </div>
           )}
 
-          {/* Mark-as-read overlay (BRDG-357): floats over the row's right edge on hover,
-              same gradient-fade concept as onDiscard. Inert on the board (onMarkRead absent). */}
-          {onMarkRead && !isEditingTitle && (
+          {/* Mark-as-read + bookmark overlay (BRDG-357/355): floats over the row's right
+              edge on hover, same gradient-fade concept as onDiscard. Inert on the board
+              (both handlers absent). */}
+          {(onMarkRead || onToggleBookmark) && !isEditingTitle && (
             <div
-              className="absolute inset-y-0 right-0 z-10 flex items-center pl-8 pr-4 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100"
+              className="absolute inset-y-0 right-0 z-10 flex items-center gap-1 pl-8 pr-4 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100"
               style={{ background: "linear-gradient(to right, transparent, var(--color-surface-elevated) 24px)" }}
             >
-              <button
-                type="button"
-                aria-label="Mark as read"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); onMarkRead(ticket.key); }}
-                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[var(--color-brand-subtle)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-brand-500)_18%,transparent)]"
-              >
-                <Check size={14} strokeWidth={2} />
-                <span>Mark read</span>
-              </button>
+              {onToggleBookmark && (
+                <Tooltip content={ticket.bookmarked ? "Remove bookmark" : "Bookmark (also marks as read)"}>
+                  <button
+                    type="button"
+                    aria-label={ticket.bookmarked ? "Remove bookmark" : "Bookmark"}
+                    aria-pressed={Boolean(ticket.bookmarked)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); onToggleBookmark(ticket.key, !ticket.bookmarked); }}
+                    className={`grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-md transition-[background-color,color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                      ticket.bookmarked
+                        ? "text-[var(--meta-bv-fg)] hover:bg-[color-mix(in_srgb,var(--meta-bv-fg)_16%,transparent)]"
+                        : "text-text-muted hover:bg-[color-mix(in_srgb,var(--meta-bv-fg)_14%,transparent)] hover:text-[var(--meta-bv-fg)]"
+                    }`}
+                  >
+                    <Bookmark size={14} strokeWidth={1.75} fill={ticket.bookmarked ? "currentColor" : "none"} />
+                  </button>
+                </Tooltip>
+              )}
+              {onMarkRead && (
+                <button
+                  type="button"
+                  aria-label="Mark as read"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); onMarkRead(ticket.key); }}
+                  className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[var(--color-brand-subtle)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-brand-500)_18%,transparent)]"
+                >
+                  <Check size={14} strokeWidth={2} />
+                  <span>Mark read</span>
+                </button>
+              )}
             </div>
           )}
           </div>

@@ -34,6 +34,7 @@ import { tickets } from "@/lib/api-client";
 import { patchTicketDetailCache } from "@/lib/ticket-cache";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 import { scopedMutate } from "@/lib/swr-scoped-mutate";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { buildTicketHoverData } from "@/hooks/useTicketHoverData";
@@ -165,23 +166,24 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 </span>
               )}
 
-              {/* Bookmark toggle (BRDG-355): real tickets only (drafts have no row). */}
+              {/* Bookmark toggle (BRDG-355): icon-only; real tickets only (drafts have no row). */}
               {!isDraft && (
-                <button
-                  type="button"
-                  onClick={handleBookmarkToggle}
-                  aria-pressed={bookmarked}
-                  title={bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}
-                  className={`flex h-7 items-center gap-1.5 rounded-md border px-2 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90 ${
-                    bookmarked
-                      ? "border-[var(--meta-bv-fg)]/40 bg-[color-mix(in_srgb,var(--meta-bv-fg)_12%,transparent)] text-[var(--meta-bv-fg)]"
-                      : "border-border-subtle text-text-tertiary hover:text-text-secondary hover:border-border-default"
-                  }`}
-                  style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
-                >
-                  <Bookmark size={12} strokeWidth={1.75} fill={bookmarked ? "currentColor" : "none"} aria-hidden />
-                  {bookmarked ? "Bookmarked" : "Bookmark"}
-                </button>
+                <Tooltip content={bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}>
+                  <button
+                    type="button"
+                    onClick={handleBookmarkToggle}
+                    aria-pressed={bookmarked}
+                    aria-label={bookmarked ? "Remove bookmark" : "Bookmark this story"}
+                    className={`grid h-7 w-7 place-items-center rounded-md border cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90 ${
+                      bookmarked
+                        ? "border-[var(--meta-bv-fg)]/40 bg-[color-mix(in_srgb,var(--meta-bv-fg)_12%,transparent)] text-[var(--meta-bv-fg)]"
+                        : "border-border-subtle text-text-tertiary hover:text-text-secondary hover:border-border-default"
+                    }`}
+                    style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
+                  >
+                    <Bookmark size={13} strokeWidth={1.75} fill={bookmarked ? "currentColor" : "none"} aria-hidden />
+                  </button>
+                </Tooltip>
               )}
 
               {/* Pane apps live behind this dropdown since BRDG-460 replaced the

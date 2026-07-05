@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Bookmark, StickyNote, ArrowUpRight } from "lucide-react";
-import { tickets, swrFetcher } from "@/lib/api-client";
+import { Bookmark } from "lucide-react";
+import type { Ticket, JiraStatus } from "@/types/ticket";
+import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import type { BookmarkEntry } from "@/lib/bookmarks";
-import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
-import { Tooltip } from "@/components/shared/Tooltip";
+import { tickets as ticketsApi, swrFetcher } from "@/lib/api-client";
+import { BoardRow } from "@/components/sprint-board/BoardRow";
 import { ViewHeader } from "@/components/shared/ViewHeader";
 import { DataErrorState } from "@/components/shared/DataErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -18,19 +19,57 @@ import {
   clearPendingEdit,
 } from "@/components/sprint-board/pendingTicketEdits";
 
+// The standard board rows show these signals; the bookmark badge and status pill
+// render regardless. Bookmarks carry a PO note, so the notes marker is on.
+const ROW_TAGS: Set<InlineTagId> = new Set(["notes"]);
+
+// Lightweight Ticket so a standard BoardRow paints from the single /api/bookmarks
+// payload (mirrors the inbox's rowToTicket). Opening a row re-derives full detail.
+function entryToTicket(e: BookmarkEntry): Ticket {
+  return {
+    key: e.key,
+    title: e.title,
+    type: e.type,
+    epic: null,
+    epicKey: null,
+    jiraStatus: (e.jiraStatus ?? "TO DO") as JiraStatus,
+    storyPoints: null,
+    assignee: null,
+    flagged: false,
+    readiness: null,
+    poStatus: null,
+    qualityScore: null,
+    businessValue: null,
+    editState: "clean",
+    notes: e.notes,
+    bookmarked: true,
+    sprintId: e.sprintName ?? undefined,
+    sprintDisplayName: e.sprintName,
+    openSubtaskCount: 0,
+    totalSubtaskCount: 0,
+  };
+}
+
 // Full cross-sprint overview of every bookmarked ticket (BRDG-355), most-recently
-// bookmarked first. A dedicated board page rather than the SprintBoard component,
-// which is bound to /sprint-board URL routing and slot state. It reuses the same
-// batch endpoint as the launcher quick-list and the shared TicketStatusPill so the
-// rows read like the board.
+// bookmarked first. Renders the SAME BoardRow the sprint board and inbox use — not a
+// bespoke table — fed by the shared batch endpoint. A dedicated page rather than the
+// SprintBoard component, which is bound to /sprint-board URL routing and slot state.
 export default function BookmarksPage() {
   const router = useRouter();
   const { data, error, isLoading, mutate } = useSWR<BookmarkEntry[]>(
-    tickets.bookmarksUrl(),
+    ticketsApi.bookmarksUrl(),
     swrFetcher,
     { revalidateOnFocus: false },
   );
-  const entries = data ?? [];
+  const entries = useMemo(() => data ?? [], [data]);
+  const rows = useMemo(() => entries.map(entryToTicket), [entries]);
+  // The row's sprint chip resolves its label from this map; the entry's display name
+  // doubles as the id (bookmarks have no real sprint ids here), like the inbox.
+  const sprintNameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    entries.forEach((e) => { if (e.sprintName) m[e.sprintName] = e.sprintName; });
+    return m;
+  }, [entries]);
 
   const removeBookmark = useCallback(async (key: string) => {
     // Optimistically drop the row; the board overlay carries the un-bookmark to any
@@ -38,7 +77,7 @@ export default function BookmarksPage() {
     registerPendingEdit(key, "bookmarked", false, Date.now());
     void mutate((cur) => (cur ?? []).filter((b) => b.key !== key), { revalidate: false });
     try {
-      await tickets.setBookmarked(key, false);
+      await ticketsApi.setBookmarked(key, false);
       confirmPendingEdit(key, "bookmarked");
     } catch {
       clearPendingEdit(key, "bookmarked");
@@ -73,56 +112,29 @@ export default function BookmarksPage() {
             />
           ) : (
             <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface-elevated">
-              {entries.map((entry, i) => (
-                <div
-                  key={entry.key}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/tickets/${entry.key}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      router.push(`/tickets/${entry.key}`);
-                    }
-                  }}
-                  className={`group flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 cursor-pointer hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${i > 0 ? "border-t border-border-subtle" : ""}`}
-                >
-                  <span className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
-                    <TicketStatusPill
-                      ticketKey={entry.key}
-                      jiraStatus={entry.jiraStatus}
-                      issueType={entry.type}
-                      title={entry.title}
-                      variant="list"
-                      size="sm"
-                      showReadiness={false}
-                      showHoverCard={false}
+              <table className="w-full table-fixed border-collapse text-body-lg">
+                <tbody>
+                  {rows.map((t, i) => (
+                    <BoardRow
+                      key={t.key}
+                      ticket={t}
+                      ticketIdx={i}
+                      isChecked={false}
+                      isSelected={false}
+                      someChecked={false}
+                      isDragActive={false}
+                      hideRowAccent
+                      tags={ROW_TAGS}
+                      showSprint
+                      sprintNameMap={sprintNameMap}
+                      onSelectTicket={(key) => { if (key) router.push(`/tickets/${key}`); }}
+                      onCheckboxClick={() => {}}
+                      onToggleBookmark={(key, next) => { if (!next) void removeBookmark(key); }}
+                      isLastInCard={i === rows.length - 1}
                     />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary transition-colors group-hover:text-text-primary">
-                    {entry.title}
-                  </span>
-                  {entry.notes.trim() && (
-                    <Tooltip content={entry.notes} className="shrink-0">
-                      <StickyNote className="h-3.5 w-3.5 text-[var(--meta-bv-fg)]" strokeWidth={1.5} aria-label="PO note" />
-                    </Tooltip>
-                  )}
-                  <span className="hidden shrink-0 max-w-[140px] truncate font-mono text-caption uppercase tracking-label text-text-muted/70 sm:inline">
-                    {entry.sprintName ?? "Backlog"}
-                  </span>
-                  <Tooltip content="Remove bookmark" className="shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); void removeBookmark(entry.key); }}
-                      aria-label={`Remove bookmark from ${entry.key}`}
-                      className="grid h-7 w-7 place-items-center rounded-md text-[var(--meta-bv-fg)] cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--meta-bv-fg)_14%,transparent)] active:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    >
-                      <Bookmark size={14} strokeWidth={1.75} fill="currentColor" />
-                    </button>
-                  </Tooltip>
-                  <ArrowUpRight className="h-4 w-4 shrink-0 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" strokeWidth={1.5} />
-                </div>
-              ))}
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
