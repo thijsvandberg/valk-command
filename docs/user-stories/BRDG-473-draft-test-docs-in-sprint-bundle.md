@@ -123,21 +123,67 @@ now support draft-only rows.
   copied. An implementer can flip this to "an explicit tick always copies" if the
   PO finds the master switch surprising.
 
+## Implementation Plan
+
+**Design decision:** store the draft markdown in the existing `doc` field for
+draft-only items + add an `isDraft` boolean. Everything downstream already reads
+`item.doc` (`buildTestDocDocument`, `TestDocBlock`, outline rail, not-finished
+checkbox, `selectedOther`), so reuse avoids per-field branching. `isDraft` is the
+single discriminator for the draft tag, the top-notice count, and the copy filter.
+
+1. **Types** — add `isDraft?: boolean` to `SprintTestDocItem` in both
+   `src/lib/api-client.ts` (~1100) and the route's own copy in `route.ts` (the
+   interface is duplicated across both; keep in sync).
+2. **Route bucketing** (`src/app/api/sprints/[id]/test-docs/route.ts`) — select
+   `testDocDraftClassification`. Add a draft-only branch: when `row.doc` is null
+   but `row.draft != null`, build `{ ...item, doc: row.draft, isDraft: true }` and
+   classify by the **draft** classification. Finished (DONE/TEST) → `documented`
+   (or `internal` when draft classification is `not_stakeholder_relevant`);
+   not-finished → `other` with `isDraft` + `internalDoc`/`needsInput`. Order:
+   `if (row.doc)` … `else if (row.draft != null)` … `else if (notNeeded)` …
+   `else if (finished) missing` … `else other`. A saved-doc + newer-draft story
+   keeps its saved doc (draft branch is only in the null-doc else). `missing` now
+   means no saved doc AND no draft.
+3. **Draft tag** — `TestDocBlock` gains an `isDraft` prop: apply the existing
+   `provisional` left-accent when `provisional || isDraft`, add a `<Tag>draft</Tag>`
+   chip. Pass `isDraft={item.isDraft}` at the Documented + Misc call sites.
+4. **Copy filter** — add `includeDrafts` param (default `false`) to
+   `buildTestDocDocument`; extend its `.filter(d => d.doc)` to
+   `.filter(d => d.doc && (includeDrafts || !d.isDraft))`. Filter only inside the
+   builder so the preview lists (`documentedAll`/`internalAll`) stay unfiltered
+   (preview always shows drafts). `document` memo passes `includeDrafts`;
+   `hasContent` derives from it, so Copy auto-disables when the only content is
+   drafts and the toggle is off. Filtering the merged lists means an opted-in
+   not-finished draft is also gated by the toggle = the resolved master-switch
+   default.
+5. **Footer checkbox** — `useState(false)` for `includeDrafts`; render an "Include
+   drafts" `Checkbox` next to Copy, only when `draftCount > 0`.
+6. **Top notice** — `draftCount = documentedAll.filter(isDraft) + internalAll.filter(isDraft)`;
+   render a left-accented line "N stories still have a draft test doc — review to
+   finalize." above the sections when `draftCount > 0` (no Generate button).
+7. **Not-finished box** — no logic change: draft-only rows now carry `doc`, so the
+   include checkbox + `selectedOther` pick them up; just pass `isDraft` through.
+8. **Subtitle** — append `· N draft` to the header count line when drafts are
+   folded in, so "documented" isn't silently inflated by drafts.
+9. **Tests** — update the existing route test (a TEST story with a draft moves out
+   of `missing`); extend `seedTicket` to seed drafts; add route + modal tests per
+   the Tests section.
+
 ## Acceptance Criteria
 
-- [ ] The route returns draft content for draft-only stories, with `isDraft: true`, placed by draft classification. <!-- src/app/api/sprints/[id]/test-docs/route.ts -->
+- [x] The route returns draft content for draft-only stories, with `isDraft: true`, placed by draft classification. <!-- src/app/api/sprints/[id]/test-docs/route.ts -->
 - [ ] A finished (DONE/TEST) story with only a draft appears in the document (Documented or Misc), tagged as draft, and no longer in the "Missing documentation" gap list. <!-- route.ts bucketing + SprintTestDocsModal.tsx TestDocBlock isDraft -->
 - [ ] A notice at the top of the document states how many stories still carry a draft test doc. <!-- SprintTestDocsModal.tsx document pane, mirrors the missing block ~613 -->
 - [ ] An "Include drafts" choice sits next to "Copy document" in the footer, default off. <!-- SprintTestDocsModal.tsx footer ~782 -->
 - [ ] With the toggle off, the copied text excludes draft blocks; with it on, they are included. <!-- buildTestDocDocument includeDrafts + handleCopy -->
 - [ ] Draft blocks stay visible in the preview pane regardless of the toggle, always marked as draft. <!-- TestDocBlock isDraft tag -->
 - [ ] In the "Not finished yet" box, a story with only a draft can be ticked to include it, and renders as a draft block when included. <!-- SprintTestDocsModal.tsx other section leading checkbox ~738 -->
-- [ ] `missing` counts only stories with neither a saved doc nor a draft. <!-- route.ts -->
+- [x] `missing` counts only stories with neither a saved doc nor a draft. <!-- route.ts -->
 
 ## Tests
 
-- [ ] Route buckets a draft-only finished story into `documented`/`internal` with `isDraft` and its draft content, and excludes it from `missing`. <!-- src/app/api/sprints/[id]/test-docs/route.test.ts -->
-- [ ] Route puts a draft-only not-finished story into `other` with `isDraft` and draft content. <!-- src/app/api/sprints/[id]/test-docs/route.test.ts -->
+- [x] Route buckets a draft-only finished story into `documented`/`internal` with `isDraft` and its draft content, and excludes it from `missing`. <!-- src/app/api/sprints/[id]/test-docs/route.test.ts -->
+- [x] Route puts a draft-only not-finished story into `other` with `isDraft` and draft content. <!-- src/app/api/sprints/[id]/test-docs/route.test.ts -->
 - [ ] `buildTestDocDocument` excludes/includes draft items based on the `includeDrafts` flag. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
 - [ ] Modal renders the top draft notice with the right count and a draft tag on draft blocks. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
 - [ ] Toggling "Include drafts" changes what `handleCopy` writes to the clipboard. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->

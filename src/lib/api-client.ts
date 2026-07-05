@@ -1109,6 +1109,12 @@ export interface SprintTestDocItem {
   /** An unreviewed draft exists (relevant for missing items: review beats regenerate). */
   hasDraft?: boolean;
   /**
+   * True when `doc` carries an unreviewed draft rather than a saved doc (BRDG-473):
+   * draft-only stories are folded into the document but tagged as draft and gated
+   * out of the copy unless included.
+   */
+  isDraft?: boolean;
+  /**
    * Only set on `other` (not-finished) items that carry a doc: true when the doc
    * is internal (Misc placement when opted in), false when it belongs in the
    * Documented list. Undefined on every other bucket. See BRDG-465.

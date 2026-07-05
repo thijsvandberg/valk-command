@@ -16,6 +16,12 @@ export interface SprintTestDocItem {
   /** An unreviewed draft exists (relevant for `missing`: review beats regenerate). */
   hasDraft?: boolean;
   /**
+   * True when `doc` carries an unreviewed draft rather than a saved doc (BRDG-473).
+   * Draft-only stories are folded into the document so the bundle reads complete,
+   * but stay tagged as draft and are gated out of the copy unless opted in.
+   */
+  isDraft?: boolean;
+  /**
    * Only set on `other` (not-finished) items that carry a doc: true when the doc
    * is classified not_stakeholder_relevant (Misc placement when opted in), false
    * when it belongs in the Documented list. Undefined on every other bucket.
@@ -34,10 +40,18 @@ export interface SprintTestDocItem {
  * - internal: not_stakeholder_relevant one-liners (the "Misc" tail).
  * - notNeeded: explicitly marked "no test documentation needed" (no doc at
  *   all) — listed separately so they are never re-reviewed as missing.
- * - missing: DONE/TEST tickets without a doc — the delivery gap list.
+ * - missing: DONE/TEST tickets with neither a saved doc nor a draft — the true
+ *   delivery gap (nothing generated yet).
  * - other: not-finished tickets (any status other than DONE/TEST). Those with a
  *   doc carry it plus `internalDoc` so the bundle modal can offer a per-story
  *   opt-in checkbox for the copy (BRDG-465); those without a doc are informational.
+ *
+ * Draft-only stories (an unreviewed `testDocDraft`, no saved doc) fold into the
+ * document so the bundle reads complete (BRDG-473): their draft markdown rides in
+ * `doc` with `isDraft: true`, classified by the draft classification. Finished
+ * ones join documented/internal (no longer missing); not-finished ones join
+ * `other` so the opt-in checkbox picks them up. A story that has BOTH a saved doc
+ * and a newer draft keeps its saved doc — the draft branch is null-doc only.
  */
 export async function GET(
   _request: Request,
@@ -65,6 +79,7 @@ export async function GET(
       doc: ticketMetadata.testDoc,
       classification: ticketMetadata.testDocClassification,
       draft: ticketMetadata.testDocDraft,
+      draftClassification: ticketMetadata.testDocDraftClassification,
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticketMetadata.jiraKey, ticket.jiraKey))
@@ -121,6 +136,24 @@ export async function GET(
           ...item,
           internalDoc: row.classification === "not_stakeholder_relevant",
           needsInput: row.classification === "needs_input",
+        });
+      }
+    } else if (row.draft != null) {
+      // Draft-only (no saved doc): fold the draft into the document so the bundle
+      // reads complete (BRDG-473). Classify by the DRAFT classification; a null
+      // one predates the column, treat as ok (same as saved docs above).
+      const draftItem: SprintTestDocItem = { ...item, doc: row.draft, isDraft: true };
+      if (finished) {
+        if (row.draftClassification === "not_stakeholder_relevant") {
+          internal.push(draftItem);
+        } else {
+          documented.push({ ...draftItem, needsInput: row.draftClassification === "needs_input" });
+        }
+      } else {
+        other.push({
+          ...draftItem,
+          internalDoc: row.draftClassification === "not_stakeholder_relevant",
+          needsInput: row.draftClassification === "needs_input",
         });
       }
     } else if (row.classification === "not_stakeholder_relevant") {

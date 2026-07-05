@@ -40,6 +40,8 @@ function seedTicket(
     removed?: boolean;
     doc?: string;
     classification?: string;
+    draft?: string;
+    draftClassification?: string;
   } = {},
 ) {
   testDb.insert(ticket).values({
@@ -54,12 +56,14 @@ function seedTicket(
   if (sprintId) {
     testDb.insert(ticketSprint).values({ ticketKey: key, sprintId }).run();
   }
-  if (opts.doc) {
+  if (opts.doc || opts.draft) {
     testDb.insert(ticketMetadata).values({
       jiraKey: key,
-      testDoc: opts.doc,
-      testDocUpdatedAt: "2026-07-01T00:00:00.000Z",
-      testDocClassification: opts.classification ?? "ok",
+      testDoc: opts.doc ?? null,
+      testDocUpdatedAt: opts.doc ? "2026-07-01T00:00:00.000Z" : null,
+      testDocClassification: opts.doc ? opts.classification ?? "ok" : null,
+      testDocDraft: opts.draft ?? null,
+      testDocDraftClassification: opts.draft ? opts.draftClassification ?? null : null,
     }).run();
   }
 }
@@ -79,7 +83,9 @@ describe("GET /api/sprints/[id]/test-docs", () => {
   it("buckets documented, internal, notNeeded, missing and other correctly", async () => {
     seedTicket("VPL-1", { doc: "**Doc 1**", classification: "ok", storyPoints: 3 });
     seedTicket("VPL-2", { doc: "Internal one-liner", classification: "not_stakeholder_relevant" });
-    seedTicket("VPL-3", { status: "TEST" });
+    // Draft-only finished story: folds into the document as a draft (BRDG-473),
+    // no longer counted as missing.
+    seedTicket("VPL-3", { status: "TEST", draft: "unreviewed draft" });
     seedTicket("VPL-4", { status: "DONE" });
     seedTicket("VPL-5", { status: "IN PROGRESS" });
     // Explicit "no doc needed" marker: classification without a doc. Must land
@@ -90,21 +96,73 @@ describe("GET /api/sprints/[id]/test-docs", () => {
       testDocClassification: "not_stakeholder_relevant",
     }).run();
 
-    // A missing ticket with an unreviewed draft is flagged (review beats regenerate).
-    testDb.insert(ticketMetadata).values({
-      jiraKey: "VPL-3",
-      testDocDraft: "unreviewed draft",
-    }).run();
-
     const data = await fetchBuckets();
     expect(data.sprintName).toBe("BT: 139");
-    expect(data.missing.find((d: { key: string }) => d.key === "VPL-3")?.hasDraft).toBe(true);
-    expect(data.missing.find((d: { key: string }) => d.key === "VPL-4")?.hasDraft).toBe(false);
-    expect(data.documented.map((d: { key: string }) => d.key)).toEqual(["VPL-1"]);
+    // VPL-3 draft-only → documented with isDraft + the draft content, out of missing.
+    const vpl3 = data.documented.find((d: { key: string }) => d.key === "VPL-3");
+    expect(vpl3?.isDraft).toBe(true);
+    expect(vpl3?.doc).toBe("unreviewed draft");
+    expect(data.documented.map((d: { key: string }) => d.key).sort()).toEqual(["VPL-1", "VPL-3"]);
     expect(data.internal.map((d: { key: string }) => d.key)).toEqual(["VPL-2"]);
     expect(data.notNeeded.map((d: { key: string }) => d.key)).toEqual(["VPL-6"]);
-    expect(data.missing.map((d: { key: string }) => d.key).sort()).toEqual(["VPL-3", "VPL-4"]);
+    // missing = neither a saved doc nor a draft.
+    expect(data.missing.map((d: { key: string }) => d.key)).toEqual(["VPL-4"]);
+    expect(data.missing.find((d: { key: string }) => d.key === "VPL-4")?.isDraft).toBeUndefined();
     expect(data.other.map((d: { key: string }) => d.key)).toEqual(["VPL-5"]);
+  });
+
+  it("folds draft-only finished stories into documented/internal by draft classification (BRDG-473)", async () => {
+    seedTicket("VPL-1", { status: "DONE", draft: "**Draft feature**", draftClassification: "ok", storyPoints: 5 });
+    seedTicket("VPL-2", { status: "TEST", draft: "internal draft", draftClassification: "not_stakeholder_relevant" });
+    seedTicket("VPL-3", { status: "DONE", draft: "flagged draft", draftClassification: "needs_input" });
+    // Null draft classification predates the column → documented/ok.
+    seedTicket("VPL-4", { status: "DONE", draft: "legacy draft" });
+
+    const data = await fetchBuckets();
+
+    const documented = Object.fromEntries(
+      data.documented.map((d: { key: string; isDraft?: boolean; doc: string; needsInput?: boolean }) => [d.key, d]),
+    );
+    expect(documented["VPL-1"]).toMatchObject({ isDraft: true, doc: "**Draft feature**", needsInput: false });
+    expect(documented["VPL-3"]).toMatchObject({ isDraft: true, needsInput: true });
+    expect(documented["VPL-4"]).toMatchObject({ isDraft: true, needsInput: false });
+    expect(data.internal.find((d: { key: string }) => d.key === "VPL-2")).toMatchObject({
+      isDraft: true,
+      doc: "internal draft",
+    });
+    // None of them count as a delivery gap anymore.
+    expect(data.missing).toEqual([]);
+  });
+
+  it("puts draft-only not-finished stories in other with the draft content + placement hint (BRDG-473)", async () => {
+    seedTicket("VPL-1", { status: "IN PROGRESS", draft: "**WIP draft**", draftClassification: "ok" });
+    seedTicket("VPL-2", { status: "TODO", draft: "internal wip draft", draftClassification: "not_stakeholder_relevant" });
+
+    const data = await fetchBuckets();
+    const other = Object.fromEntries(
+      data.other.map((d: { key: string; doc: string | null; isDraft?: boolean; internalDoc?: boolean }) => [d.key, d]),
+    );
+    expect(other["VPL-1"]).toMatchObject({ isDraft: true, doc: "**WIP draft**", internalDoc: false });
+    expect(other["VPL-2"]).toMatchObject({ isDraft: true, doc: "internal wip draft", internalDoc: true });
+    // They are not auto-included; the modal's opt-in checkbox governs them.
+    expect([...data.documented, ...data.internal]).toEqual([]);
+  });
+
+  it("keeps a saved doc when a newer draft also exists (draft branch is null-doc only)", async () => {
+    seedTicket("VPL-1", {
+      status: "DONE",
+      doc: "**Saved doc**",
+      classification: "ok",
+      draft: "newer draft",
+      draftClassification: "not_stakeholder_relevant",
+    });
+
+    const data = await fetchBuckets();
+    const item = data.documented.find((d: { key: string }) => d.key === "VPL-1");
+    expect(item?.doc).toBe("**Saved doc**");
+    expect(item?.isDraft).toBeUndefined();
+    expect(item?.hasDraft).toBe(true);
+    expect(data.internal).toEqual([]);
   });
 
   it("keeps not-finished docs opt-in: doc-bearing not-Done tickets land in other, finished ones stay documented/internal", async () => {
