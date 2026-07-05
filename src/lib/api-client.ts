@@ -180,6 +180,7 @@ export const tickets = {
     `/api/tickets/${enc(key)}/reviews`,
   devInfoUrl: (key: string) =>
     `/api/tickets/${enc(key)}/dev-info`,
+  bookmarksUrl: () => "/api/bookmarks" as const,
 
   // -- Actions --
   list: (sprintId?: string, signal?: AbortSignal) =>
@@ -201,6 +202,10 @@ export const tickets = {
     apiFetch<Record<string, unknown>>(`/api/tickets/${enc(key)}/metadata`, { signal }),
   updateMetadata: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<Record<string, unknown>>(`/api/tickets/${enc(key)}/metadata`, { method: "PUT", body: data, signal }),
+  // BRDG-355: bookmark is Bridge-local metadata (NOT a Jira-synced flag), so it
+  // writes through the metadata PUT, never the flag PATCH route.
+  setBookmarked: (key: string, bookmarked: boolean, signal?: AbortSignal) =>
+    apiFetch<Record<string, unknown>>(`/api/tickets/${enc(key)}/metadata`, { method: "PUT", body: { bookmarked }, signal }),
 
   getComments: (key: string, signal?: AbortSignal) =>
     apiFetch<unknown[]>(`/api/tickets/${enc(key)}/comments`, { signal }),
