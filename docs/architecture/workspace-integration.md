@@ -234,11 +234,15 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   delivery order, internal one-liners as a Misc tail, and the missing overview (DONE/TEST
   without a doc). "Copy document" puts the stakeholder markdown on the clipboard; "Generate
   missing" feeds all gap keys back into the BRDG-426 validation queue. Each row on the gap
-  lists (missing + "Not finished yet") also carries per-item actions (`RowActions`): **Open**
-  (the review popup in view mode, returns to the bundle), **Generate** (the review popup with
-  auto-start), and **Skip** (marks the story "no test doc needed" inline via
+  lists (missing + "Not finished yet") carries its per-item actions (`RowActions`) collapsed
+  behind a single "..." overflow so the row reads as a document line (BRDG-472): **Open**/**Edit**
+  (the review popup in view mode, returns to the bundle; "Edit" once a doc exists, else "Open"),
+  **Generate**/**Regenerate** (the review popup with auto-start; "Regenerate" once a saved doc or
+  an unreviewed draft exists), and **Skip** (marks the story "no test doc needed" inline via
   `PUT test-doc {notNeeded}`, then revalidates the bundle + board lists so the row moves to
-  the `notNeeded` group without leaving the modal).
+  the `notNeeded` group without leaving the modal). A row that offers only one action renders it
+  inline instead of behind the menu. There is no separate "draft ready" badge — an unreviewed
+  draft surfaces through the **Regenerate** label.
 - **PO control over inclusion**: the review modal's "No test doc needed" button (and the
   bundle's per-row **Skip**) stores a Bridge-only marker (`test_doc_classification =
   not_stakeholder_relevant` with no doc, no Jira write; cancels an in-flight generation).

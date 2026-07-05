@@ -26,7 +26,7 @@ import { buildTicketHoverData } from "@/lib/ticket-hover";
 import type { TicketDetailResponse } from "@/lib/ticket-detail-builder";
 import type { IssueType, JiraStatus } from "@/types/ticket";
 import type { ShowToast } from "@/hooks/useToast";
-import { ClipboardCopy, FileCheck2, MoreHorizontal, Sparkles, CircleSlash } from "lucide-react";
+import { ClipboardCopy, FileCheck2, MoreHorizontal, Sparkles, CircleSlash, RefreshCw, SquarePen } from "lucide-react";
 
 interface SprintTestDocsModalProps {
   sprintId: string;
@@ -194,22 +194,24 @@ function OutlineEntry({
   );
 }
 
+/** One row action, rendered inline when it stands alone or as a menu row when
+ *  it shares the row with others (see {@link RowActions}). */
+type RowAction = {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  title: string;
+  disabled?: boolean;
+  onSelect: () => void;
+};
+
 /**
- * Overflow menu holding the secondary row actions (Generate / Skip) so the
- * gap-list rows stay uncluttered next to the primary Open/Edit action.
- * Portalled via AnchoredPanel so the menu escapes the modal body's scroll clip.
+ * Overflow menu holding a row's actions. On the gap lists every action collapses
+ * behind this "..." (BRDG-472) — Open/Edit, Generate/Regenerate and Skip — so the
+ * row reads as a document line, not a toolbar. Portalled via AnchoredPanel so the
+ * menu escapes the modal body's scroll clip.
  */
-function RowOverflowMenu({
-  item,
-  onGenerate,
-  onSkip,
-  skipping,
-}: {
-  item: SprintTestDocItem;
-  onGenerate: (key: string) => void;
-  onSkip: (key: string) => void;
-  skipping: boolean;
-}) {
+function RowOverflowMenu({ item, actions }: { item: SprintTestDocItem; actions: RowAction[] }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -241,27 +243,20 @@ function RowOverflowMenu({
         unstyled
       >
         <MenuList>
-          <MenuItem
-            icon={<Sparkles size={12} strokeWidth={1.5} />}
-            onClick={() => {
-              close();
-              onGenerate(item.key);
-            }}
-            title="Generate the doc and review it"
-          >
-            Generate
-          </MenuItem>
-          <MenuItem
-            icon={<CircleSlash size={12} strokeWidth={1.5} />}
-            disabled={skipping}
-            onClick={() => {
-              close();
-              onSkip(item.key);
-            }}
-            title="Mark as needing no test documentation — moves it out of the delivery gap"
-          >
-            Skip
-          </MenuItem>
+          {actions.map((action) => (
+            <MenuItem
+              key={action.key}
+              icon={action.icon}
+              disabled={action.disabled}
+              onClick={() => {
+                close();
+                action.onSelect();
+              }}
+              title={action.title}
+            >
+              {action.label}
+            </MenuItem>
+          ))}
         </MenuList>
       </AnchoredPanel>
     </>
@@ -269,10 +264,11 @@ function RowOverflowMenu({
 }
 
 /**
- * Per-row actions on the gap lists (missing / not-finished): the primary action
- * opens the story in the review popup — labelled "Edit" when a doc already
- * exists, "Open" when it doesn't — with Generate / Skip tucked behind an
- * overflow menu so the row stays readable.
+ * Per-row actions on the gap lists (missing / not-finished). Every action lives
+ * behind the "..." overflow so the row reads as a document line (BRDG-472):
+ * Open/Edit opens the review popup, Generate becomes Regenerate once a saved doc
+ * or an unreviewed draft exists, and Skip marks the story as not needing a doc. A
+ * row that offers only a single action renders it inline rather than behind a menu.
  */
 function RowActions({
   item,
@@ -287,16 +283,46 @@ function RowActions({
   onSkip: (key: string) => void;
   skipping: boolean;
 }) {
+  const alreadyGenerated = Boolean(item.doc) || Boolean(item.hasDraft);
+  const actions: RowAction[] = [
+    {
+      key: "open",
+      label: item.doc ? "Edit" : "Open",
+      icon: <SquarePen size={12} strokeWidth={1.5} />,
+      title: item.doc ? "Open this doc in the review popup to edit it" : "Open this story in the review popup",
+      onSelect: () => onOpen(item.key),
+    },
+    {
+      key: "generate",
+      label: alreadyGenerated ? "Regenerate" : "Generate",
+      icon: alreadyGenerated ? <RefreshCw size={12} strokeWidth={1.5} /> : <Sparkles size={12} strokeWidth={1.5} />,
+      title: alreadyGenerated ? "Regenerate the doc and review it" : "Generate the doc and review it",
+      onSelect: () => onGenerate(item.key),
+    },
+    {
+      key: "skip",
+      label: "Skip",
+      icon: <CircleSlash size={12} strokeWidth={1.5} />,
+      title: "Mark as needing no test documentation — moves it out of the delivery gap",
+      disabled: skipping,
+      onSelect: () => onSkip(item.key),
+    },
+  ];
+
+  if (actions.length === 1) {
+    const only = actions[0];
+    return (
+      <span className="flex shrink-0 items-center gap-1">
+        <CaptionButton onClick={only.onSelect} disabled={only.disabled} title={only.title}>
+          {only.label}
+        </CaptionButton>
+      </span>
+    );
+  }
+
   return (
     <span className="flex shrink-0 items-center gap-1">
-      {item.hasDraft && <Tag color="amber" className="shrink-0">draft ready</Tag>}
-      <CaptionButton
-        onClick={() => onOpen(item.key)}
-        title={item.doc ? "Open this doc in the review popup to edit it" : "Open this story in the review popup"}
-      >
-        {item.doc ? "Edit" : "Open"}
-      </CaptionButton>
-      <RowOverflowMenu item={item} onGenerate={onGenerate} onSkip={onSkip} skipping={skipping} />
+      <RowOverflowMenu item={item} actions={actions} />
     </span>
   );
 }

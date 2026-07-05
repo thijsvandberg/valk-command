@@ -186,22 +186,26 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(within(screen.getByTestId("test-docs-other")).getAllByTestId("ticket-pill")).toHaveLength(1);
   });
 
-  it("missing rows offer Open plus Generate / Skip in an overflow menu, and flag an unreviewed draft", () => {
+  it("collapses every missing-row action behind the overflow menu, with no draft-ready badge (BRDG-472)", () => {
     const props = renderModal();
     const missing = screen.getByTestId("test-docs-missing");
-    expect(within(missing).getByText("draft ready")).toBeInTheDocument();
+    // The draft-ready badge is gone; an unreviewed draft now shows as Regenerate.
+    expect(within(missing).queryByText("draft ready")).not.toBeInTheDocument();
     const row = within(missing).getByText("VPL-5 TEST").closest("li") as HTMLElement;
-    // No doc yet, so the primary action reads "Open".
+    // Nothing inline: Open and the generate action both live behind the "...".
+    expect(within(row).queryByText("Open")).not.toBeInTheDocument();
+    expect(within(row).queryByText("Regenerate")).not.toBeInTheDocument();
+    fireEvent.click(within(row).getByRole("button", { name: "More actions for VPL-5" }));
+    // No saved doc yet, so the open action reads "Open".
     fireEvent.click(within(row).getByText("Open"));
     expect(props.onEditItem).toHaveBeenCalledWith("VPL-5");
-    // Generate / Skip live behind the row's overflow menu.
-    expect(within(row).queryByText("Generate")).not.toBeInTheDocument();
+    // VPL-5 carries an unreviewed draft, so Generate reads "Regenerate".
     fireEvent.click(within(row).getByRole("button", { name: "More actions for VPL-5" }));
-    fireEvent.click(within(row).getByText("Generate"));
+    fireEvent.click(within(row).getByText("Regenerate"));
     expect(props.onGenerateMissing).toHaveBeenCalledWith(["VPL-5"]);
   });
 
-  it("labels the primary action Edit when a doc exists and Open when it does not", () => {
+  it("labels the menu's open action Edit when a doc exists and Open when it does not, and Generate vs Regenerate to match", () => {
     mockData = {
       ...BASE,
       other: [
@@ -213,10 +217,18 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     const section = screen.getByTestId("test-docs-other");
     const openRow = within(section).getByText("VPL-6 IN PROGRESS").closest("li") as HTMLElement;
     const editRow = within(section).getByText("VPL-8 IN PROGRESS").closest("li") as HTMLElement;
+
+    fireEvent.click(within(openRow).getByRole("button", { name: "More actions for VPL-6" }));
     expect(within(openRow).getByText("Open")).toBeInTheDocument();
     expect(within(openRow).queryByText("Edit")).not.toBeInTheDocument();
+    // No doc and no draft, so the generate action reads "Generate".
+    expect(within(openRow).getByText("Generate")).toBeInTheDocument();
+
+    fireEvent.click(within(editRow).getByRole("button", { name: "More actions for VPL-8" }));
     expect(within(editRow).getByText("Edit")).toBeInTheDocument();
     expect(within(editRow).queryByText("Open")).not.toBeInTheDocument();
+    // A saved doc turns the generate action into "Regenerate".
+    expect(within(editRow).getByText("Regenerate")).toBeInTheDocument();
   });
 
   it("Skip marks a missing story as no test documentation needed and refreshes", async () => {
