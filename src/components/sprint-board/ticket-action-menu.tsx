@@ -3,7 +3,7 @@
 import { Fragment, useMemo, type ReactNode } from "react";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
-import { Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, FilePen, Sparkles, ArrowRightLeft, Bookmark } from "lucide-react";
+import { Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, FilePen, Sparkles, ArrowRightLeft, Bookmark, BookmarkX } from "lucide-react";
 import { MenuItem } from "@/components/shared/MenuItem";
 import { EpicPickerBody, type EpicOption } from "@/components/shared/EpicPicker";
 import { Flyout, QUICK_MOVE_ICON } from "@/components/sprint-board/ticket-action-menu-portals";
@@ -240,7 +240,7 @@ export function TicketActionMenuContent({
       )}
       {showRemoveBookmarkItem && (
         <MenuItem
-          icon={<Bookmark className="h-3.5 w-3.5 text-[var(--meta-bv-fg)]" fill="var(--meta-bv-fg)" strokeWidth={1.5} />}
+          icon={<BookmarkX className="h-3.5 w-3.5 text-[var(--meta-bv-fg)]" strokeWidth={1.5} />}
           onClick={() => { onSetBookmarked?.(false); close(); }}
         >
           Remove bookmark

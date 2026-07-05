@@ -10,6 +10,7 @@ import {
   type LucideIcon,
   ArrowRightLeft,
   Bookmark,
+  BookmarkX,
   Boxes,
   Check,
   ChevronDown,
@@ -340,7 +341,7 @@ export function BulkActionBar({
         // single-item menu would be pointless (BRDG-355 feedback).
         <IconAction
           label={bookmarkState === "bookmarked" ? "Remove bookmark" : "Bookmark"}
-          icon={Bookmark}
+          icon={bookmarkState === "bookmarked" ? BookmarkX : Bookmark}
           onClick={() => onSetBookmarked(bookmarkState !== "bookmarked")}
         />
       )}
