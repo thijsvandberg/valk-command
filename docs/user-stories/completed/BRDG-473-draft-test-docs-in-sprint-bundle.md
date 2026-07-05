@@ -1,6 +1,6 @@
 # BRDG-473: Draft test docs in the sprint test-doc bundle
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
