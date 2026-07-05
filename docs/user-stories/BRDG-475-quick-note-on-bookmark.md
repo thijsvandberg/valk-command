@@ -48,6 +48,43 @@ Behaviour:
 - **Which surfaces trigger the card:** all bookmark-on actions, or only the deliberate single-item ones (skip bulk-bookmark, where N notes at once makes no sense)? Leaning: skip on bulk; show on single-item bookmark-on (row, menu, header, editor, inbox).
 - **Autofocus vs. opt-in focus:** to stay non-blocking, do NOT autofocus; the timer cancels on the PO's focus/keystroke. Confirm this matches the intent ("zodra je het activeert/begint te typen").
 
+## Implementation Plan
+
+Open Questions resolved with these defaults (see reasoning below):
+1. **Append vs replace:** PRE-FILL with the existing `poNotes` so the PO edits in place, never clobbering an existing note. The metadata route has no GET today, so add one (reviving the already-shipped-but-dead `ticketsApi.getMetadata`) and fetch it on capture open.
+2. **Which surfaces:** show ONLY on single-item bookmark-ON (board row toggle, row context menu with exactly one target, inbox hover, ticket single-view header, Story Writer header). Skip bulk / multi-target.
+3. **Autofocus:** no autofocus; the auto-dismiss timer cancels on focus or first keystroke.
+
+### A — Backend: metadata GET so pre-fill works
+1. Add `getTicketMetadata(key)` to `src/services/ticket-service.ts` (returns the metadata row or `null`; does not throw on a missing row).
+2. Add a `GET` handler to `src/app/api/tickets/[key]/metadata/route.ts` mirroring the PUT scaffolding (`validatePathParam` + `resolveDraftKey`), returning `meta ?? {}`. Revives `ticketsApi.getMetadata` (no api-client change needed).
+
+### B — Context/Provider (overlay host)
+3. Create `src/contexts/BookmarkNoteContext.tsx` following `StoryLauncherContext.tsx`: `captureBookmarkNote(ticketKey)` opener via context (no-op default), holds one active `{ ticketKey }` at a time, renders `<BookmarkNoteCard key={ticketKey} .../>` (the `key` forces a fresh timer/engage state per bookmark). `useBookmarkNoteCapture()` hook.
+4. Mount `BookmarkNoteProvider` in `src/app/(app)/layout.tsx` inside `StoryLauncherProvider` so it wraps all five surfaces and sits under SWR.
+
+### C — The capture card + state machine
+5. Create `src/components/shared/BookmarkNoteCard.tsx` reusing `ToastCard` (neutral, bookmark icon, dismiss cross) + `TextInput`, portalled to `document.body`, `fixed right-6 bottom-24 z-notification` (distinct offset from the other three toast stacks: bottom-4/6/16).
+6. State machine (local state + refs): `text`, `engaged`, `timerRef`. Auto-dismiss `setTimeout(onClose, 6000)` on mount (module const `AUTO_DISMISS_MS`, tunable). `engage()` (on focus AND first change) clears + nulls the timer permanently. NO autofocus, no `.focus()`. Pre-fill from `getMetadata` on mount via an `AbortController`, guarded by refs (`engagedRef`/`textRef`) so a late fetch never overwrites typed text.
+7. Save = Enter or blur-with-text (guarded by `savedRef`): `updateMetadata(key, { poNotes })` → `patchTicketDetailCache(key, { notes })` + `scopedMutate("/api/bookmarks")` → `onClose()`. Dismiss = Esc / cross / auto-timer / empty blur → `onClose()` with NO write.
+8. Card renders the ticket key + a `TextInput` with an optional-note placeholder; no focus trap, no backdrop.
+
+### D — Trigger at both choke points (single-item only)
+9. `useRowActions.runFieldEdit`: consume `useBookmarkNoteCapture()`; after the existing bookmark `scopedMutate`, `if (field === "bookmarked" && value === true && ok.length === 1) captureBookmarkNote(ok[0])`. Covers board rows, context menu, inbox hover, epic children, bulk bar and `/bookmarks` at one point (bulk/multi-target skipped by `ok.length === 1`, removals skipped by `value === true`).
+10. The two header toggles that bypass `useRowActions`: `useTicketDetailPage.handleToggleBookmark` and `StoryWriterLayout.handleBookmarkToggle` — after the successful toggle, `if (next) captureBookmarkNote(key)`.
+
+### E — Tests
+11. `BookmarkNoteCard.test.tsx` (fake timers): auto-dismiss + cancel-on-engage; save-on-Enter/blur calls the PUT + `scopedMutate`; Esc/auto-dismiss with no text = no write; no-autofocus + renders key + placeholder; late-pre-fill does not clobber typed text.
+12. `BookmarkNoteContext.test.tsx`: card mounts only after `captureBookmarkNote`; consumer outside provider does not throw.
+13. Extend `useRowActions.test.ts`: single-item ON triggers capture; two-key / OFF / failed write do not.
+
+### Risks / Gaps
+- Late pre-fill must read refs (not state) in the async resolver, or it clobbers typed text (the pre-fill test guards this).
+- `getTicketMetadata` on a ticket with no metadata row returns `null` → GET returns `{}` (not 404); the card treats absent `poNotes` as `""`.
+- Must use `scopedMutate` (global `mutate` is a no-op in this app).
+- Four fixed bottom-right toast stacks now exist (bottom-4/6/16/24); acceptable for a transient, rare card. Offset kept as a single const.
+- A rapid second bookmark supersedes the first card (no save); matches "optional, non-blocking".
+
 ## Acceptance Criteria
 
 - [ ] Turning a bookmark **on** surfaces an optional quick-note capture that is non-blocking (no modal, no focus trap, no autofocus).
