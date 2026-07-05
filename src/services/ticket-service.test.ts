@@ -82,6 +82,7 @@ import {
   DraftNotFinalizedError,
 } from "./errors";
 import { jiraClient } from "@/lib/jira-client";
+import { cache } from "@/lib/cache";
 import { JIRA_DESCRIPTION_LIMIT } from "@/lib/jira-content-limits";
 import { syncIndividualTickets, ingestIssue } from "@/lib/sync-tickets-service";
 
@@ -423,6 +424,20 @@ describe("updateTicketMetadata", () => {
     await expect(
       updateTicketMetadata("VPL-1", { bookmarked: "yes" as unknown as boolean }),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("invalidates the bookmarks cache when the bookmark changes, so the list refreshes (BRDG-355)", async () => {
+    seedTicket(testDb, "VPL-1");
+    vi.mocked(cache.invalidate).mockClear();
+    await updateTicketMetadata("VPL-1", { bookmarked: true });
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/bookmarks");
+  });
+
+  it("does not invalidate the bookmarks cache for unrelated metadata edits", async () => {
+    seedTicket(testDb, "VPL-1");
+    vi.mocked(cache.invalidate).mockClear();
+    await updateTicketMetadata("VPL-1", { poStatus: "Ready" });
+    expect(cache.invalidate).not.toHaveBeenCalledWith("/api/bookmarks");
   });
 
   it("stores a valid Fibonacci guestimation", async () => {
