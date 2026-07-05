@@ -20,6 +20,7 @@ import {
   Copy,
   CloudDownload,
   CornerLeftUp,
+  Bookmark,
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -476,6 +477,19 @@ export default function TicketDetailPage({
                 Add to refinement
               </button>
             )}
+            {/* Bookmark toggle (BRDG-355): the standard ghost icon button (matches the
+                "More actions" button beside it), in the header — not the sidebar. */}
+            <Tooltip content={h.bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}>
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                onClick={() => void h.handleToggleBookmark()}
+                aria-pressed={h.bookmarked}
+                aria-label={h.bookmarked ? "Remove bookmark" : "Bookmark this story"}
+                icon={<Bookmark size={15} strokeWidth={1.75} fill={h.bookmarked ? "currentColor" : "none"} style={h.bookmarked ? { color: "var(--meta-bv-fg)" } : undefined} />}
+              />
+            </Tooltip>
             <div className="relative">
               <Button
                 variant="ghost"

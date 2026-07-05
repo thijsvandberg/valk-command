@@ -6,7 +6,9 @@ import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessi
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { apiFetch, jira, tickets, ApiError } from "@/lib/api-client";
 import { mapPushErrorMessage } from "@/lib/push-error-message";
-import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
+import { patchTicketCaches, patchTicketDetailCache, revalidateTicketCaches } from "@/lib/ticket-cache";
+import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 import { useLocalEditSaver } from "@/lib/local-edit-saver";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
@@ -21,6 +23,24 @@ export function useTicketDetailPage(key: string) {
   const syncEditState = useTicketEditStateSync();
   const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
   const handleMutate = useCallback(() => { mutateTicket(); }, [mutateTicket]);
+
+  // Bookmark toggle for the page header (BRDG-355). Bridge-local metadata, so it
+  // writes via the metadata PUT and rides the board overlay; the detail-cache patch
+  // keeps this page's own copy in sync without patching the list (per the sidebar rule).
+  const bookmarked = Boolean(apiData?.bookmarked);
+  const handleToggleBookmark = useCallback(async () => {
+    const next = !bookmarked;
+    registerPendingEdit(key, "bookmarked", next, Date.now());
+    patchTicketDetailCache(key, { bookmarked: next });
+    try {
+      await tickets.setBookmarked(key, next);
+      confirmPendingEdit(key, "bookmarked");
+      scopedMutate("/api/bookmarks");
+    } catch {
+      clearPendingEdit(key, "bookmarked");
+      patchTicketDetailCache(key, { bookmarked });
+    }
+  }, [bookmarked, key]);
 
   const ticket: Ticket | undefined = useMemo(() => apiData ? {
     key: apiData.key,
@@ -480,6 +500,10 @@ export function useTicketDetailPage(key: string) {
     ticketLoading,
     jiraCheckState,
     mutateTicket: handleMutate,
+
+    // Bookmark (header toggle)
+    bookmarked,
+    handleToggleBookmark,
 
     // Follow
     isFollowed,

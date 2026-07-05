@@ -218,28 +218,8 @@ describe("TicketMetaContent", () => {
     swrData = undefined;
   });
 
-  it("toggles the bookmark: overlays it, patches only the detail cache, and refreshes the bookmark list (BRDG-355)", async () => {
-    render(<TicketMetaContent ticket={makeTicket({ bookmarked: false })} detail={detail} />);
-    fireEvent.click(screen.getByRole("button", { name: "Bookmark this story" }));
-
-    await waitFor(() => expect(setBookmarked).toHaveBeenCalledWith("PROJ-42", true));
-    // The overlay carries the value on the board list (survives a stale refetch)...
-    expect(hasPendingEdit("PROJ-42", "bookmarked")).toBe(true);
-    // ...and only the DETAIL cache is patched, never the list (would defeat self-heal).
-    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { bookmarked: true });
-    expect(patchTicketCaches).not.toHaveBeenCalled();
-    // The cross-sprint bookmark list is refreshed for the launcher + /bookmarks.
-    expect(scopedMutateSpy).toHaveBeenCalledWith("/api/bookmarks");
-  });
-
-  it("shows the Bookmarked state and toggles it off for an already-bookmarked ticket (BRDG-355)", async () => {
+  it("does not render a bookmark toggle: it lives in the page header, not the sidebar (BRDG-355)", () => {
     render(<TicketMetaContent ticket={makeTicket({ bookmarked: true })} detail={detail} />);
-    fireEvent.click(screen.getByRole("button", { name: "Remove bookmark" }));
-    await waitFor(() => expect(setBookmarked).toHaveBeenCalledWith("PROJ-42", false));
-  });
-
-  it("hides the bookmark toggle for subtasks (not in the bookmark list)", () => {
-    render(<TicketMetaContent ticket={makeTicket({ type: "subtask" })} detail={detail} />);
     expect(screen.queryByRole("button", { name: /bookmark/i })).not.toBeInTheDocument();
   });
 

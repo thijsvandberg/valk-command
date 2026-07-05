@@ -166,23 +166,19 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 </span>
               )}
 
-              {/* Bookmark toggle (BRDG-355): icon-only; real tickets only (drafts have no row). */}
+              {/* Bookmark toggle (BRDG-355): the standard ghost icon button (matches the
+                  "More actions" button beside it); real tickets only (drafts have no row). */}
               {!isDraft && (
                 <Tooltip content={bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    iconOnly
                     onClick={handleBookmarkToggle}
                     aria-pressed={bookmarked}
                     aria-label={bookmarked ? "Remove bookmark" : "Bookmark this story"}
-                    className={`grid h-7 w-7 place-items-center rounded-md border cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90 ${
-                      bookmarked
-                        ? "border-[var(--meta-bv-fg)]/40 bg-[color-mix(in_srgb,var(--meta-bv-fg)_12%,transparent)] text-[var(--meta-bv-fg)]"
-                        : "border-border-subtle text-text-tertiary hover:text-text-secondary hover:border-border-default"
-                    }`}
-                    style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
-                  >
-                    <Bookmark size={13} strokeWidth={1.75} fill={bookmarked ? "currentColor" : "none"} aria-hidden />
-                  </button>
+                    icon={<Bookmark size={15} strokeWidth={1.75} fill={bookmarked ? "currentColor" : "none"} style={bookmarked ? { color: "var(--meta-bv-fg)" } : undefined} />}
+                  />
                 </Tooltip>
               )}
 
