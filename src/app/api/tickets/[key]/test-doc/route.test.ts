@@ -27,7 +27,7 @@ vi.mock("@/lib/acting-user", () => ({
   getActingUser: vi.fn().mockResolvedValue(null),
 }));
 
-import { GET, PUT } from "./route";
+import { GET, PUT, DELETE } from "./route";
 import { ticket, ticketMetadata, ticketLocalEdit } from "@/db/schema";
 import { appendTestDocBlock } from "@/lib/test-doc";
 import { eq } from "drizzle-orm";
@@ -345,5 +345,107 @@ describe("PUT /api/tickets/[key]/test-doc", () => {
         generatedAt: "2026-07-02T10:00:00.000Z",
       });
     });
+  });
+});
+
+describe("DELETE /api/tickets/[key]/test-doc", () => {
+  function makeDelete(key: string): Request {
+    return new Request(`http://localhost:3100/api/tickets/${key}/test-doc`, { method: "DELETE" });
+  }
+
+  function seedMetadata(key: string, values: Record<string, unknown>) {
+    testDb.insert(ticketMetadata).values({ jiraKey: key, ...values }).run();
+  }
+
+  beforeEach(() => {
+    testDb = createTestDb();
+    mockUpsertLocalEdit.mockReset();
+    mockPushToJira.mockReset();
+    mockPushToJira.mockResolvedValue({ success: true, message: "ok", newContentHash: null });
+  });
+
+  it("clears the Bridge copy, draft and classification, and strips the Jira block", async () => {
+    const description = appendTestDocBlock("### Story", DOC);
+    seedTicket("VPL-10", description);
+    seedMetadata("VPL-10", {
+      testDoc: DOC,
+      testDocUpdatedAt: "2026-07-01T09:00:00.000Z",
+      testDocClassification: "ok",
+      testDocDraft: "draft text",
+      testDocDraftClassification: "ok",
+      testDocDraftGeneratedAt: "2026-07-02T09:00:00.000Z",
+    });
+
+    const response = await DELETE(makeDelete("VPL-10"), makeParams("VPL-10"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ deleted: true, pushed: true });
+
+    const meta = getMetadata("VPL-10");
+    expect(meta?.testDoc).toBeNull();
+    expect(meta?.testDocDraft).toBeNull();
+    expect(meta?.testDocClassification).toBeNull();
+
+    // The description is rewritten WITHOUT the expand block and pushed.
+    expect(mockUpsertLocalEdit).toHaveBeenCalledWith("VPL-10", {
+      field: "description",
+      localValue: "### Story",
+      isDraft: false,
+    });
+    expect(mockPushToJira).toHaveBeenCalled();
+  });
+
+  it("prefers an unpushed local description edit as the strip base", async () => {
+    seedTicket("VPL-10", appendTestDocBlock("### Old mirror", DOC));
+    seedMetadata("VPL-10", { testDoc: DOC });
+    testDb.insert(ticketLocalEdit).values({
+      id: randomUUID(),
+      ticketKey: "VPL-10",
+      field: "description",
+      localValue: appendTestDocBlock("### Newer local edit", DOC),
+    }).run();
+
+    await DELETE(makeDelete("VPL-10"), makeParams("VPL-10"));
+
+    expect(mockUpsertLocalEdit).toHaveBeenCalledWith("VPL-10", expect.objectContaining({
+      localValue: "### Newer local edit",
+    }));
+  });
+
+  it("is an idempotent no-op when there is no doc and no block", async () => {
+    seedTicket("VPL-10", "### Story without block");
+
+    const response = await DELETE(makeDelete("VPL-10"), makeParams("VPL-10"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ deleted: true, pushed: false });
+    expect(mockUpsertLocalEdit).not.toHaveBeenCalled();
+    expect(mockPushToJira).not.toHaveBeenCalled();
+  });
+
+  it("also clears an explicit not-needed marker", async () => {
+    seedTicket("VPL-10");
+    seedMetadata("VPL-10", { testDocClassification: "not_stakeholder_relevant" });
+
+    await DELETE(makeDelete("VPL-10"), makeParams("VPL-10"));
+
+    expect(getMetadata("VPL-10")?.testDocClassification).toBeNull();
+  });
+
+  it("returns 404 for an unknown ticket and 409 for draft keys", async () => {
+    const missing = await DELETE(makeDelete("VPL-999"), makeParams("VPL-999"));
+    expect(missing.status).toBe(404);
+
+    const draft = await DELETE(makeDelete("DRAFT-abc"), makeParams("DRAFT-abc"));
+    expect(draft.status).toBe(409);
+    expect(mockUpsertLocalEdit).not.toHaveBeenCalled();
+  });
+
+  it("reports a Jira conflict while the Bridge copy is already gone", async () => {
+    mockPushToJira.mockResolvedValue({ conflict: true, message: "Jira was updated." });
+    seedTicket("VPL-10", appendTestDocBlock("### Story", DOC));
+    seedMetadata("VPL-10", { testDoc: DOC });
+
+    const response = await DELETE(makeDelete("VPL-10"), makeParams("VPL-10"));
+    expect(await response.json()).toMatchObject({ deleted: true, conflict: true });
+    expect(getMetadata("VPL-10")?.testDoc).toBeNull();
   });
 });

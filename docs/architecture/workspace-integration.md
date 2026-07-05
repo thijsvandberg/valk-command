@@ -295,10 +295,14 @@ parseable `<test-doc>` JSON block: `{ classification: "ok" | "needs_input" |
   appendix sections, never boxes. `splitDocTitle` only treats a FULLY bold first line as
   a title, so bold lead-ins ("**Cleanup**: legacy…") stay intact in both the preview and
   the copied document.
-- **Review modal layout**: the doc renders as markdown by default (Edit toggles the raw
-  textarea; hand-work results open in the editor directly) directly on the pane surface —
-  a bounded reading column under a slim provenance/version toolbar, no inset box; the
-  footer keeps the not-needed marker toggle alone on the left, away from the review flow.
+- **Review modal layout**: the doc renders as markdown by default (a segmented
+  Preview/Edit switch toggles the raw textarea; hand-work results open in the editor
+  directly) directly on the pane surface — a bounded reading column under a slim
+  toolbar whose "Saved" chip keeps the timestamp (absolute + relative) in its tooltip;
+  the footer keeps the not-needed marker toggle and the Delete action alone on the
+  left, away from the review flow. Delete (confirm-gated, persisted docs/drafts only)
+  removes the Bridge copy AND strips the Jira block via `DELETE /test-doc`; the ticket
+  counts as missing again.
   The story pane
   (`TestDocStoryPane`) mirrors the ticket sidebar's reading style incl. Jira comments and
   strips the doc's own expand block from the description; the pane split is draggable and

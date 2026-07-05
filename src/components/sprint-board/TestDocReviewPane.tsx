@@ -3,8 +3,10 @@
 import { FileX2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { InlineAlert } from "@/components/shared/InlineAlert";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { CaptionButton } from "@/components/sprint-board/CaptionButton";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
+import { relativeDate } from "@/lib/date-utils";
 import type { EntryState } from "@/components/sprint-board/useTestDocReview";
 
 interface TestDocReviewPaneProps {
@@ -93,9 +95,17 @@ export function TestDocReviewPane({
           data-testid="test-doc-toolbar"
         >
           {entry.source === "saved" && entry.cachedAt && (
-            <span className="text-caption text-text-muted" data-testid="test-doc-saved-at">
-              Saved {new Date(entry.cachedAt).toLocaleString()}
-            </span>
+            // The timestamp lives in the tooltip (absolute + relative); the
+            // toolbar only carries the quiet state chip.
+            <Tooltip content={`Saved ${new Date(entry.cachedAt).toLocaleString()} · ${relativeDate(entry.cachedAt)}`}>
+              <span
+                data-testid="test-doc-saved-at"
+                className="inline-flex items-center gap-1.5 rounded-md bg-overlay-subtle px-2 py-0.5 text-caption font-medium text-text-tertiary"
+              >
+                <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-status-success)]" />
+                Saved
+              </span>
+            </Tooltip>
           )}
           {entry.versions.length > 1 && (
             <span className="flex items-center gap-1.5" data-testid="test-doc-versions">
@@ -117,9 +127,16 @@ export function TestDocReviewPane({
                 {compare ? "Close compare" : "Compare"}
               </CaptionButton>
             )}
-            <CaptionButton onClick={onToggleEdit}>
-              {editing ? "Preview" : "Edit"}
-            </CaptionButton>
+            {/* Segmented mode switch: the ACTIVE chip shows the current mode
+                (a single flipping label reads as the destination, not the state). */}
+            <span role="group" aria-label="View mode" className="flex items-center gap-0.5 rounded-lg bg-overlay-subtle p-0.5">
+              <CaptionButton variant="chip" active={!editing} onClick={() => { if (editing) onToggleEdit(); }}>
+                Preview
+              </CaptionButton>
+              <CaptionButton variant="chip" active={editing} onClick={() => { if (!editing) onToggleEdit(); }}>
+                Edit
+              </CaptionButton>
+            </span>
           </span>
         </div>
       )}

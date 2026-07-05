@@ -7,6 +7,7 @@ const mockGetTestDoc = vi.fn();
 const mockSaveTestDocDraft = vi.fn();
 const mockMarkNotNeeded = vi.fn();
 const mockUnmarkNotNeeded = vi.fn();
+const mockDeleteTestDoc = vi.fn();
 const mockCancelTask = vi.fn();
 const mockMutate = vi.fn();
 vi.mock("@/lib/api-client", () => ({
@@ -18,6 +19,7 @@ vi.mock("@/lib/api-client", () => ({
     saveTestDocDraft: (...args: unknown[]) => mockSaveTestDocDraft(...args),
     markTestDocNotNeeded: (...args: unknown[]) => mockMarkNotNeeded(...args),
     unmarkTestDocNotNeeded: (...args: unknown[]) => mockUnmarkNotNeeded(...args),
+    deleteTestDoc: (...args: unknown[]) => mockDeleteTestDoc(...args),
   },
   workspaceTasks: {
     cancel: (...args: unknown[]) => mockCancelTask(...args),
@@ -126,6 +128,8 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     mockMarkNotNeeded.mockResolvedValue({ saved: true, notNeeded: true });
     mockUnmarkNotNeeded.mockReset();
     mockUnmarkNotNeeded.mockResolvedValue({ saved: true, notNeeded: false });
+    mockDeleteTestDoc.mockReset();
+    mockDeleteTestDoc.mockResolvedValue({ deleted: true, pushed: true });
     mockCancelTask.mockResolvedValue({ ok: true });
     mockMutate.mockReset();
     mockRevalidateTestDocViews.mockReset();
@@ -304,8 +308,8 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
       );
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
-      // Saved docs get a quiet timestamp, not a banner.
-      expect(screen.getByTestId("test-doc-saved-at")).toHaveTextContent(/^Saved /);
+      // Saved docs get a quiet state chip (timestamp in its tooltip), not a banner.
+      expect(screen.getByTestId("test-doc-saved-at")).toHaveTextContent("Saved");
       expect(screen.queryByText(/not saved yet/)).not.toBeInTheDocument();
       expect(screen.getByText("Regenerate").closest("button")).not.toBeDisabled();
     });
@@ -534,6 +538,60 @@ describe("TestDocReviewModal (BRDG-426)", () => {
         expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "not_needed", confirmed: true }),
       );
       expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: "not_needed" });
+    });
+  });
+
+  describe("delete doc (PO request 2026-07-05)", () => {
+    const SAVED_DOC = {
+      storyUpdatedAt: null,
+      saved: { markdown: "**Accepted**\n\n- Saved doc", classification: "ok", updatedAt: "2026-07-01T09:00:00.000Z" },
+      draft: null,
+    };
+
+    it("offers Delete doc only for persisted docs, behind a confirm, and lands in idle", async () => {
+      mockGetTestDoc.mockResolvedValue(SAVED_DOC);
+      render(<TestDocReviewModal keys={["VPL-1"]} autoGenerate={false} onClose={() => {}} />);
+      await waitFor(() =>
+        expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
+      );
+
+      fireEvent.click(screen.getByText("Delete doc"));
+      // Nothing happens until the dialog is confirmed.
+      expect(mockDeleteTestDoc).not.toHaveBeenCalled();
+      expect(screen.getByText("Delete test documentation")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Delete", { selector: "button" }));
+      await waitFor(() => expect(mockDeleteTestDoc).toHaveBeenCalledWith("VPL-1"));
+
+      // Lands in idle with the version history gone; the board marker resets.
+      await waitFor(() => expect(screen.getByTestId("test-doc-idle")).toBeInTheDocument());
+      expect(screen.queryByTestId("test-doc-versions")).not.toBeInTheDocument();
+      expect(findMarkerEdit("VPL-1")).toMatchObject({ value: null, confirmed: true });
+      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: null });
+      expect(mockRevalidateTestDocViews).toHaveBeenCalled();
+      expect(mockGenerateTestDoc).not.toHaveBeenCalled();
+    });
+
+    it("does not offer Delete doc for a fresh unsaved generation", async () => {
+      render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
+      await emitResult("VPL-1", DOC);
+      expect(screen.queryByText("Delete doc")).not.toBeInTheDocument();
+    });
+
+    it("a failed delete keeps the doc and clears the overlay", async () => {
+      mockGetTestDoc.mockResolvedValue(SAVED_DOC);
+      mockDeleteTestDoc.mockRejectedValue(new Error("boom"));
+      render(<TestDocReviewModal keys={["VPL-1"]} autoGenerate={false} onClose={() => {}} />);
+      await waitFor(() =>
+        expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc"),
+      );
+
+      fireEvent.click(screen.getByText("Delete doc"));
+      fireEvent.click(screen.getByText("Delete", { selector: "button" }));
+
+      await waitFor(() => expect(screen.getByText(/Failed to delete/)).toBeInTheDocument());
+      expect(hasPendingEdit("VPL-1", "testDocState")).toBe(false);
+      expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Saved doc");
     });
   });
 

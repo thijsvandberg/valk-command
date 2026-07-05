@@ -350,6 +350,10 @@ export const tickets = {
     apiFetch<{ saved: boolean; notNeeded: boolean }>(
       `/api/tickets/${enc(ticketKey)}/test-doc`, { method: "PUT", body: { notNeeded: false }, signal },
     ),
+  deleteTestDoc: (ticketKey: string, signal?: AbortSignal) =>
+    apiFetch<{ deleted: boolean; pushed?: boolean; conflict?: boolean; message?: string }>(
+      `/api/tickets/${enc(ticketKey)}/test-doc`, { method: "DELETE", signal },
+    ),
 
   // Subtask suggestions (persisted AI suggestions)
   getSubtaskSuggestions: (key: string, signal?: AbortSignal) =>

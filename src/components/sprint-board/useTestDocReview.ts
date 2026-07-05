@@ -452,6 +452,53 @@ export function useTestDocReview({
     }
   }, [currentKey, entry, patchEntry]);
 
+  // Full removal (PO request 2026-07-05): unlike the not-needed marker the
+  // ticket counts as MISSING again afterwards, and unlike editing the doc to
+  // empty (Save stays disabled) the intent is explicit. Clears the Bridge copy
+  // + draft and strips the Jira description block server-side; lands in idle
+  // with the version history gone. The modal gates this behind a confirm.
+  const handleDelete = useCallback(async () => {
+    if (!currentKey || !entry) return;
+    setSaving(true);
+    setCompare(false);
+    setEditing(false);
+    patchEntry(currentKey, { error: null });
+    // Same overlay as the other writes: the board marker must reset to neutral
+    // even when the list revalidation returns a stale snapshot.
+    registerPendingEdit(currentKey, "testDocState", null, Date.now());
+    try {
+      const result = await ticketsApi.deleteTestDoc(currentKey);
+      hasSavedRef.current.delete(currentKey);
+      confirmPendingEdit(currentKey, "testDocState");
+      patchTicketDetailCache(currentKey, { testDocState: null });
+      invalidateTestDocCache(currentKey);
+      revalidateTestDocViews();
+      setSaving(false);
+      patchEntry(currentKey, {
+        status: "idle",
+        doc: "",
+        classification: "ok",
+        unstructured: false,
+        source: null,
+        cachedAt: null,
+        notNeededAt: null,
+        versions: [],
+        activeVersion: 0,
+        // The Bridge copy is gone either way; a Jira conflict only means the
+        // stripped description stayed behind as a local edit to resolve.
+        error: result.conflict
+          ? `Deleted in Bridge, but the Jira push hit a conflict: ${result.message ?? "resolve it from the ticket's description editor."}`
+          : null,
+      });
+    } catch (err) {
+      clearPendingEdit(currentKey, "testDocState");
+      setSaving(false);
+      patchEntry(currentKey, {
+        error: err instanceof ApiError ? err.message : "Failed to delete the test doc",
+      });
+    }
+  }, [currentKey, entry, patchEntry]);
+
   // Regenerate bypasses the concurrency cap: the PO is actively waiting on
   // this one, unlike the background prefetch. Existing versions are KEPT —
   // the new result lands next to them for comparison, never over them.
@@ -555,6 +602,7 @@ export function useTestDocReview({
     handleSave,
     handleNotNeeded,
     handleRemoveNotNeeded,
+    handleDelete,
     handleRegenerate,
     handleSwitchVersion,
     handleDocChange,

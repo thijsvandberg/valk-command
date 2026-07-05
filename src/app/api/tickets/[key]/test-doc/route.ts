@@ -8,7 +8,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { guardTestDocDraftKey } from "@/lib/test-doc-routes";
-import { appendTestDocBlock } from "@/lib/test-doc";
+import { appendTestDocBlock, stripTestDocBlock } from "@/lib/test-doc";
 import { coerceClassification } from "@/lib/parse-test-doc";
 import * as ticketService from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
@@ -261,6 +261,92 @@ export async function PUT(
     cache.invalidate(`/api/tickets/${key}`);
     cache.invalidate(/^\/api\/tickets(\?|$)/);
     return NextResponse.json({ saved: true, pushed: true });
+  } catch (err) {
+    return handleServiceError(err);
+  }
+}
+
+/**
+ * DELETE /api/tickets/[key]/test-doc
+ *
+ * Removes the test documentation entirely (PO request 2026-07-05): clears the
+ * Bridge copy, the draft cache and the classification, and strips the
+ * ":::expand Test documentation" block from the Jira description through the
+ * same local-edit + pushToJira path the save uses. Distinct from the
+ * "not needed" marker: after a delete the ticket counts as MISSING again.
+ * Idempotent: nothing to delete is a 200 no-op.
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ key: string }> },
+) {
+  const limited = await applyRateLimit("write");
+  if (limited) return limited;
+
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
+  if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
+  const draftBlocked = guardTestDocDraftKey(key, "delete");
+  if (draftBlocked) return draftBlocked;
+
+  const ticketRow = await db
+    .select({ jiraKey: ticket.jiraKey, description: ticket.description })
+    .from(ticket)
+    .where(eq(ticket.jiraKey, key))
+    .get();
+  if (!ticketRow) {
+    return errorResponse("Ticket not found", 404);
+  }
+
+  // Clear every test-doc field (doc, draft cache, classification incl. a
+  // not-needed marker): after a delete the ticket reads as "no doc yet".
+  await db
+    .update(ticketMetadata)
+    .set({
+      testDoc: null,
+      testDocUpdatedAt: null,
+      testDocClassification: null,
+      testDocDraft: null,
+      testDocDraftClassification: null,
+      testDocDraftGeneratedAt: null,
+    })
+    .where(eq(ticketMetadata.jiraKey, key));
+
+  // Strip the expand block from the effective description (an unpushed local
+  // edit is the PO's latest truth) and push, mirroring the save path above.
+  const localEdit = await db
+    .select({ localValue: ticketLocalEdit.localValue })
+    .from(ticketLocalEdit)
+    .where(and(eq(ticketLocalEdit.ticketKey, key), eq(ticketLocalEdit.field, "description")))
+    .get();
+  const base = localEdit?.localValue ?? ticketRow.description ?? "";
+  const stripped = stripTestDocBlock(base);
+
+  if (stripped === base) {
+    cache.invalidate(`/api/tickets/${key}`);
+    cache.invalidate(/^\/api\/tickets(\?|$)/);
+    return NextResponse.json({ deleted: true, pushed: false });
+  }
+
+  try {
+    await ticketService.upsertLocalEdit(key, {
+      field: "description",
+      localValue: stripped,
+      isDraft: false,
+    });
+    const actingUser = await getActingUser();
+    const result = await ticketService.pushToJira(key, originFromRequest(request), actingUser);
+
+    // Conflict is a valid outcome: the Bridge copy is gone, the stripped
+    // description stays as a local edit for the regular resolve flow.
+    if ("conflict" in result) {
+      return NextResponse.json({ deleted: true, ...result });
+    }
+
+    cache.invalidate(`/api/tickets/${key}`);
+    cache.invalidate(/^\/api\/tickets(\?|$)/);
+    return NextResponse.json({ deleted: true, pushed: true });
   } catch (err) {
     return handleServiceError(err);
   }

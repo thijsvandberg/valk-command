@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Modal } from "@/components/shared/Modal";
 import { ModalHeader } from "@/components/shared/ModalHeader";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { TestDocStoryPane } from "@/components/sprint-board/TestDocStoryPane";
@@ -104,12 +106,18 @@ export function TestDocReviewModal({ keys, autoGenerate = true, regenerateOnOpen
     handleSave,
     handleNotNeeded,
     handleRemoveNotNeeded,
+    handleDelete,
     handleRegenerate,
     handleSwitchVersion,
     handleDocChange,
   } = useTestDocReview({ keys, autoGenerate, regenerateOnOpen, onClose });
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (!currentKey || !entry) return null;
+
+  // Delete targets what is PERSISTED (an accepted doc or a cached draft); a
+  // fresh unsaved generation is simply discarded by closing the modal.
+  const canDelete = entry.status === "ready" && (entry.source === "saved" || entry.source === "draft");
 
   return (
     <Modal open onClose={handleClose} aria-label={`Test documentation for ${currentKey}`}>
@@ -216,10 +224,22 @@ export function TestDocReviewModal({ keys, autoGenerate = true, regenerateOnOpen
               size="md"
               onClick={handleNotNeeded}
               disabled={saving}
-              className="mr-auto"
+              className={canDelete ? undefined : "mr-auto"}
               title="Mark this ticket as needing no test documentation — it moves to a separate list in the sprint bundle and is never flagged as missing again"
             >
               No test doc needed
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => setConfirmingDelete(true)}
+              disabled={saving}
+              className="mr-auto"
+              title="Remove the doc from Bridge and from the Jira description — the story counts as missing documentation again"
+            >
+              Delete doc
             </Button>
           )}
           <Button
@@ -254,6 +274,14 @@ export function TestDocReviewModal({ keys, autoGenerate = true, regenerateOnOpen
             </Button>
           )}
         </div>
+        <ConfirmDialog
+          open={confirmingDelete}
+          onClose={() => setConfirmingDelete(false)}
+          title="Delete test documentation"
+          description={`This removes the test doc for ${currentKey} from Bridge and from the Jira description. The story counts as missing documentation again.`}
+          confirmLabel="Delete"
+          onConfirm={handleDelete}
+        />
       </div>
     </Modal>
   );
