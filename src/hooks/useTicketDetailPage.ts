@@ -9,6 +9,7 @@ import { mapPushErrorMessage } from "@/lib/push-error-message";
 import { patchTicketCaches, patchTicketDetailCache, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 import { scopedMutate } from "@/lib/swr-scoped-mutate";
+import { useBookmarkNoteCapture } from "@/contexts/BookmarkNoteContext";
 import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 import { useLocalEditSaver } from "@/lib/local-edit-saver";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
@@ -20,6 +21,7 @@ import type { TicketEvent } from "@/lib/ticket-events";
 
 export function useTicketDetailPage(key: string) {
   const { toast, toastLoading, showToast, dismissToast } = useToast();
+  const { captureBookmarkNote } = useBookmarkNoteCapture();
   const syncEditState = useTicketEditStateSync();
   const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
   const handleMutate = useCallback(() => { mutateTicket(); }, [mutateTicket]);
@@ -36,11 +38,13 @@ export function useTicketDetailPage(key: string) {
       await tickets.setBookmarked(key, next);
       confirmPendingEdit(key, "bookmarked");
       scopedMutate("/api/bookmarks");
+      // Offer the optional quick-note capture only on bookmark-ON (BRDG-475).
+      if (next) captureBookmarkNote(key);
     } catch {
       clearPendingEdit(key, "bookmarked");
       patchTicketDetailCache(key, { bookmarked });
     }
-  }, [bookmarked, key]);
+  }, [bookmarked, key, captureBookmarkNote]);
 
   const ticket: Ticket | undefined = useMemo(() => apiData ? {
     key: apiData.key,

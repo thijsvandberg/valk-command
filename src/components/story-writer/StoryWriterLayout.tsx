@@ -34,6 +34,7 @@ import { tickets } from "@/lib/api-client";
 import { patchTicketDetailCache } from "@/lib/ticket-cache";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 import { scopedMutate } from "@/lib/swr-scoped-mutate";
+import { useBookmarkNoteCapture } from "@/contexts/BookmarkNoteContext";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
@@ -77,6 +78,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const effectiveKey = draftSync.realKey ?? ticketKey;
   const isStillDraft = isDraft && !draftSync.realKey;
   const writer = useStoryWriter(ticketKey);
+  const { captureBookmarkNote } = useBookmarkNoteCapture();
   const { data: ticketData, mutate: mutateTicket } = useTicketDetail(ticketKey);
   const { data: reviewData } = useTicketReviews(ticketKey);
   const { sprints: rawSprints } = useJiraSprints();
@@ -105,11 +107,13 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
       await tickets.setBookmarked(ticketKey, next);
       confirmPendingEdit(ticketKey, "bookmarked");
       scopedMutate("/api/bookmarks");
+      // Offer the optional quick-note capture only on bookmark-ON (BRDG-475).
+      if (next) captureBookmarkNote(ticketKey);
     } catch {
       clearPendingEdit(ticketKey, "bookmarked");
       patchTicketDetailCache(ticketKey, { bookmarked });
     }
-  }, [bookmarked, ticketKey]);
+  }, [bookmarked, ticketKey, captureBookmarkNote]);
 
   const { moreMenuRef, wrapUpMenuRef, ...actions } = useStoryWriterActions({
     ticketKey,

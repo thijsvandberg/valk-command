@@ -5,6 +5,7 @@ import { SWRProvider } from "@/components/SWRProvider";
 import { FocusModeWrapper } from "@/components/FocusModeWrapper";
 import { EpicColorProvider } from "@/components/shared/EpicColorProvider";
 import { StoryLauncherProvider } from "@/contexts/StoryLauncherContext";
+import { BookmarkNoteProvider } from "@/contexts/BookmarkNoteContext";
 import { ClientErrorReporter } from "@/components/ClientErrorReporter";
 
 const CommandPalette = dynamic(
@@ -33,9 +34,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <ActivityProvider>
       <EpicColorProvider>
       <StoryLauncherProvider>
+      <BookmarkNoteProvider>
       <FocusModeWrapper>
         {children}
       </FocusModeWrapper>
+      </BookmarkNoteProvider>
       </StoryLauncherProvider>
       </EpicColorProvider>
       <ActivityToast />

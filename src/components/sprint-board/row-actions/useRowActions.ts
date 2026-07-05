@@ -5,6 +5,7 @@ import type React from "react";
 import type { JiraStatus, TicketReadiness, Sprint } from "@/types/ticket";
 import type { FlagState, BookmarkState } from "@/components/sprint-board/ticket-action-menu";
 import { scopedMutate } from "@/lib/swr-scoped-mutate";
+import { useBookmarkNoteCapture } from "@/contexts/BookmarkNoteContext";
 import type { CreatedSprint } from "@/components/sprint-board/CreateSprintModal";
 import { apiFetch, jira, tickets as ticketsApi } from "@/lib/api-client";
 import { bulkReviewStories, bulkGenerateSubtasks } from "@/components/sprint-board/sprint-board-utils";
@@ -76,6 +77,7 @@ interface UseRowActionsOpts {
 export function useRowActions(opts: UseRowActionsOpts) {
   const { adapter, selectedKeys, sprints, pinnedSprintIds, backlogTargetName, showToast, injectSprint, flagSource, onMove, onMoveError, onContextMenuOpen, onConfirmQuickCreate } = opts;
   const { sprintNameMap } = adapter;
+  const { captureBookmarkNote } = useBookmarkNoteCapture();
   // Depend on opts.currentSprintName (a callback the host should memoize), NOT the
   // whole opts literal: opts is a new object every render, so depending on it
   // recreated this callback each render and defeated the memoization of
@@ -131,6 +133,10 @@ export function useRowActions(opts: UseRowActionsOpts) {
       // Refresh the cross-sprint bookmark list (launcher quick-list + /bookmarks) so a
       // toggle from any surface reflects there without a manual refresh (BRDG-355).
       if (field === "bookmarked" && ok.length) scopedMutate("/api/bookmarks");
+      // Offer the optional quick-note capture only on a single-item bookmark-ON that
+      // actually succeeded (BRDG-475). ok.length === 1 skips bulk / multi-target menus;
+      // value === true skips removals; ok[0] (not keys[0]) means the write landed.
+      if (field === "bookmarked" && value === true && ok.length === 1) captureBookmarkNote(ok[0]);
       if (failed.length) {
         const updated = keys.length - failed.length;
         showToast(`Failed for ${failed.length} issue${failed.length === 1 ? "" : "s"}${updated > 0 ? ` (${updated} updated)` : ""}`);
@@ -138,7 +144,7 @@ export function useRowActions(opts: UseRowActionsOpts) {
         showToast(`${label} ${keys.length} issue${keys.length === 1 ? "" : "s"}`);
       }
     },
-    [adapter, showToast],
+    [adapter, showToast, captureBookmarkNote],
   );
 
   const bulkSetStatus = useCallback(
