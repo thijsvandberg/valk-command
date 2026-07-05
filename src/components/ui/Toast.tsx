@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Check, Loader2, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -83,8 +84,12 @@ interface ToastProps {
  * there is no active toast, so callers can mount it unconditionally.
  */
 export function Toast({ toast, loading = false, onDismiss }: ToastProps) {
-  if (toast == null) return null;
-  return (
+  if (toast == null || typeof document === "undefined") return null;
+  // Portal to <body>: the toast must clear any modal, which itself portals to
+  // <body> at z-modal. Left in the page tree, a positioned/transformed ancestor
+  // traps the toast in a lower stacking context, so its z-notification cannot win
+  // and the toast hides behind the modal overlay.
+  return createPortal(
     <div className="fixed right-6 bottom-6 z-notification pointer-events-none">
       <ToastCard
         role="status"
@@ -98,6 +103,7 @@ export function Toast({ toast, loading = false, onDismiss }: ToastProps) {
       >
         <span className="text-body-lg text-text-secondary">{toast}</span>
       </ToastCard>
-    </div>
+    </div>,
+    document.body,
   );
 }

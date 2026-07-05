@@ -22,9 +22,19 @@ describe("Toast", () => {
   });
 
   it("shows a spinner and hides the dismiss button while loading", () => {
-    const { container } = render(<Toast toast="Working..." loading onDismiss={() => {}} />);
-    expect(container.querySelector(".animate-spin")).toBeInTheDocument();
+    render(<Toast toast="Working..." loading onDismiss={() => {}} />);
+    // Toast portals to <body>, so query the document rather than the render container.
+    expect(document.querySelector(".animate-spin")).toBeInTheDocument();
     expect(screen.queryByLabelText("Dismiss")).toBeNull();
+  });
+
+  it("portals to document.body (at z-notification) so it clears modal overlays", () => {
+    const { container } = render(<Toast toast="Saved" onDismiss={() => {}} />);
+    // Not left in the local render tree, where a positioned ancestor could trap it.
+    expect(container.querySelector("[role='status']")).toBeNull();
+    const toast = screen.getByRole("status");
+    expect(document.body.contains(toast)).toBe(true);
+    expect(toast.closest(".z-notification")).not.toBeNull();
   });
 
   it("accepts rich ReactNode content", () => {
