@@ -6,6 +6,7 @@ import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint }
 import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
 import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
 import { EpicBadge, SubtaskCountBadge } from "@/components/shared/IssueMetaBadges";
+import { BookmarkBadge } from "@/components/shared/BookmarkBadge";
 import { AddEpicPill } from "@/components/shared/AddEpicPill";
 import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
@@ -887,6 +888,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               )}
 
               {/* Conditional inline tags (do not yield space). */}
+              {/* Bookmark (BRDG-355): a deliberate personal marker, always shown when
+                  set (not gated by the tag toggles) so the PO can always spot it. */}
+              <BookmarkBadge bookmarked={ticket.bookmarked} />
               {tags.has("flag") && ticket.flagged && (
                 <Flag className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={1.5} />
               )}
