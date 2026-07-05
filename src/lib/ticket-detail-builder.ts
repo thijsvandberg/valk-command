@@ -233,6 +233,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
   const readinessMap = new Map<string, TicketReadiness | null>();
   const businessValueMap = new Map<string, number | null>();
   const guestimationMap = new Map<string, number | null>();
+  const bookmarkedMap = new Map<string, boolean>();
   // A pending local title edit on a child is the title the PO sees in the child
   // panel; surface the same effective title here so editing a child's title is
   // immediately visible in the epic's children list (not stuck on the synced
@@ -279,6 +280,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
       readinessMap.set(row.jiraKey, (row.readiness as TicketReadiness) ?? null);
       businessValueMap.set(row.jiraKey, row.businessValue ?? null);
       guestimationMap.set(row.jiraKey, row.guestimation ?? null);
+      bookmarkedMap.set(row.jiraKey, row.bookmarkedAt != null);
     }
 
     // Latest mirror-version hash per child (createdAt sorts lexically), and the
@@ -321,6 +323,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     type: (c.type ?? "task") as IssueType,
     jiraStatus: (c.status ?? "TO DO") as JiraStatus,
     flagged: c.flagged ?? false,
+    bookmarked: bookmarkedMap.get(c.jiraKey) ?? false,
     assignee: buildAssignee(c.assignee),
     storyPoints: c.storyPoints ?? null,
     guestimation: guestimationMap.get(c.jiraKey) ?? null,

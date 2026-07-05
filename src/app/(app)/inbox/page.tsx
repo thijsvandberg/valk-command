@@ -699,6 +699,8 @@ function InboxView() {
                     onUpdateLabel={ra.bulkUpdateLabels}
                     onSetFlagged={(flagged) => ra.bulkSetFlagged(flagged, null)}
                     flagState={ra.computeFlagState(checkedKeys)}
+                    onSetBookmarked={(bookmarked) => ra.bulkSetBookmarked(bookmarked)}
+                    bookmarkState={ra.computeBookmarkState(checkedKeys)}
                     sprints={sprints}
                     pinnedSprintIds={pinnedSprintIds}
                     onReviewStory={() => ra.handleBulkReview()}
@@ -749,6 +751,8 @@ function InboxView() {
             onUpdateLabel={(labels, mode) => ra.bulkUpdateLabels(labels, mode, rowMenu.targets)}
             onSetFlagged={(flagged) => ra.bulkSetFlagged(flagged, null, rowMenu.targets)}
             flagState={ra.computeFlagState(rowMenu.targets)}
+            onSetBookmarked={(bookmarked) => ra.bulkSetBookmarked(bookmarked, rowMenu.targets)}
+            bookmarkState={ra.computeBookmarkState(rowMenu.targets)}
             onReviewStory={() => ra.handleBulkReview(rowMenu.targets)}
             onGenerateSubtasks={() => ra.handleBulkGenerate(rowMenu.targets)}
             refinements={refinementOptions}

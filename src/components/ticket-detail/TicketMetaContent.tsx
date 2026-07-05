@@ -5,13 +5,14 @@ import type { Ticket, TicketReadiness, TicketDetail, JiraStatus } from "@/types/
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, AlertTriangle, Play, Boxes, FileCheck2, FileX2, RefreshCw, Undo2 } from "lucide-react";
+import { ChevronDown, AlertTriangle, Play, Boxes, FileCheck2, FileX2, RefreshCw, Undo2, Bookmark } from "lucide-react";
 import useSWR from "swr";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets, jira, apiFetch, swrFetcher } from "@/lib/api-client";
 import { invalidateTestDocCache, revalidateTestDocViews } from "@/lib/test-doc-prefetch";
 import { patchTicketCaches, patchTicketDetailCache, moveTicketSprintCaches } from "@/lib/ticket-cache";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 import { reportClientError } from "@/lib/client-error";
 import { getScoreColor } from "@/lib/status-colors";
 import { Toast } from "@/components/ui/Toast";
@@ -127,6 +128,7 @@ export function TicketMetaContent({
   const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [poNotes, setPoNotes] = useState(ticket.notes);
+  const [bookmarked, setBookmarked] = useState<boolean>(ticket.bookmarked ?? false);
   const [assignee, setAssignee] = useState(ticket.assignee);
   const [epicName, setEpicName] = useState<string | null>(ticket.epic);
   const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
@@ -170,6 +172,7 @@ export function TicketMetaContent({
     setBusinessValue(ticket.businessValue);
     setStoryPoints(ticket.storyPoints);
     setPoNotes(ticket.notes);
+    setBookmarked(ticket.bookmarked ?? false);
     setAssignee(ticket.assignee);
     setEpicName(ticket.epic);
     setEpicKey(ticket.epicKey);
@@ -180,6 +183,7 @@ export function TicketMetaContent({
     ticket.businessValue,
     ticket.storyPoints,
     ticket.notes,
+    ticket.bookmarked,
     ticket.assignee?.name,
     ticket.epic,
     ticket.epicKey,
@@ -224,6 +228,28 @@ export function TicketMetaContent({
   // value on every render until the server confirms it. patchTicketDetailCache keeps
   // this sidebar's own picker in sync without patching the list cache, which would let
   // the board's self-heal clear the overlay early. Mirrors useTicketActions.
+  // Bookmark toggle (BRDG-355): Bridge-local metadata, so it writes via the metadata
+  // PUT and rides the same board overlay as the fields above. On success it also
+  // refreshes the cross-sprint bookmark list (launcher + /bookmarks).
+  const handleBookmarkToggle = useCallback(async () => {
+    const prev = bookmarked;
+    const next = !prev;
+    setBookmarked(next);
+    registerPendingEdit(ticket.key, "bookmarked", next, Date.now());
+    patchTicketDetailCache(ticket.key, { bookmarked: next });
+    try {
+      await tickets.setBookmarked(ticket.key, next);
+      confirmPendingEdit(ticket.key, "bookmarked");
+      scopedMutate("/api/bookmarks");
+      onMutate?.();
+    } catch (err) {
+      setBookmarked(prev);
+      clearPendingEdit(ticket.key, "bookmarked");
+      patchTicketDetailCache(ticket.key, { bookmarked: prev });
+      reportEditFailure("bookmark", err);
+    }
+  }, [ticket.key, bookmarked, onMutate, reportEditFailure]);
+
   const handleBusinessValueChange = useCallback(async (v: number | null) => {
     const prev = businessValue;
     setBusinessValue(v);
@@ -509,6 +535,29 @@ export function TicketMetaContent({
       )}
       {/* Details */}
       <div className="space-y-3">
+
+        {/* Bookmark toggle (BRDG-355): a prominent, discoverable action at the top of
+            the meta panel. The optional "why" note reuses the PO Note field below.
+            Hidden for subtasks/epics, which the bookmark list does not include. */}
+        {ticket.type !== "subtask" && ticket.type !== "epic" && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleBookmarkToggle}
+              aria-pressed={bookmarked}
+              title={bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90 ${
+                bookmarked
+                  ? "border-[var(--meta-bv-fg)]/40 bg-[color-mix(in_srgb,var(--meta-bv-fg)_12%,transparent)] text-[var(--meta-bv-fg)]"
+                  : "border-border-subtle bg-transparent text-text-muted hover:border-border-default hover:text-text-secondary"
+              }`}
+              style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
+            >
+              <Bookmark size={13} strokeWidth={1.75} fill={bookmarked ? "currentColor" : "none"} aria-hidden />
+              {bookmarked ? "Bookmarked" : "Bookmark"}
+            </button>
+          </div>
+        )}
 
         {/* SP / BV (above status). Subtasks are not estimated or scored, so the row is
             hidden for them (BRDG-333). */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import {
   CloudUpload,
   CloudDownload,
@@ -10,6 +10,7 @@ import {
   Star,
   Scissors,
   Flag,
+  Bookmark,
   MoreHorizontal,
   ArrowUpRight,
   NotebookPen,
@@ -29,6 +30,10 @@ const AddToRefinementModal = dynamic(
   { ssr: false },
 );
 import { getJiraUrl } from "@/lib/jira-url";
+import { tickets } from "@/lib/api-client";
+import { patchTicketDetailCache } from "@/lib/ticket-cache";
+import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 import { ViewHeader } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { buildTicketHoverData } from "@/hooks/useTicketHoverData";
@@ -85,6 +90,26 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   }, [rawSprints]);
   const ticketHoverData = ticketData ? buildTicketHoverData(ticketData, sprintNames) : undefined;
 
+  // Bookmark toggle (BRDG-355). Only for a real (non-draft) ticket: a DRAFT key has
+  // no ticket row, so a metadata write would 404, and its detail cache key differs.
+  // Derives state from the detail cache and toggles via patchTicketDetailCache (so the
+  // button re-renders) + the board overlay + a bookmark-list refresh. No local state,
+  // so no reset-effect is needed.
+  const bookmarked = Boolean((ticketData as { bookmarked?: boolean } | undefined)?.bookmarked);
+  const handleBookmarkToggle = useCallback(async () => {
+    const next = !bookmarked;
+    registerPendingEdit(ticketKey, "bookmarked", next, Date.now());
+    patchTicketDetailCache(ticketKey, { bookmarked: next });
+    try {
+      await tickets.setBookmarked(ticketKey, next);
+      confirmPendingEdit(ticketKey, "bookmarked");
+      scopedMutate("/api/bookmarks");
+    } catch {
+      clearPendingEdit(ticketKey, "bookmarked");
+      patchTicketDetailCache(ticketKey, { bookmarked });
+    }
+  }, [bookmarked, ticketKey]);
+
   const { moreMenuRef, wrapUpMenuRef, ...actions } = useStoryWriterActions({
     ticketKey,
     writer,
@@ -138,6 +163,25 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                     </>
                   )}
                 </span>
+              )}
+
+              {/* Bookmark toggle (BRDG-355): real tickets only (drafts have no row). */}
+              {!isDraft && (
+                <button
+                  type="button"
+                  onClick={handleBookmarkToggle}
+                  aria-pressed={bookmarked}
+                  title={bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}
+                  className={`flex h-7 items-center gap-1.5 rounded-md border px-2 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90 ${
+                    bookmarked
+                      ? "border-[var(--meta-bv-fg)]/40 bg-[color-mix(in_srgb,var(--meta-bv-fg)_12%,transparent)] text-[var(--meta-bv-fg)]"
+                      : "border-border-subtle text-text-tertiary hover:text-text-secondary hover:border-border-default"
+                  }`}
+                  style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
+                >
+                  <Bookmark size={12} strokeWidth={1.75} fill={bookmarked ? "currentColor" : "none"} aria-hidden />
+                  {bookmarked ? "Bookmarked" : "Bookmark"}
+                </button>
               )}
 
               {/* Pane apps live behind this dropdown since BRDG-460 replaced the

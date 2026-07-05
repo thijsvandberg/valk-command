@@ -543,7 +543,7 @@ export default function SprintBoard() {
   // context-menu / quick-move / create-sprint / copy / refine exports, not board copies.
   const {
     inflightKeys, rowMenu, setRowMenu, quickMovesFor, currentSprintIdsFor,
-    handleQuickMove, computeFlagState, openRefine, handleRowContextMenu, copySelected,
+    handleQuickMove, computeFlagState, computeBookmarkState, openRefine, handleRowContextMenu, copySelected,
     refineModalOpen, setRefineModalOpen, refineKeys,
     quickCreate, closeQuickCreate, confirmQuickCreate, planPrevSprint,
   } = ra;
@@ -946,6 +946,11 @@ export default function SprintBoard() {
     if (flagged) { setFlagReason(""); setFlagDialog({ targets }); }
     else { void ra.bulkSetFlagged(false, null, targets); }
   }, [ra, checkedTickets]);
+  // Bookmark (BRDG-355): a direct toggle, no reason dialog. Rides the board overlay.
+  const handleSetBookmarked = useCallback((bookmarked: boolean, targets: Set<string> = checkedTickets) => {
+    if (targets.size === 0) return;
+    void ra.bulkSetBookmarked(bookmarked, targets);
+  }, [ra, checkedTickets]);
   const handleSyncGroup = useCallback(async (target: GroupSyncTarget, onProgress: (p: GroupSyncProgress) => void) => {
     try {
       const result = await syncGroupInTranches(target, onProgress);
@@ -1171,7 +1176,7 @@ export default function SprintBoard() {
   // overflow over the panel when the list column is narrowed.
   const bulkActionBar = someChecked && (() => {
     const sel = tickets.filter((t) => checkedTickets.has(t.key));
-    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedEffectivePoints={sel.reduce((s, t) => s + effectivePoints(t.storyPoints, t.guestimation), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={(sprintId, position) => handleBulkMoveSprint(sprintId, checkedTickets, position)} quickMoves={quickMovesFor(checkedTickets)} currentSprintIds={currentSprintIdsFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onGenerateTestDocs={() => openTestDocQueue([...checkedTickets])} onRefine={handleRefineSelected} refinements={refinementOptions} onAddToRefinement={(id) => handleAddToRefinement(id, checkedTickets)} />;
+    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedEffectivePoints={sel.reduce((s, t) => s + effectivePoints(t.storyPoints, t.guestimation), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={(sprintId, position) => handleBulkMoveSprint(sprintId, checkedTickets, position)} quickMoves={quickMovesFor(checkedTickets)} currentSprintIds={currentSprintIdsFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} onSetBookmarked={(bookmarked) => handleSetBookmarked(bookmarked)} bookmarkState={computeBookmarkState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onGenerateTestDocs={() => openTestDocQueue([...checkedTickets])} onRefine={handleRefineSelected} refinements={refinementOptions} onAddToRefinement={(id) => handleAddToRefinement(id, checkedTickets)} />;
   })();
 
   return (
@@ -1272,6 +1277,8 @@ export default function SprintBoard() {
             onUpdateLabel={(labels, mode) => handleBulkUpdateLabels(labels, mode, rowMenu.targets)}
             onSetFlagged={(flagged) => handleSetFlagged(flagged, rowMenu.targets)}
             flagState={computeFlagState(rowMenu.targets)}
+            onSetBookmarked={(bookmarked) => handleSetBookmarked(bookmarked, rowMenu.targets)}
+            bookmarkState={computeBookmarkState(rowMenu.targets)}
             onReviewStory={() => handleBulkReviewStory(rowMenu.targets)}
             onGenerateSubtasks={() => handleBulkGenerateSubtasks(rowMenu.targets)}
             onGenerateTestDoc={() => openTestDocQueue([...rowMenu.targets])}

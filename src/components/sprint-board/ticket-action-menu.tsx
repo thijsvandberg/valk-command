@@ -3,7 +3,7 @@
 import { Fragment, useMemo, type ReactNode } from "react";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
-import { Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, FilePen, Sparkles, ArrowRightLeft } from "lucide-react";
+import { Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, FilePen, Sparkles, ArrowRightLeft, Bookmark } from "lucide-react";
 import { MenuItem } from "@/components/shared/MenuItem";
 import { EpicPickerBody, type EpicOption } from "@/components/shared/EpicPicker";
 import { Flyout, QUICK_MOVE_ICON } from "@/components/sprint-board/ticket-action-menu-portals";
@@ -29,7 +29,7 @@ export { MenuItem };
 
 // The root "menu" is the full right-click menu; "update"/"move"/"flag"/"assist" are the
 // group views the bar opens directly via `initialView`. Deeper pickers are hover flyouts.
-type MenuView = "menu" | "update" | "move" | "flag" | "assist";
+type MenuView = "menu" | "update" | "move" | "flag" | "bookmark" | "assist";
 
 /** Aggregate flag state of the targeted tickets, used to pick which flag item to show. */
 export type FlagState = "flagged" | "unflagged" | "mixed";
@@ -50,6 +50,8 @@ export function TicketActionMenuContent({
   onUpdateLabel,
   onSetFlagged,
   flagState,
+  onSetBookmarked,
+  bookmarkState,
   onReviewStory,
   onGenerateSubtasks,
   onGenerateTestDoc,
@@ -92,6 +94,9 @@ export function TicketActionMenuContent({
   /** When supplied, renders Flag / Remove flag items. `true` flags, `false` unflags. */
   onSetFlagged?: (flagged: boolean) => void;
   flagState?: FlagState;
+  /** When supplied, renders Bookmark / Remove bookmark items (BRDG-355). */
+  onSetBookmarked?: (bookmarked: boolean) => void;
+  bookmarkState?: BookmarkState;
   onReviewStory?: () => void;
   onGenerateSubtasks?: () => void;
   /** Opens the stakeholder test-doc generate + validate flow (BRDG-426). */
@@ -128,6 +133,9 @@ export function TicketActionMenuContent({
   const showFlag = Boolean(onSetFlagged);
   const showFlagItem = flagState !== "flagged"; // show "Flag" unless every target is already flagged
   const showUnflagItem = flagState !== "unflagged"; // show "Remove flag" unless every target is unflagged
+  const showBookmark = Boolean(onSetBookmarked);
+  const showBookmarkItem = bookmarkState !== "bookmarked"; // show "Bookmark" unless every target is already bookmarked
+  const showRemoveBookmarkItem = bookmarkState !== "unbookmarked"; // show "Remove bookmark" unless none are bookmarked
 
   const divider = <div className="mx-2 my-1 h-px bg-overlay-strong" />;
 
@@ -223,6 +231,24 @@ export function TicketActionMenuContent({
     </>
   );
 
+  const bookmarkItems = (
+    <>
+      {showBookmarkItem && (
+        <MenuItem icon={<Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onSetBookmarked?.(true); close(); }}>
+          Bookmark
+        </MenuItem>
+      )}
+      {showRemoveBookmarkItem && (
+        <MenuItem
+          icon={<Bookmark className="h-3.5 w-3.5 text-[var(--meta-bv-fg)]" fill="var(--meta-bv-fg)" strokeWidth={1.5} />}
+          onClick={() => { onSetBookmarked?.(false); close(); }}
+        >
+          Remove bookmark
+        </MenuItem>
+      )}
+    </>
+  );
+
   const assistItems = (
     <>
       {onReviewStory && <MenuItem onClick={() => { onReviewStory(); close(); }}>Review Story</MenuItem>}
@@ -235,6 +261,7 @@ export function TicketActionMenuContent({
   if (initialView === "update") return <>{updateItems}</>;
   if (initialView === "move") return <>{moveItems}</>;
   if (initialView === "flag") return <>{flagItems}</>;
+  if (initialView === "bookmark") return <>{bookmarkItems}</>;
   if (initialView === "assist") return <>{assistItems}</>;
 
   // Root right-click menu, one divider between clusters: Triage · Move · (Flag + Update +
@@ -283,8 +310,9 @@ export function TicketActionMenuContent({
       </MenuItem>
     ) : null,
     hasMove ? moveItems : null,
-    showFlag || hasUpdate || hasAssist ? (
+    showBookmark || showFlag || hasUpdate || hasAssist ? (
       <>
+        {showBookmark ? bookmarkItems : null}
         {showFlag ? flagItems : null}
         {updateGroup}
         {assistGroup}

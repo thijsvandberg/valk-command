@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/shared/Checkbox";
 import {
   type LucideIcon,
   ArrowRightLeft,
+  Bookmark,
   Boxes,
   Check,
   ChevronDown,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
-import { AnchoredMenu, MenuItem, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
+import { AnchoredMenu, MenuItem, TicketActionMenuContent, type FlagState, type BookmarkState } from "@/components/sprint-board/ticket-action-menu";
 import type { QuickMoveOption } from "@/lib/quick-moves";
 
 // ---------------------------------------------------------------------------
@@ -137,6 +138,8 @@ export function BulkActionBar({
   onUpdateLabel,
   onSetFlagged,
   flagState,
+  onSetBookmarked,
+  bookmarkState,
   sprints,
   pinnedSprintIds,
   currentSprintIds,
@@ -187,6 +190,8 @@ export function BulkActionBar({
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   onSetFlagged?: (flagged: boolean) => void;
   flagState?: FlagState;
+  onSetBookmarked?: (bookmarked: boolean) => void;
+  bookmarkState?: BookmarkState;
   sprints?: Sprint[];
   /** Pinned (slot) sprint IDs, in pinned order; shown first in the Move to Sprint list. */
   pinnedSprintIds?: string[];
@@ -220,7 +225,7 @@ export function BulkActionBar({
   const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel;
   const hasMove = (onQuickMove && quickMoves && quickMoves.length > 0) || (onMoveSprint && sprints);
   const hasAssist = onReviewStory || onGenerateSubtasks || onGenerateTestDocs || onExportForStakeholders;
-  const hasGroup = hasUpdate || hasMove || onSetFlagged || hasAssist;
+  const hasGroup = hasUpdate || hasMove || onSetFlagged || onSetBookmarked || hasAssist;
   const hasListOps = onRefine || onCopyToClipboard || onRefreshFromJira;
 
   return (
@@ -327,6 +332,16 @@ export function BulkActionBar({
           width="w-52"
           render={(close) => (
             <TicketActionMenuContent onSetFlagged={onSetFlagged} flagState={flagState} initialView="flag" close={close} />
+          )}
+        />
+      )}
+      {onSetBookmarked && (
+        <GroupDropdown
+          label="Bookmark"
+          icon={Bookmark}
+          width="w-52"
+          render={(close) => (
+            <TicketActionMenuContent onSetBookmarked={onSetBookmarked} bookmarkState={bookmarkState} initialView="bookmark" close={close} />
           )}
         />
       )}

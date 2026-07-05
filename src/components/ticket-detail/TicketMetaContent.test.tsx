@@ -13,7 +13,7 @@ import { userInitials, userColor } from "@/lib/user-utils";
 vi.mock("lucide-react", () => {
   const stub = () => null;
   return Object.fromEntries(
-    ["ChevronDown", "AlertTriangle", "Play", "Gem", "Boxes", "FileCheck2", "FileX2", "RefreshCw", "Undo2"].map((n) => [n, stub]),
+    ["ChevronDown", "AlertTriangle", "Play", "Gem", "Boxes", "FileCheck2", "FileX2", "RefreshCw", "Undo2", "Bookmark"].map((n) => [n, stub]),
   );
 });
 
@@ -52,6 +52,7 @@ vi.mock("next/navigation", () => ({
 
 const updateStoryPoints = vi.fn().mockResolvedValue({});
 const updateMetadata = vi.fn().mockResolvedValue({});
+const setBookmarked = vi.fn().mockResolvedValue({});
 const updateEpic = vi.fn().mockResolvedValue({});
 const updateLabels = vi.fn().mockResolvedValue({});
 const moveSprint = vi.fn().mockResolvedValue({});
@@ -67,11 +68,15 @@ vi.mock("@/lib/api-client", () => ({
     updateMetadata: (...args: unknown[]) => updateMetadata(...args),
     updateEpic: (...args: unknown[]) => updateEpic(...args),
     updateLabels: (...args: unknown[]) => updateLabels(...args),
+    setBookmarked: (...args: unknown[]) => setBookmarked(...args),
     markTestDocNotNeeded: (...args: unknown[]) => markTestDocNotNeeded(...args),
     unmarkTestDocNotNeeded: (...args: unknown[]) => unmarkTestDocNotNeeded(...args),
   },
   jira: { assign: (...args: unknown[]) => assign(...args), moveSprint: (...args: unknown[]) => moveSprint(...args) },
 }));
+
+const scopedMutateSpy = vi.fn();
+vi.mock("@/lib/swr-scoped-mutate", () => ({ scopedMutate: (...args: unknown[]) => scopedMutateSpy(...args) }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
   useJiraSprints: () => ({ sprints: [{ id: 1, name: "Sprint 1" }, { id: 2, name: "Sprint 2" }] }),
@@ -207,7 +212,35 @@ describe("TicketMetaContent", () => {
     invalidateTestDocCache.mockClear();
     revalidateTestDocViews.mockClear();
     modalProps.mockClear();
+    setBookmarked.mockClear();
+    setBookmarked.mockResolvedValue({});
+    scopedMutateSpy.mockClear();
     swrData = undefined;
+  });
+
+  it("toggles the bookmark: overlays it, patches only the detail cache, and refreshes the bookmark list (BRDG-355)", async () => {
+    render(<TicketMetaContent ticket={makeTicket({ bookmarked: false })} detail={detail} />);
+    fireEvent.click(screen.getByRole("button", { name: "Bookmark" }));
+
+    await waitFor(() => expect(setBookmarked).toHaveBeenCalledWith("PROJ-42", true));
+    // The overlay carries the value on the board list (survives a stale refetch)...
+    expect(hasPendingEdit("PROJ-42", "bookmarked")).toBe(true);
+    // ...and only the DETAIL cache is patched, never the list (would defeat self-heal).
+    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { bookmarked: true });
+    expect(patchTicketCaches).not.toHaveBeenCalled();
+    // The cross-sprint bookmark list is refreshed for the launcher + /bookmarks.
+    expect(scopedMutateSpy).toHaveBeenCalledWith("/api/bookmarks");
+  });
+
+  it("shows the Bookmarked state and toggles it off for an already-bookmarked ticket (BRDG-355)", async () => {
+    render(<TicketMetaContent ticket={makeTicket({ bookmarked: true })} detail={detail} />);
+    fireEvent.click(screen.getByRole("button", { name: "Bookmarked" }));
+    await waitFor(() => expect(setBookmarked).toHaveBeenCalledWith("PROJ-42", false));
+  });
+
+  it("hides the bookmark toggle for subtasks (not in the bookmark list)", () => {
+    render(<TicketMetaContent ticket={makeTicket({ type: "subtask" })} detail={detail} />);
+    expect(screen.queryByRole("button", { name: /^Bookmark/ })).not.toBeInTheDocument();
   });
 
   it("renders story points and business value", () => {
