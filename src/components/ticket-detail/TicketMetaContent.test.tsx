@@ -589,6 +589,33 @@ describe("TicketMetaContent - test-doc row (BRDG-468)", () => {
     expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("Draft pending review");
   });
 
+  it("shows a prominent draft banner only for the draft state, opening the review modal (BRDG-471)", () => {
+    const { rerender } = render(<TicketMetaContent ticket={makeTicket({ testDocState: null })} detail={detail} />);
+    expect(screen.queryByTestId("test-doc-draft-banner")).toBeNull();
+
+    rerender(<TicketMetaContent ticket={makeTicket({ testDocState: "accepted" })} detail={detail} />);
+    expect(screen.queryByTestId("test-doc-draft-banner")).toBeNull();
+
+    rerender(<TicketMetaContent ticket={makeTicket({ testDocState: "draft" })} detail={detail} />);
+    const banner = screen.getByTestId("test-doc-draft-banner");
+    expect(banner).toHaveTextContent("Test doc draft ready for review");
+    // The banner is additive: the meta row still shows the draft state.
+    expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("Draft pending review");
+
+    fireEvent.click(banner);
+    expect(modalProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keys: ["PROJ-42"], autoGenerate: false }),
+    );
+  });
+
+  it("hides the draft banner for subtasks and epics (BRDG-471)", () => {
+    const { rerender } = render(<TicketMetaContent ticket={makeTicket({ type: "subtask", testDocState: "draft" })} detail={detail} />);
+    expect(screen.queryByTestId("test-doc-draft-banner")).toBeNull();
+
+    rerender(<TicketMetaContent ticket={makeTicket({ type: "epic", testDocState: "draft" })} detail={detail} />);
+    expect(screen.queryByTestId("test-doc-draft-banner")).toBeNull();
+  });
+
   it("opens the review modal per intent: view (chip), generate, regenerate", () => {
     const { rerender } = render(<TicketMetaContent ticket={makeTicket({ testDocState: null })} detail={detail} />);
 

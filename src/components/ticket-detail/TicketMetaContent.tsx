@@ -483,6 +483,30 @@ export function TicketMetaContent({
   return (
     <>
     <div className={`flex flex-col ${className ?? ""}`} style={style}>
+      {/* BRDG-471: a waiting test-doc draft is the case that needs attention most, so
+          it gets a prominent callout above the fold, not just the meta row below. Any
+          draft surfaces here (auto-generated on move-to-Test, or manual). */}
+      {canHaveTestDoc && testDocState === "draft" && (
+        <button
+          type="button"
+          data-testid="test-doc-draft-banner"
+          onClick={() => setTestDocIntent("view")}
+          title="Review the draft test doc and accept it"
+          className="group/tdbanner mb-3 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-status-warning)]/25 bg-[var(--color-status-warning)]/[0.07] px-3 py-2.5 text-left shadow-[0_4px_16px_-8px_#ca8a0459] hover:bg-[var(--color-status-warning)]/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90"
+          style={{ transition: "background-color 0.15s ease, opacity 0.15s ease" }}
+        >
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--color-status-warning)]/15 text-[var(--color-status-warning)]">
+            <FileCheck2 size={16} strokeWidth={1.75} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-body-sm font-semibold text-text-primary">Test doc draft ready for review</span>
+            <span className="block text-caption text-text-tertiary">A draft is waiting. Review and accept it, or edit it first.</span>
+          </span>
+          <span className="shrink-0 text-caption font-semibold text-[var(--color-status-warning)] underline-offset-2 group-hover/tdbanner:underline">
+            Review &amp; accept
+          </span>
+        </button>
+      )}
       {/* Details */}
       <div className="space-y-3">
 
