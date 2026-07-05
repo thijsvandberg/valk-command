@@ -33,6 +33,7 @@ import {
 } from "@/components/story-writer/ChatMessageParts";
 import { ModelSelector, CodebaseToggle, QuickActionsPopover, type QuickAction } from "@/components/shared/chat-controls";
 import { StreamingIndicator } from "@/components/shared/StreamingIndicator";
+import { useScrollOverflow, scrollFadeMask } from "@/hooks/useScrollOverflow";
 
 interface StoryWriterChatProps {
   messages: Message[];
@@ -258,6 +259,10 @@ export function StoryWriterChat({
     () => getVisibleChips(apiPrompts, chipContext),
     [apiPrompts, chipContext]
   );
+
+  const chipRowRef = useRef<HTMLDivElement>(null);
+  const chipOverflow = useScrollOverflow(chipRowRef, mergedChips);
+  const chipMask = scrollFadeMask(chipOverflow);
 
   // Dropdown lists every quick suggestion unconditionally (relational actions +
   // all editable per-type prompts), so nothing is hidden by context filtering.
@@ -577,9 +582,10 @@ export function StoryWriterChat({
       <div className="shrink-0 border-t border-border-default">
         <div className="px-3 pt-2 pb-1">
           <div
+            ref={chipRowRef}
             data-testid="quick-chip-row"
             className="flex items-center gap-1.5 min-h-[26px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{ maskImage: "linear-gradient(to right, black calc(100% - 40px), transparent)" }}
+            style={{ maskImage: chipMask, WebkitMaskImage: chipMask }}
           >
             {mergedChips.map((s) => {
               const isCtxFindRelated = s.id === "ctx-find-related";
