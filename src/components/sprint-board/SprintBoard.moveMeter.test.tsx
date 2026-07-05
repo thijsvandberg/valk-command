@@ -152,6 +152,7 @@ vi.mock("@/components/sprint-board/useTicketActions", () => ({
 vi.mock("@/components/sprint-board/row-actions/useRowActions", () => ({
   useRowActions: () => ({
     rowMenu: null, setRowMenu: vi.fn(), handleRowContextMenu: vi.fn(), computeFlagState: () => "unflagged",
+    computeBookmarkState: () => "unbookmarked", bulkSetBookmarked: vi.fn(),
     bulkSetStatus: vi.fn(), bulkSetReadiness: vi.fn(), bulkSetEpic: vi.fn(),
     bulkUpdateAssignee: vi.fn(), bulkUpdateLabels: vi.fn(), bulkSetFlagged: vi.fn(),
     bulkMoveSprint, moveSprint: vi.fn(), quickMovesFor: () => [], currentSprintIdsFor: () => [], handleQuickMove: vi.fn(),
