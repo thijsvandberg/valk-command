@@ -1,6 +1,6 @@
 # BRDG-355: Bookmark a story for easy reference (any sprint)
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
@@ -82,27 +82,27 @@ The goal is a single curated, cross-sprint list of "stories I care about right n
 - **Write-path divergence (important):** `flagged` is a Jira-synced field written through `PATCH /api/tickets/[key]` (`tickets.toggleFlag`); `bookmarked` is Bridge-local metadata and MUST be written through `PUT /api/tickets/[key]/metadata` (`tickets.updateMetadata({ bookmarked })`). Mirror `flagged`'s **overlay/dispatch mechanics only**, not its write path.
 - **`/bookmarks` page data source:** `SprintBoard` takes no props and derives data from the URL slug. Add a narrow optional prop (e.g. `bookmarkedOnly`) that filters the All-view list (`t.bookmarked`) rather than building a second board. The lightweight `GET /api/bookmarks` payload serves the launcher quick-list; the page reuses the board's own `/api/tickets` All-view data.
 - **Overlay confirm must revalidate (BRDG-455):** the board dispatch's `confirmEdit` bookmarked branch calls the provider-bound `base.mutate()` so the overlay self-heals before its 30s TTL (metadata write invalidates the `/api/tickets` cache, so the refetch is fresh). Never the top-level `swr` `mutate`.
-- **Working-tree hygiene (this run):** an active parallel session (BRDG-473/474) has heavy uncommitted edits, including `BoardRow.tsx`. To avoid committing their WIP: `BookmarkBadge` lives in a NEW file `src/components/shared/BookmarkBadge.tsx` (not the dirty `IssueMetaBadges.tsx`); the badge render in `BoardRow.tsx` is made in the working tree but left UNCOMMITTED and reported, since that file cannot be staged without entangling parallel work. All other files commit cleanly with explicit paths.
+- **Working-tree hygiene (this run):** an active parallel session (BRDG-473/474) had heavy uncommitted edits, including `BoardRow.tsx`. To avoid committing their WIP, `BookmarkBadge` was placed in a NEW file `src/components/shared/BookmarkBadge.tsx` (not the then-dirty `IssueMetaBadges.tsx`), and the one-line badge render in `BoardRow.tsx` was held back until the parallel session committed its work — after which the `BoardRow.tsx` diff was clean (just the import + render) and was committed on its own. Everything committed with explicit paths; nothing else was entangled.
 
 ## Acceptance Criteria
 
-- [ ] I can bookmark and un-bookmark any ticket from its side panel, detail, editor, a board row, the row's right-click action menu, and the Inbox; the icon reflects state immediately (optimistic) and persists across reloads.
-- [ ] Toggling a bookmark shows instantly and does **not** disappear after ~30s / require a refresh to reappear (rides the pending-edits overlay + revalidate-on-confirm).
-- [ ] A ticket can be bookmarked regardless of its sprint, including a backlog ticket with no sprint.
-- [ ] Board/backlog rows show a bookmark badge when the ticket is bookmarked, styled in the existing row-marker family; the badge appears/disappears with the toggle without a refresh.
-- [ ] The launcher shows two quick-access siblings — Recently viewed · Bookmarks — on every page; opening Bookmarks does not navigate me away.
-- [ ] The Bookmarks quick-list opens instantly (no cascade, no per-row loading), shows the ticket pill + title, reveals the PO note on hover when present, is uncapped, and one click opens the ticket.
-- [ ] A "See all" link opens the full `/bookmarks` page — a regular sprint board of all bookmarked tickets, cross-sprint, most-recent-first.
-- [ ] Bookmarking never requires a note (note is optional). The note is the existing PO note (`poNotes`); editing it updates what the list/page reveal; no separate note field is introduced.
-- [ ] Bookmarks persist in the Bridge database (survive browser/device change), not just localStorage.
+- [x] I can bookmark and un-bookmark any ticket from its side panel, detail, editor, a board row, the row's right-click action menu, and the Inbox; the icon reflects state immediately (optimistic) and persists across reloads.
+- [x] Toggling a bookmark shows instantly and does **not** disappear after ~30s / require a refresh to reappear (rides the pending-edits overlay + revalidate-on-confirm).
+- [x] A ticket can be bookmarked regardless of its sprint, including a backlog ticket with no sprint.
+- [x] Board/backlog rows show a bookmark badge when the ticket is bookmarked, styled in the existing row-marker family; the badge appears/disappears with the toggle without a refresh.
+- [x] The launcher shows two quick-access siblings — Recently viewed · Bookmarks — on every page; opening Bookmarks does not navigate me away.
+- [x] The Bookmarks quick-list opens instantly (no cascade, no per-row loading), shows the ticket pill + title, reveals the PO note on hover when present, is uncapped, and one click opens the ticket.
+- [x] A "See all" link opens the full `/bookmarks` page — a regular sprint board of all bookmarked tickets, cross-sprint, most-recent-first.
+- [x] Bookmarking never requires a note (note is optional). The note is the existing PO note (`poNotes`); editing it updates what the list/page reveal; no separate note field is introduced.
+- [x] Bookmarks persist in the Bridge database (survive browser/device change), not just localStorage.
 
 ## Tests
 
-- [ ] Service test: `updateTicketMetadata({ bookmarked: true })` sets `bookmarkedAt`; `{ bookmarked: false }` clears it to `null`; non-boolean is rejected.
-- [ ] `GET /api/bookmarks` returns only bookmarked tickets, most-recent-first, in one payload, and includes a backlog (no-sprint) bookmark.
-- [ ] Overlay test: a `bookmarked` toggle survives a stale refetch (value does not snap back / disappear at TTL) — mirror `pendingTicketEdits.test.ts` / `useTicketActions.test.ts`.
-- [ ] Metadata PUT route invalidates the bookmarks cache so the list reflects a toggle without manual refresh.
-- [ ] Component test: bookmark toggle renders the correct icon state and fires the optimistic update; `BookmarkBadge` renders on a bookmarked row; `BookmarksView` renders entries with pill + title, reveals the note on hover only when a note exists; the "See all" link targets `/bookmarks`.
+- [x] Service test: `updateTicketMetadata({ bookmarked: true })` sets `bookmarkedAt`; `{ bookmarked: false }` clears it to `null`; non-boolean is rejected.
+- [x] `GET /api/bookmarks` returns only bookmarked tickets, most-recent-first, in one payload, and includes a backlog (no-sprint) bookmark.
+- [x] Overlay test: a `bookmarked` toggle survives a stale refetch (value does not snap back / disappear at TTL) — mirror `pendingTicketEdits.test.ts` / `useTicketActions.test.ts`.
+- [x] Metadata PUT route invalidates the bookmarks cache so the list reflects a toggle without manual refresh.
+- [x] Component test: bookmark toggle renders the correct icon state and fires the optimistic update; `BookmarkBadge` renders on a bookmarked row; `BookmarksView` renders entries with pill + title, reveals the note on hover only when a note exists; the "See all" link targets `/bookmarks`.
 
 ## Related
 
