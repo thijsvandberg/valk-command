@@ -468,14 +468,17 @@ export default function TicketDetailPage({
               </Button>
             )}
             {!ticket.removedFromJiraAt && ticket.jiraStatus !== "DONE" && ticket.jiraStatus !== "DEPRECATED" && ticket.readiness === "ready_to_refine" && !isInRefinementSession && (
-              <button
-                onClick={() => setShowAddToRefinement(true)}
-                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-                style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
-              >
-                <Boxes size={13} strokeWidth={1.5} />
-                Add to refinement
-              </button>
+              // Icon-only ghost button matching the bookmark toggle beside it (BRDG-355 feedback).
+              <Tooltip content="Add to refinement">
+                <Button
+                  variant="ghost"
+                  size="md"
+                  iconOnly
+                  onClick={() => setShowAddToRefinement(true)}
+                  aria-label="Add to refinement"
+                  icon={<Boxes size={15} strokeWidth={1.75} />}
+                />
+              </Tooltip>
             )}
             {/* Bookmark toggle (BRDG-355): the standard ghost icon button (matches the
                 "More actions" button beside it), in the header — not the sidebar. */}
