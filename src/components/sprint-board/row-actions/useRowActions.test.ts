@@ -22,6 +22,7 @@ const updateMetadata = vi.fn();
 const updateEpic = vi.fn();
 const updateLabels = vi.fn();
 const toggleFlag = vi.fn();
+const setBookmarked = vi.fn();
 const globalMutate = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
@@ -35,8 +36,11 @@ vi.mock("@/lib/api-client", () => ({
     updateEpic: (...args: unknown[]) => updateEpic(...args),
     updateLabels: (...args: unknown[]) => updateLabels(...args),
     toggleFlag: (...args: unknown[]) => toggleFlag(...args),
+    setBookmarked: (...args: unknown[]) => setBookmarked(...args),
   },
 }));
+// scopedMutate is intentionally NOT mocked: with no provider registered it falls
+// back to the default-cache mutate, which "swr" is mocked to expose as globalMutate.
 vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
   bulkReviewStories: vi.fn(),
   bulkGenerateSubtasks: vi.fn().mockResolvedValue({ succeeded: 1, failed: 0 }),
@@ -116,6 +120,38 @@ describe("useRowActions - bulkSetFlagged", () => {
     await act(async () => { await result.current.bulkSetFlagged(true, null, new Set(["A-1"])); });
     expect(hasPendingEdit("A-1", "flagged")).toBe(false);
     expect(showToast).toHaveBeenLastCalledWith("Failed for 1 issue");
+  });
+});
+
+describe("useRowActions - bulkSetBookmarked (BRDG-355)", () => {
+  beforeEach(() => { setBookmarked.mockReset().mockResolvedValue({}); globalMutate.mockReset(); __resetPendingEdits(); });
+
+  it("bookmarks every target via the metadata path, overlays it, toasts, and refreshes the bookmark list", async () => {
+    const { result, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
+    await act(async () => { await result.current.bulkSetBookmarked(true, new Set(["A-1", "A-2"])); });
+
+    expect(setBookmarked).toHaveBeenCalledWith("A-1", true);
+    expect(setBookmarked).toHaveBeenCalledWith("A-2", true);
+    const overlaid = applyPendingEdits([makeTicket("A-1", false), makeTicket("A-2", false)], __getPendingEdits(), Date.now())!;
+    expect(overlaid.every((t) => t.bookmarked)).toBe(true);
+    expect(showToast).toHaveBeenLastCalledWith("Bookmarked 2 issues");
+    expect(globalMutate).toHaveBeenCalledWith("/api/bookmarks");
+  });
+
+  it("removes the bookmark and toasts the singular message", async () => {
+    const { result, showToast } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkSetBookmarked(false, new Set(["A-1"])); });
+    expect(setBookmarked).toHaveBeenCalledWith("A-1", false);
+    expect(showToast).toHaveBeenLastCalledWith("Removed bookmark from 1 issue");
+  });
+
+  it("clears the overlay and reports failure when the write rejects", async () => {
+    setBookmarked.mockRejectedValue(new Error("boom"));
+    const { result, showToast } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkSetBookmarked(true, new Set(["A-1"])); });
+    expect(hasPendingEdit("A-1", "bookmarked")).toBe(false);
+    expect(showToast).toHaveBeenLastCalledWith("Failed for 1 issue");
+    expect(globalMutate).not.toHaveBeenCalledWith("/api/bookmarks");
   });
 });
 

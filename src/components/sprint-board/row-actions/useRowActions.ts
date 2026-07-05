@@ -3,7 +3,8 @@
 import { useCallback, useMemo, useState } from "react";
 import type React from "react";
 import type { JiraStatus, TicketReadiness, Sprint } from "@/types/ticket";
-import type { FlagState } from "@/components/sprint-board/ticket-action-menu";
+import type { FlagState, BookmarkState } from "@/components/sprint-board/ticket-action-menu";
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 import type { CreatedSprint } from "@/components/sprint-board/CreateSprintModal";
 import { apiFetch, jira, tickets as ticketsApi } from "@/lib/api-client";
 import { bulkReviewStories, bulkGenerateSubtasks } from "@/components/sprint-board/sprint-board-utils";
@@ -127,6 +128,9 @@ export function useRowActions(opts: UseRowActionsOpts) {
       keys.forEach((k, i) => (results[i].status === "fulfilled" ? ok.push(k) : failed.push(k)));
       if (ok.length) adapter.confirmEdit(ok, field);
       if (failed.length) adapter.revertEdit(failed, field);
+      // Refresh the cross-sprint bookmark list (launcher quick-list + /bookmarks) so a
+      // toggle from any surface reflects there without a manual refresh (BRDG-355).
+      if (field === "bookmarked" && ok.length) scopedMutate("/api/bookmarks");
       if (failed.length) {
         const updated = keys.length - failed.length;
         showToast(`Failed for ${failed.length} issue${failed.length === 1 ? "" : "s"}${updated > 0 ? ` (${updated} updated)` : ""}`);
@@ -192,6 +196,15 @@ export function useRowActions(opts: UseRowActionsOpts) {
   const bulkSetFlagged = useCallback(
     (flagged: boolean, reason: string | null, keys: Set<string> = selectedKeys) =>
       runFieldEdit("flagged", flagged, [...keys], (k) => ticketsApi.toggleFlag(k, flagged, reason ?? undefined), flagged ? "Flagged" : "Unflagged"),
+    [runFieldEdit, selectedKeys],
+  );
+
+  // Bookmark is Bridge-local metadata (BRDG-355), written via the metadata PUT, not
+  // the flag route. runFieldEdit rides the board overlay so the badge shows instantly
+  // and never snaps back.
+  const bulkSetBookmarked = useCallback(
+    (bookmarked: boolean, keys: Set<string> = selectedKeys) =>
+      runFieldEdit("bookmarked", bookmarked, [...keys], (k) => ticketsApi.setBookmarked(k, bookmarked), bookmarked ? "Bookmarked" : "Removed bookmark from"),
     [runFieldEdit, selectedKeys],
   );
 
@@ -384,12 +397,27 @@ export function useRowActions(opts: UseRowActionsOpts) {
     [flagSource, adapter],
   );
 
+  // Unlike flag, every surface's row carries `bookmarked` (it comes off the shared
+  // /api/tickets payload), so the real state can be computed here even on the inbox.
+  const computeBookmarkState = useCallback(
+    (keys: Set<string>): BookmarkState => {
+      const sel = [...keys].map((k) => adapter.getTicket(k)).filter((t): t is NonNullable<typeof t> => Boolean(t));
+      if (sel.length === 0) return "mixed";
+      const count = sel.filter((t) => t.bookmarked).length;
+      if (count === 0) return "unbookmarked";
+      if (count === sel.length) return "bookmarked";
+      return "mixed";
+    },
+    [adapter],
+  );
+
   return {
     // context menu
     rowMenu,
     setRowMenu,
     handleRowContextMenu,
     computeFlagState,
+    computeBookmarkState,
     // bulk dispatch
     bulkSetStatus,
     bulkSetReadiness,
@@ -397,6 +425,7 @@ export function useRowActions(opts: UseRowActionsOpts) {
     bulkUpdateAssignee,
     bulkUpdateLabels,
     bulkSetFlagged,
+    bulkSetBookmarked,
     bulkMoveSprint,
     moveSprint,
     quickMovesFor,

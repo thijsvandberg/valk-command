@@ -67,6 +67,21 @@ describe("pendingTicketEdits - applyPendingEdits", () => {
     expect(overlaid.find((t) => t.key === "A-2")).toBe(list[1]);
   });
 
+  it("keeps a bookmarked toggle applied over a stale refetch until confirmed and matched (BRDG-355)", () => {
+    // Toggle on; a racing refetch still returns the pre-write value.
+    registerPendingEdit("A-1", "bookmarked", true, T0);
+    const stale = [makeTicket("A-1", { bookmarked: false })];
+    expect(applyPendingEdits(stale, __getPendingEdits(), T0)![0].bookmarked).toBe(true);
+
+    // Confirm keeps it applied (the server may still lag) so it does not blink out.
+    confirmPendingEdit("A-1", "bookmarked");
+    expect(applyPendingEdits(stale, __getPendingEdits(), T0)![0].bookmarked).toBe(true);
+
+    // Once server data reflects the value, the row self-heals to server data.
+    const fresh = [makeTicket("A-1", { bookmarked: true })];
+    expect(valuesMatch(fresh[0].bookmarked, true)).toBe(true);
+  });
+
   it("overlays an object value such as assignee", () => {
     const assignee = { name: "Frank", initials: "F", color: "#abc" };
     registerPendingEdit("A-1", "assignee", assignee, T0);

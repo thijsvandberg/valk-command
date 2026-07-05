@@ -34,6 +34,9 @@ type MenuView = "menu" | "update" | "move" | "flag" | "assist";
 /** Aggregate flag state of the targeted tickets, used to pick which flag item to show. */
 export type FlagState = "flagged" | "unflagged" | "mixed";
 
+/** Aggregate bookmark state of the targeted tickets, used to pick which item to show. */
+export type BookmarkState = "bookmarked" | "unbookmarked" | "mixed";
+
 export function TicketActionMenuContent({
   onSetStatus,
   onSetReadiness,

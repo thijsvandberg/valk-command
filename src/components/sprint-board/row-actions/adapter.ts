@@ -33,7 +33,7 @@ export interface RowDataAdapter {
 }
 
 /** Fields a bulk action can edit; the optimistic display protocol is keyed on these. */
-export type RowEditField = "jiraStatus" | "readiness" | "epic" | "flagged" | "assignee" | "labels";
+export type RowEditField = "jiraStatus" | "readiness" | "epic" | "flagged" | "assignee" | "labels" | "bookmarked";
 
 /** Value shape carried by `beginEdit` for the `epic` field. */
 export interface EpicEditValue {
@@ -111,6 +111,7 @@ export function makeBoardDispatchAdapter(base: RowDataAdapter, readiness: BoardR
       const now = Date.now();
       if (field === "jiraStatus") keys.forEach((k) => registerPendingEdit(k, "jiraStatus", value, now));
       else if (field === "flagged") keys.forEach((k) => registerPendingEdit(k, "flagged", value, now));
+      else if (field === "bookmarked") keys.forEach((k) => registerPendingEdit(k, "bookmarked", value, now));
       else if (field === "readiness") {
         const v = value as import("@/types/ticket").TicketReadiness | null;
         keys.forEach((k) => registerPendingEdit(k, "readiness", v, now));
@@ -131,6 +132,10 @@ export function makeBoardDispatchAdapter(base: RowDataAdapter, readiness: BoardR
     confirmEdit: (keys, field) => {
       if (field === "jiraStatus") keys.forEach((k) => confirmPendingEdit(k, "jiraStatus"));
       else if (field === "flagged") keys.forEach((k) => confirmPendingEdit(k, "flagged"));
+      // bookmarked writes with the overlay owning display (no list patch), so the
+      // confirm MUST revalidate the list; otherwise self-heal never fires and the
+      // 30s TTL evicts the value, making the badge blink out (BRDG-455).
+      else if (field === "bookmarked") { keys.forEach((k) => confirmPendingEdit(k, "bookmarked")); base.mutate(); }
       else if (field === "readiness") keys.forEach((k) => confirmPendingEdit(k, "readiness"));
       else if (field === "epic") keys.forEach((k) => { confirmPendingEdit(k, "epic"); confirmPendingEdit(k, "epicKey"); base.mutate(); });
       else base.mutate(); // assignee/labels: revalidate so the new value lands
@@ -138,6 +143,7 @@ export function makeBoardDispatchAdapter(base: RowDataAdapter, readiness: BoardR
     revertEdit: (keys, field) => {
       if (field === "jiraStatus") keys.forEach((k) => clearPendingEdit(k, "jiraStatus"));
       else if (field === "flagged") keys.forEach((k) => clearPendingEdit(k, "flagged"));
+      else if (field === "bookmarked") keys.forEach((k) => clearPendingEdit(k, "bookmarked"));
       else if (field === "readiness") {
         keys.forEach((k) => clearPendingEdit(k, "readiness"));
         readiness.setReadinessMap((prev) => {

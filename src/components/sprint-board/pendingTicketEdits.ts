@@ -38,7 +38,8 @@ export type EditableField =
   | "totalSubtaskCount"
   | "poStatus"
   | "readiness"
-  | "testDocState";
+  | "testDocState"
+  | "bookmarked";
 
 // Safety net so an edit never sticks forever if the server never reflects it (e.g. a
 // Jira field that silently rejected the write). Matches pendingSprintMoves' TTL.
