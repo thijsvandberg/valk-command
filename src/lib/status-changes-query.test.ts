@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketStatusChange, ticketScopeChange, jiraComment, storyVersion, ticketSubtask, pipelineRun } from "@/db/schema";
+import { ticket, ticketStatusChange, ticketScopeChange, jiraComment, storyVersion, ticketSubtask, pipelineRun, ticketMetadata } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -318,6 +318,58 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].id).toBe("sc-1");
       expect(rows[0].deployAdded).toBeNull();
+    });
+  });
+
+  describe("test-doc draft-ready reason (BRDG-471)", () => {
+    function addTestDoc(key: string, fields: Partial<typeof ticketMetadata.$inferInsert>) {
+      testDb.insert(ticketMetadata).values({ jiraKey: key, ...fields }).run();
+    }
+
+    it("surfaces a draft-only ticket as a testDocReady line with no status transition", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addTestDoc("VPL-1", { testDocDraft: "**Doc**", testDocDraftGeneratedAt: "2026-06-27T11:00:00.000Z" });
+
+      const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].testDocReady).toBe(true);
+      expect(rows[0].id).toBeNull();
+      expect(rows[0].toStatus).toBeNull();
+      // Falls back to the draft's generation time so the line is never timeless.
+      expect(rows[0].changedAt).toBe("2026-06-27T11:00:00.000Z");
+    });
+
+    it("persists after the status change is dismissed (state-derived, no seen-key)", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addChange("sc-1", "VPL-1", "TEST", "2026-06-27T10:00:00.000Z");
+      addTestDoc("VPL-1", { testDocDraft: "**Doc**" });
+
+      // Combined line first: the status change carries the draft flag.
+      let rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBe("sc-1");
+      expect(rows[0].testDocReady).toBe(true);
+
+      // Dismiss the status change — the draft-ready line stands alone, undismissed.
+      await markStatusChangeSeen(CTX.userId, "sc-1", true);
+      rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBeNull();
+      expect(rows[0].testDocReady).toBe(true);
+    });
+
+    it("drops once the draft is accepted (testDoc set, draft cleared)", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addTestDoc("VPL-1", { testDoc: "**Accepted**" });
+
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
+    });
+
+    it("ignores an empty-string draft (matches deriveTestDocState)", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addTestDoc("VPL-1", { testDocDraft: "" });
+
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
     });
   });
 });

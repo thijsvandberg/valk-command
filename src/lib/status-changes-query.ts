@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { ticket, ticketStatusChange, ticketScopeChange, statusChangeSeen, jiraComment, storyVersion, ticketSubtask, pipelineRun } from "@/db/schema";
+import { ticket, ticketStatusChange, ticketScopeChange, statusChangeSeen, jiraComment, storyVersion, ticketSubtask, pipelineRun, ticketMetadata } from "@/db/schema";
 import { and, eq, ne, isNull, isNotNull, inArray, notExists, desc, sql } from "drizzle-orm";
 import { buildAssignee } from "@/lib/user-utils";
 import { isInFlightStatus } from "@/lib/ticket-status";
@@ -71,6 +71,11 @@ export interface StatusChangeItem {
   storyEditedAt: string | null;
   sprintAdded: SprintAddInfo | null;
   deployAdded: DeployAddInfo | null;
+  // BRDG-471: a test-doc draft is waiting for acceptance on this ticket. Purely
+  // state-derived (no seen-key), so it is not dismissible and persists until the
+  // draft is accepted or the ticket is marked not-needed. When it is the only
+  // reason, the line reads "Test doc draft ready to accept".
+  testDocReady: boolean;
 }
 
 // jiraComment.createdAt is Jira ISO (with `T`); storyVersion.createdAt uses the SQLite
@@ -265,8 +270,37 @@ export async function listUnseenStatusChanges(
     }
   }
 
-  // A ticket gets a line if it has an unseen status change OR sprint-add OR fresh UAT deploy.
-  const keys = [...new Set<string>([...latestByKey.keys(), ...latestSprintByKey.keys(), ...latestDeployByKey.keys()])];
+  // BRDG-471: a state-driven fourth reason — a test-doc DRAFT awaiting acceptance
+  // (a draft cached, no accepted doc). Mirrors deriveTestDocState's "draft" branch
+  // exactly (testDoc falsy, testDocDraft truthy). Unlike the reasons above it has
+  // NO seen-key: it is not dismissible and persists until the draft is accepted or
+  // the ticket is marked not-needed (both clear testDocDraft / set testDoc). So a
+  // dismissed status line collapses to this standalone "draft ready to accept" line.
+  const draftRows = await db
+    .select({ ticketKey: ticketMetadata.jiraKey, generatedAt: ticketMetadata.testDocDraftGeneratedAt })
+    .from(ticketMetadata)
+    .innerJoin(ticket, eq(ticket.jiraKey, ticketMetadata.jiraKey))
+    .where(
+      and(
+        inArray(ticketMetadata.jiraKey, ticketKeys),
+        sql`${ticketMetadata.testDocDraft} is not null and ${ticketMetadata.testDocDraft} != ''`,
+        sql`(${ticketMetadata.testDoc} is null or ${ticketMetadata.testDoc} = '')`,
+        isNull(ticket.removedFromJiraAt),
+      ),
+    );
+  const draftReadyByKey = new Map<string, string | null>();
+  for (const r of draftRows) draftReadyByKey.set(r.ticketKey, r.generatedAt);
+
+  // A ticket gets a line if it has an unseen status change OR sprint-add OR fresh UAT
+  // deploy OR a test-doc draft awaiting acceptance.
+  const keys = [
+    ...new Set<string>([
+      ...latestByKey.keys(),
+      ...latestSprintByKey.keys(),
+      ...latestDeployByKey.keys(),
+      ...draftReadyByKey.keys(),
+    ]),
+  ];
   if (keys.length === 0) return [];
 
   // Open subtask count (same rule as the board payload): non-DONE/DEPRECATED subtasks.
@@ -336,8 +370,9 @@ export async function listUnseenStatusChanges(
       ticketKey: key,
       fromStatus: s?.fromStatus ?? null,
       toStatus: (s?.toStatus ?? null) as JiraStatus | null,
-      // Deploy-only line: fall back to the deploy time so the row is never timeless.
-      changedAt: s?.changedAt ?? sa?.changedAt ?? d?.completedAt ?? "",
+      // Deploy-only line: fall back to the deploy time; draft-only line: the draft's
+      // generation time. Keeps the row from ever being timeless.
+      changedAt: s?.changedAt ?? sa?.changedAt ?? d?.completedAt ?? draftReadyByKey.get(key) ?? "",
       changedBy: s?.changedBy ?? null,
       changedByAccountId: s?.changedByAccountId ?? null,
       changedByAvatar: s?.changedByAvatar ?? null,
@@ -364,6 +399,7 @@ export async function listUnseenStatusChanges(
             state: d.state,
           }
         : null,
+      testDocReady: draftReadyByKey.has(key),
     };
   });
 }

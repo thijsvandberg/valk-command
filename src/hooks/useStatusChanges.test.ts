@@ -40,6 +40,7 @@ function item(overrides: Partial<StatusChangeItem> = {}): StatusChangeItem {
     storyEditedAt: null,
     sprintAdded: null,
     deployAdded: null,
+    testDocReady: false,
     ...overrides,
   };
 }
@@ -92,5 +93,13 @@ describe("useStatusChanges.markSeen (BRDG-439/446)", () => {
       await result.current.markSeen(item({ id: "sc-3", deployAdded: DEPLOY_ADD }));
     });
     expect(apiFetch).toHaveBeenCalledWith("/api/status-changes/seen", { method: "POST", body: { ids: ["sc-3", "deploy:VPL-1:run-5"] } });
+  });
+
+  it("does nothing for a draft-only line: it has no seen-key, so dismiss != accept (BRDG-471)", async () => {
+    const { result } = renderHook(() => useStatusChanges(["VPL-1"]), { wrapper });
+    await act(async () => {
+      await result.current.markSeen(item({ id: null, toStatus: null, sprintAdded: null, deployAdded: null, testDocReady: true }));
+    });
+    expect(apiFetch).not.toHaveBeenCalled();
   });
 });

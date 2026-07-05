@@ -6,10 +6,11 @@ import { swrFetcher, apiFetch } from "@/lib/api-client";
 import { subscribeEvents } from "@/lib/event-bus";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 
-// Ticket-event kinds that can change the status-change queue: a new transition, or new
-// "what's new" activity. A relevant event revalidates the queue so it updates on an
-// already-open board without a manual refresh (BRDG-414).
-const REVALIDATE_KINDS = new Set(["status", "comment", "content", "sprint"]);
+// Ticket-event kinds that can change the status-change queue: a new transition, new
+// "what's new" activity, or a test-doc draft landing (BRDG-471, its own persistent
+// "draft ready to accept" line). A relevant event revalidates the queue so it updates
+// on an already-open board without a manual refresh (BRDG-414).
+const REVALIDATE_KINDS = new Set(["status", "comment", "content", "sprint", "test_doc"]);
 const EMPTY: StatusChangeItem[] = [];
 
 interface StatusChangesResponse {

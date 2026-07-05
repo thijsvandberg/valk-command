@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownToLine, Check, Loader2, Rocket } from "lucide-react";
+import { ArrowDownToLine, Check, FileCheck2, Loader2, Rocket } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo } from "@/hooks/usePipelines";
@@ -33,6 +33,12 @@ function StatusWord({ status }: { status: JiraStatus }) {
 // Move-to-bottom and Generate-test-prompt share one quiet, neutral outline style.
 const ACTION_BTN =
   "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-caption font-medium text-text-secondary transition-colors duration-150";
+
+// BRDG-471: a waiting draft needs a call-to-action, not the neutral outline. A
+// warning-tinted fill (same hue as the detail row's "Draft pending review") makes
+// "Review test doc" read as an action, distinct from an accepted doc's passive View.
+const REVIEW_BTN =
+  "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-status-warning)]/35 bg-[var(--color-status-warning)]/[0.08] px-2 py-1 text-caption font-medium text-[var(--color-status-warning)] transition-colors duration-150 hover:bg-[var(--color-status-warning)]/[0.15] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 function DeploySignal({ deploy }: { deploy: LastDeployedInfo }) {
   if (!deploy.environment) return null;
@@ -118,6 +124,12 @@ export function StatusChangeLine({
   const deployAdded = change.deployAdded;
   const hasStatus = change.id != null && change.toStatus != null;
   const deployOnly = !hasStatus && !sprintAdd && !!deployAdded;
+  // BRDG-471: a test-doc draft awaiting acceptance. State-derived and NOT
+  // dismissible; when it is the only reason, the line stands alone and offers
+  // no seen-check (dismiss != accept). It clears only when the draft is accepted
+  // or the ticket is marked not-needed.
+  const draftReady = change.testDocReady === true;
+  const draftReadyOnly = draftReady && !hasStatus && !sprintAdd && !deployAdded;
   const attribution = sprintAdd ? sprintAdd.changedBy : change.changedBy;
   const attributionAt = deployOnly && deployAdded ? deployAdded.completedAt : sprintAdd ? sprintAdd.changedAt : change.changedAt;
 
@@ -158,7 +170,9 @@ export function StatusChangeLine({
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <span className="text-caption text-text-tertiary">
-          {deployOnly ? (
+          {draftReadyOnly ? (
+            <>Test doc draft ready to accept</>
+          ) : deployOnly ? (
             <>New version on UAT</>
           ) : sprintAdd && hasStatus ? (
             <>
@@ -234,7 +248,22 @@ export function StatusChangeLine({
         )}
 
         <span className="flex items-center gap-1.5">
-          {showsTestDoc && (testDocState === "accepted" || testDocState === "draft") && onViewTestDoc && (
+          {/* A waiting draft (BRDG-471) needs a review+accept action; shown even on a
+              status-less draft-only line. Distinct from an accepted doc's passive View. */}
+          {(draftReady || (showsTestDoc && testDocState === "draft")) && onViewTestDoc && (
+            <Tooltip content="Review the draft test doc next to the story and accept it">
+              <button
+                type="button"
+                onClick={onViewTestDoc}
+                onMouseEnter={() => prefetchTestDoc(change.ticketKey)}
+                className={REVIEW_BTN}
+              >
+                <FileCheck2 className="h-3 w-3 shrink-0" strokeWidth={2} />
+                Review test doc
+              </button>
+            </Tooltip>
+          )}
+          {showsTestDoc && testDocState === "accepted" && onViewTestDoc && (
             <Tooltip content="View and edit the test documentation next to the story">
               <button
                 type="button"
@@ -278,7 +307,9 @@ export function StatusChangeLine({
               </button>
             </Tooltip>
           )}
-          <DismissButton onClick={onSeen} />
+          {/* A draft-only line is state-driven and not dismissible: dismiss != accept.
+              It clears only when the draft is accepted or the ticket is marked not-needed. */}
+          {!draftReadyOnly && <DismissButton onClick={onSeen} />}
         </span>
       </div>
     </div>
