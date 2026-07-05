@@ -37,6 +37,9 @@ export function useTicketDetailPage(key: string) {
     qualityScore: apiData.qualityScore ?? null,
     editState: apiData.editState ?? "clean",
     notes: apiData.notes ?? "",
+    // Carry the bookmark flag so the single-view meta panel's toggle reflects state
+    // (BRDG-355); without it the toggle always renders as un-bookmarked.
+    bookmarked: apiData.bookmarked ?? false,
     sprintId: apiData.sprintId,
     businessValue: apiData.businessValue ?? null,
     removedFromJiraAt: apiData.removedFromJiraAt ?? null,

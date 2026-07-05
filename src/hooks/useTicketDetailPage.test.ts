@@ -66,6 +66,7 @@ const mockApiData = {
   qualityScore: 80,
   editState: "clean",
   notes: "",
+  bookmarked: true,
   assignee: "bob",
   parent: null,
   labels: [],
@@ -112,6 +113,8 @@ describe("useTicketDetailPage", () => {
     expect(result.current.ticket!.title).toBe("Test ticket");
     expect(result.current.ticket!.type).toBe("Story");
     expect(result.current.ticket!.jiraStatus).toBe("TO DO");
+    // BRDG-355: the bookmark flag must be carried so the meta-panel toggle reflects state.
+    expect(result.current.ticket!.bookmarked).toBe(true);
   });
 
   it("maps API data to TicketDetail type correctly", () => {
