@@ -250,13 +250,13 @@ describe("TicketDetailPage header - Add to refinement button", () => {
     await renderPage();
     // The header button is rendered in addition to the "..." menu item (which
     // is hidden until the menu is opened), so exactly one is visible up front.
-    expect(screen.getAllByText("Add to refinement")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Add to refinement" })).toHaveLength(1);
   });
 
   it("opens the Add to refinement modal when the header button is clicked", async () => {
     resetHook("ready_to_refine");
     await renderPage();
-    fireEvent.click(screen.getByText("Add to refinement"));
+    fireEvent.click(screen.getByRole("button", { name: "Add to refinement" }));
     expect(screen.getByTestId("add-to-refinement-modal")).toBeInTheDocument();
   });
 
@@ -266,7 +266,7 @@ describe("TicketDetailPage header - Add to refinement button", () => {
       resetHook(readiness);
       await renderPage();
       expect(screen.getByTestId("status-pill")).toBeInTheDocument();
-      expect(screen.queryByText("Add to refinement")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Add to refinement" })).not.toBeInTheDocument();
     },
   );
 
@@ -276,7 +276,7 @@ describe("TicketDetailPage header - Add to refinement button", () => {
     });
     await renderPage();
     expect(screen.getByTestId("status-pill")).toBeInTheDocument();
-    expect(screen.queryByText("Add to refinement")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add to refinement" })).not.toBeInTheDocument();
   });
 
   it.each(["draft", "in_progress"] as const)(
@@ -286,7 +286,7 @@ describe("TicketDetailPage header - Add to refinement button", () => {
       mockSessions = [{ ticketKeys: ["VPL-100"], status }];
       await renderPage();
       expect(screen.getByTestId("status-pill")).toBeInTheDocument();
-      expect(screen.queryByText("Add to refinement")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Add to refinement" })).not.toBeInTheDocument();
     },
   );
 
@@ -294,14 +294,14 @@ describe("TicketDetailPage header - Add to refinement button", () => {
     resetHook("ready_to_refine");
     mockSessions = [{ ticketKeys: ["VPL-100"], status: "completed" }];
     await renderPage();
-    expect(screen.getAllByText("Add to refinement")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Add to refinement" })).toHaveLength(1);
   });
 
   it("still shows the header button when an active session contains other tickets only", async () => {
     resetHook("ready_to_refine");
     mockSessions = [{ ticketKeys: ["VPL-999"], status: "in_progress" }];
     await renderPage();
-    expect(screen.getAllByText("Add to refinement")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Add to refinement" })).toHaveLength(1);
   });
 
   it.each(["DONE", "DEPRECATED"] as const)(
@@ -312,7 +312,7 @@ describe("TicketDetailPage header - Add to refinement button", () => {
       });
       await renderPage();
       expect(screen.getByTestId("status-pill")).toBeInTheDocument();
-      expect(screen.queryByText("Add to refinement")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Add to refinement" })).not.toBeInTheDocument();
     },
   );
 });
