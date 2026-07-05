@@ -1,6 +1,6 @@
 # BRDG-475: Quick optional note when bookmarking
 
-**Status:** Not Started
+**Status:** Complete
 **Priority:** Medium
 **Type:** Feature
 
@@ -87,19 +87,19 @@ Open Questions resolved with these defaults (see reasoning below):
 
 ## Acceptance Criteria
 
-- [ ] Turning a bookmark **on** surfaces an optional quick-note capture that is non-blocking (no modal, no focus trap, no autofocus).
-- [ ] Left untouched, it auto-dismisses after a comfortable delay (not too fast) and writes no note.
-- [ ] Focusing it or typing in it cancels the auto-dismiss for good; it then stays until save or explicit dismiss.
-- [ ] Saving writes the text to the ticket's `poNotes`; the launcher/`/bookmarks` note-hover reflects it without a manual refresh.
-- [ ] Removing a bookmark never shows the capture.
-- [ ] The note remains fully optional — dismissing without typing changes nothing.
+- [x] Turning a bookmark **on** surfaces an optional quick-note capture that is non-blocking (no modal, no focus trap, no autofocus).
+- [x] Left untouched, it auto-dismisses after a comfortable delay (not too fast) and writes no note.
+- [x] Focusing it or typing in it cancels the auto-dismiss for good; it then stays until save or explicit dismiss.
+- [x] Saving writes the text to the ticket's `poNotes`; the launcher/`/bookmarks` note-hover reflects it without a manual refresh.
+- [x] Removing a bookmark never shows the capture.
+- [x] The note remains fully optional — dismissing without typing changes nothing.
 
 ## Tests
 
-- [ ] Timer test: the capture auto-dismisses after the delay when untouched; the timer is cancelled on focus/keystroke and does not fire afterward (fake timers).
-- [ ] Save test: entering text + confirm calls `updateTicketMetadata`/metadata PUT with `poNotes`, and revalidates the bookmarks list.
-- [ ] Dismiss test: auto-dismiss or Esc with no text makes no metadata write.
-- [ ] Component test: no autofocus on appear (does not move focus); renders the ticket key + optional-note placeholder.
+- [x] Timer test: the capture auto-dismisses after the delay when untouched; the timer is cancelled on focus/keystroke and does not fire afterward (fake timers).
+- [x] Save test: entering text + confirm calls `updateTicketMetadata`/metadata PUT with `poNotes`, and revalidates the bookmarks list.
+- [x] Dismiss test: auto-dismiss or Esc with no text makes no metadata write.
+- [x] Component test: no autofocus on appear (does not move focus); renders the ticket key + optional-note placeholder.
 
 ## Related
 

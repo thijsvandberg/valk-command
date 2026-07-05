@@ -46,6 +46,12 @@ vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
   bulkGenerateSubtasks: vi.fn().mockResolvedValue({ succeeded: 1, failed: 0 }),
 }));
 vi.mock("swr", () => ({ mutate: (...args: unknown[]) => globalMutate(...args) }));
+// BRDG-475: the quick-note capture trigger. Spy on it to assert the single-item ON
+// rule at this choke point without mounting the provider.
+const captureBookmarkNote = vi.fn();
+vi.mock("@/contexts/BookmarkNoteContext", () => ({
+  useBookmarkNoteCapture: () => ({ captureBookmarkNote }),
+}));
 vi.mock("@/components/sprint-board/pendingSprintMoves", () => ({
   registerPendingMove: vi.fn(),
   clearPendingMove: vi.fn(),
@@ -152,6 +158,36 @@ describe("useRowActions - bulkSetBookmarked (BRDG-355)", () => {
     expect(hasPendingEdit("A-1", "bookmarked")).toBe(false);
     expect(showToast).toHaveBeenLastCalledWith("Failed for 1 issue");
     expect(globalMutate).not.toHaveBeenCalledWith("/api/bookmarks");
+  });
+});
+
+describe("useRowActions - bulkSetBookmarked note capture (BRDG-475)", () => {
+  beforeEach(() => { setBookmarked.mockReset().mockResolvedValue({}); captureBookmarkNote.mockReset(); __resetPendingEdits(); });
+
+  it("offers the quick-note capture on a single-item bookmark-ON", async () => {
+    const { result } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkSetBookmarked(true, new Set(["A-1"])); });
+    expect(captureBookmarkNote).toHaveBeenCalledTimes(1);
+    expect(captureBookmarkNote).toHaveBeenCalledWith("A-1");
+  });
+
+  it("does not offer capture on a bulk (multi-target) bookmark-ON", async () => {
+    const { result } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
+    await act(async () => { await result.current.bulkSetBookmarked(true, new Set(["A-1", "A-2"])); });
+    expect(captureBookmarkNote).not.toHaveBeenCalled();
+  });
+
+  it("does not offer capture when removing a bookmark", async () => {
+    const { result } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkSetBookmarked(false, new Set(["A-1"])); });
+    expect(captureBookmarkNote).not.toHaveBeenCalled();
+  });
+
+  it("does not offer capture when the single write fails", async () => {
+    setBookmarked.mockRejectedValue(new Error("boom"));
+    const { result } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkSetBookmarked(true, new Set(["A-1"])); });
+    expect(captureBookmarkNote).not.toHaveBeenCalled();
   });
 });
 
