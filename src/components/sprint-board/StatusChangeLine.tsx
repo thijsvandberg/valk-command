@@ -35,8 +35,9 @@ const ACTION_BTN =
   "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-caption font-medium text-text-secondary transition-colors duration-150";
 
 // Shared inline-link recipe for the woven-in clauses (new comments, story edit,
-// "please review"): same tone as the sentence, underline + brighten on hover.
-const INLINE_LINK = "cursor-pointer underline-offset-2 hover:text-text-secondary hover:underline";
+// "please review"): same tone as the sentence, underline + brighten on hover, with a
+// keyboard focus ring so the button/link variants stay reachable without a mouse.
+const INLINE_LINK = "cursor-pointer underline-offset-2 hover:text-text-secondary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 // A muted amber for the "changed since" note: warmer and more visible than the quiet
 // grey sentence, but softened from the full warning orange so it reads as a gentle
