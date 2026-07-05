@@ -157,7 +157,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     const props = renderModal();
-    fireEvent.click(screen.getByText("Copy document"));
+    fireEvent.click(screen.getByRole("button", { name: /Copy document/ }));
 
     await waitFor(() => expect(props.showToast).toHaveBeenCalledWith("Test document copied to clipboard"));
     expect(writeText).toHaveBeenCalledWith(buildTestDocDocument(BASE.documented, BASE.internal));
@@ -167,7 +167,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     mockData = { ...BASE, documented: [], internal: [], missing: [] };
     renderModal();
     expect(screen.getByText(/No test documentation saved/)).toBeInTheDocument();
-    expect(screen.getByText("Copy document").closest("button")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Copy document/ }).closest("button")).toBeDisabled();
   });
 
   it("hides the missing section when nothing is missing", () => {
@@ -334,7 +334,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
 
     // Excluded by default: 2 auto blocks, not in the copy.
     expect(screen.getAllByTestId("test-docs-block")).toHaveLength(2);
-    fireEvent.click(screen.getByText("Copy document"));
+    fireEvent.click(screen.getByRole("button", { name: /Copy document/ }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     expect(writeText.mock.calls[0][0]).not.toContain("Open feature");
 
@@ -345,7 +345,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     const provisional = blocks.find((b) => b.textContent?.includes("Open feature")) as HTMLElement;
     expect(provisional).toHaveTextContent("not finished yet");
     writeText.mockClear();
-    fireEvent.click(screen.getByText("Copy document"));
+    fireEvent.click(screen.getByRole("button", { name: /Copy document/ }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     expect(writeText.mock.calls[0][0]).toContain("Open feature");
 
@@ -353,7 +353,7 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     fireEvent.click(within(screen.getByTestId("test-docs-other")).getByRole("checkbox"));
     expect(screen.getAllByTestId("test-docs-block")).toHaveLength(2);
     writeText.mockClear();
-    fireEvent.click(screen.getByText("Copy document"));
+    fireEvent.click(screen.getByRole("button", { name: /Copy document/ }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     expect(writeText.mock.calls[0][0]).not.toContain("Open feature");
   });
@@ -417,14 +417,14 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     expect(
       screen.getAllByTestId("test-docs-block").some((b) => b.textContent?.includes("Draft feature")),
     ).toBe(true);
-    fireEvent.click(screen.getByText("Copy document"));
+    fireEvent.click(screen.getByRole("button", { name: /Copy document/ }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     expect(writeText.mock.calls[0][0]).not.toContain("Draft feature");
 
     // Opt in: the draft joins the copy.
     fireEvent.click(screen.getByLabelText("Include drafts"));
     writeText.mockClear();
-    fireEvent.click(screen.getByText("Copy document"));
+    fireEvent.click(screen.getByRole("button", { name: /Copy document/ }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     expect(writeText.mock.calls[0][0]).toContain("Draft feature");
   });
@@ -441,9 +441,9 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
       other: [],
     };
     renderModal();
-    expect(screen.getByText("Copy document").closest("button")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Copy document/ }).closest("button")).toBeDisabled();
     fireEvent.click(screen.getByLabelText("Include drafts"));
-    expect(screen.getByText("Copy document").closest("button")).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /Copy document/ }).closest("button")).not.toBeDisabled();
   });
 
   it("lets a draft-only unfinished row be ticked into the document as a draft block", () => {
@@ -464,5 +464,33 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
       .find((b) => b.textContent?.includes("WIP feature")) as HTMLElement;
     expect(draftBlock).toHaveTextContent("not finished yet");
     expect(within(draftBlock).getByText("draft")).toBeInTheDocument();
+  });
+
+  it("shows the count of stories included in the copy on the Copy button, respecting the drafts toggle", () => {
+    mockData = {
+      ...BASE,
+      documented: [
+        ...BASE.documented,
+        { key: "VPL-9", type: "story", title: "Draft story", status: "DONE", storyPoints: null, epic: null, doc: "**Draft feature**\n\n- Confirm D", isDraft: true },
+      ],
+    };
+    renderModal();
+    // BASE has 2 documented + 1 internal = 3 non-draft; the draft is excluded by default.
+    expect(screen.getByRole("button", { name: "Copy document (3)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Include drafts"));
+    expect(screen.getByRole("button", { name: "Copy document (4)" })).toBeInTheDocument();
+  });
+
+  it("counts a ticked unfinished doc toward the Copy button total", () => {
+    mockData = {
+      ...BASE,
+      other: [
+        { key: "VPL-8", type: "story", title: "Open with doc", status: "IN PROGRESS", storyPoints: null, epic: null, doc: "**Open feature**\n\n- Confirm C", internalDoc: false },
+      ],
+    };
+    renderModal();
+    expect(screen.getByRole("button", { name: "Copy document (3)" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("test-docs-other")).getByRole("checkbox"));
+    expect(screen.getByRole("button", { name: "Copy document (4)" })).toBeInTheDocument();
   });
 });

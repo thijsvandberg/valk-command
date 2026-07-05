@@ -505,6 +505,14 @@ export function SprintTestDocsModal({
   );
   const hasContent = document.trim().length > 0;
 
+  // Stories that actually land in the copy: everything with a doc, minus drafts
+  // when they are not opted in — mirrors buildTestDocDocument's filter so the
+  // count on the Copy button matches what leaves Bridge.
+  const includedCount = useMemo(() => {
+    const copied = (d: SprintTestDocItem) => Boolean(d.doc) && (includeDrafts || !d.isDraft);
+    return documentedAll.filter(copied).length + internalAll.filter(copied).length;
+  }, [documentedAll, internalAll, includeDrafts]);
+
   const handleCopy = useCallback(() => {
     if (!hasContent) return;
     navigator.clipboard
@@ -847,7 +855,7 @@ export function SprintTestDocsModal({
             disabled={!hasContent}
             icon={<ClipboardCopy size={12} strokeWidth={2} />}
           >
-            Copy document
+            Copy document ({includedCount})
           </Button>
         </div>
       </div>
