@@ -84,6 +84,14 @@ The goal is a single curated, cross-sprint list of "stories I care about right n
 - **Overlay confirm must revalidate (BRDG-455):** the board dispatch's `confirmEdit` bookmarked branch calls the provider-bound `base.mutate()` so the overlay self-heals before its 30s TTL (metadata write invalidates the `/api/tickets` cache, so the refetch is fresh). Never the top-level `swr` `mutate`.
 - **Working-tree hygiene (this run):** an active parallel session (BRDG-473/474) had heavy uncommitted edits, including `BoardRow.tsx`. To avoid committing their WIP, `BookmarkBadge` was placed in a NEW file `src/components/shared/BookmarkBadge.tsx` (not the then-dirty `IssueMetaBadges.tsx`), and the one-line badge render in `BoardRow.tsx` was held back until the parallel session committed its work — after which the `BoardRow.tsx` diff was clean (just the import + render) and was committed on its own. Everything committed with explicit paths; nothing else was entangled.
 
+### Post-review UX refinements (PO feedback)
+
+- **`/bookmarks` uses the standard issue rows**, not a bespoke table: it renders the same `BoardRow` the sprint board and inbox use, in a `<table>`, fed by `GET /api/bookmarks` (lightweight ticket per row, like the inbox's `rowToTicket`). Removing a bookmark uses the row's hover toggle.
+- **Toggles are icon-only** on the ticket single view (meta panel, top-right) and the Story Writer header — not text buttons.
+- **Tooltips use the shared `Tooltip`** component everywhere, never the native `title`.
+- **Bulk bookmark is a direct toggle button** in `BulkActionBar` (an `IconAction`), not a one-item dropdown; label/state follow `bookmarkState`.
+- **Inbox has a hover bookmark toggle** on each row (new `BoardRow.onToggleBookmark`), and bookmarking from the inbox also marks the item as read (triage action).
+
 ## Acceptance Criteria
 
 - [x] I can bookmark and un-bookmark any ticket from its side panel, detail, editor, a board row, the row's right-click action menu, and the Inbox; the icon reflects state immediately (optimistic) and persists across reloads.
