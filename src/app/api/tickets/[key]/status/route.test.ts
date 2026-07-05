@@ -30,6 +30,18 @@ vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// BRDG-471: the route arms the auto-test-doc trigger; the helper's own gating is
+// covered in test-doc-background.test.ts, so here we only assert the route decides
+// to call it. `after` runs its callback inline so the spy is invoked synchronously.
+const mockMaybeAutoGen = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/lib/test-doc-background", () => ({
+  maybeAutoGenerateTestDoc: (...args: unknown[]) => mockMaybeAutoGen(...args),
+}));
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return { ...actual, after: (fn: () => unknown) => { void fn(); } };
+});
+
 import { PUT } from "./route";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
@@ -195,5 +207,43 @@ describe("PUT /api/tickets/[key]/status", () => {
 
     expect(response.status).toBe(200);
     expect(ticketStatus("BRDG-1")).toBe("DONE");
+  });
+
+  describe("auto-test-doc trigger (BRDG-471)", () => {
+    it("arms the trigger on a move into TEST", async () => {
+      seedTicket(testDb, { jiraKey: "BRDG-1", status: "IN PROGRESS" });
+
+      await PUT(putRequest("BRDG-1", { status: "TEST" }), makeParams("BRDG-1"));
+
+      expect(mockMaybeAutoGen).toHaveBeenCalledWith("BRDG-1");
+    });
+
+    it("does not arm the trigger on a non-TEST transition", async () => {
+      seedTicket(testDb, { jiraKey: "BRDG-1", status: "IN PROGRESS" });
+
+      await PUT(putRequest("BRDG-1", { status: "DONE" }), makeParams("BRDG-1"));
+
+      expect(mockMaybeAutoGen).not.toHaveBeenCalled();
+    });
+
+    it("does not arm the trigger when the ticket is already in TEST", async () => {
+      seedTicket(testDb, { jiraKey: "BRDG-1", status: "TEST" });
+
+      await PUT(putRequest("BRDG-1", { status: "TEST" }), makeParams("BRDG-1"));
+
+      expect(mockMaybeAutoGen).not.toHaveBeenCalled();
+    });
+
+    it("does not arm the trigger when Jira rejects the move to TEST", async () => {
+      seedTicket(testDb, { jiraKey: "BRDG-1", status: "IN PROGRESS" });
+      vi.mocked(jiraClient.transitionIssue).mockRejectedValueOnce(
+        new JiraApiError(400, "Bad Request", "transition not valid", "/transitions"),
+      );
+
+      const response = await PUT(putRequest("BRDG-1", { status: "TEST" }), makeParams("BRDG-1"));
+
+      expect(response.status).toBe(409);
+      expect(mockMaybeAutoGen).not.toHaveBeenCalled();
+    });
   });
 });

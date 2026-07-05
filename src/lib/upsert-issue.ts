@@ -8,6 +8,7 @@ import { extractTestDocBlock } from "@/lib/test-doc";
 import { cache } from "@/lib/cache";
 import { emitTicketEvent, type TicketChangeKind } from "@/lib/ticket-events";
 import { syncTicketSprints } from "@/lib/sprint-membership";
+import { maybeAutoGenerateTestDoc } from "@/lib/test-doc-background";
 import { safeJsonParse } from "@/lib/api-validation";
 import { createHash, randomUUID } from "crypto";
 
@@ -157,6 +158,9 @@ export async function upsertIssue(
   // Writer rebase, coalesced change event), so capture them in the outer scope.
   let needsNewVersion = false;
   let isOwnPushEcho = false;
+  // BRDG-471: set inside the txn when this sync moves the ticket into Test, so
+  // the auto-test-doc trigger fires once, AFTER the transaction commits.
+  let movedToTest = false;
   const changedKinds = new Set<TicketChangeKind>();
 
   // All reads and writes run in one synchronous better-sqlite3 transaction so the
@@ -384,6 +388,8 @@ export async function upsertIssue(
     // to fields.updated). Deterministic id keyed on the event time + onConflictDoNothing
     // dedupes against the burnup-seed backfill, which uses the same scheme.
     if (statusChanged) {
+      // BRDG-471: a Jira-origin move into Test arms the auto-test-doc trigger.
+      if (ticketData.status === "TEST") movedToTest = true;
       const changedAt = statusChangeMeta?.changedAt ?? fields.updated ?? now;
       tx.insert(ticketStatusChange).values({
         id: `sc-${issue.key}-${new Date(changedAt).getTime()}`,
@@ -689,6 +695,13 @@ export async function upsertIssue(
   if (changedKinds.size > 0) {
     emitTicketEvent({ type: "ticket:changed", ticketKey: issue.key, kinds: Array.from(changedKinds), origin: null });
   }
+
+  // BRDG-471: a ticket that just entered Test may need an auto-generated test
+  // doc. Fire-and-forget AFTER the commit (the txn is synchronous) and as a bare
+  // void, not after() — upsertIssue also runs from non-request background sync
+  // where after() would never fire. The helper applies the pinned-sprint gate
+  // and all no-op guards, and never throws.
+  if (movedToTest) void maybeAutoGenerateTestDoc(issue.key);
 
   return {
     key: issue.key,

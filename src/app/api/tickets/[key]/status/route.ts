@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
@@ -13,6 +13,7 @@ import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import type { JiraStatus } from "@/types/ticket";
 import { emitTicketEvent, originFromRequest } from "@/lib/ticket-events";
+import { maybeAutoGenerateTestDoc } from "@/lib/test-doc-background";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -115,6 +116,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
   if (existing.status !== status) {
     emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["status"], origin: originFromRequest(request) });
+  }
+
+  // BRDG-471: a Bridge-origin move into Test arms the auto-test-doc trigger.
+  // Placed past the `rejected` return so a Jira-refused transition never
+  // auto-generates. Request-scoped here, so after() is the right primitive.
+  if (existing.status !== "TEST" && status === "TEST") {
+    after(() => maybeAutoGenerateTestDoc(key));
   }
 
   return NextResponse.json({ status, ...(jiraError ? { jiraWarning: "Jira update failed" } : {}) });
