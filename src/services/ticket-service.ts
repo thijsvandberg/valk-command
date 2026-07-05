@@ -661,6 +661,22 @@ export async function updateTicketMetadata(
 }
 
 /**
+ * Read a ticket's Bridge-local metadata row (readiness, poStatus, poNotes, scores,
+ * bookmark). Returns null when the ticket has no metadata yet, so callers that only
+ * need a field (e.g. pre-filling the bookmark note from poNotes, BRDG-475) degrade
+ * to empty rather than 404. Does not verify the ticket exists — a missing row is
+ * indistinguishable from a missing ticket for a read, and both mean "no metadata".
+ */
+export async function getTicketMetadata(
+  key: string,
+): Promise<TicketMetadataRow | null> {
+  const result = await db.query.ticketMetadata.findFirst({
+    where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
+  });
+  return result ?? null;
+}
+
+/**
  * Mark a single ticket read/unread in the inbox for the acting user (BRDG-359).
  * Read state is per-user, so this delegates to the per-user read store keyed on
  * `userId` rather than the deprecated shared `newStoryReadAt` column. Validates

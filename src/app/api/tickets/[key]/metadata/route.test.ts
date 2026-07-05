@@ -14,7 +14,7 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { PUT } from "./route";
+import { GET, PUT } from "./route";
 
 function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
   db.insert(ticket)
@@ -165,6 +165,54 @@ describe("PUT /api/tickets/[key]/metadata", () => {
     const data = await response.json();
 
     expect(data.qualityScore).toBe(80);
+  });
+});
+
+describe("GET /api/tickets/[key]/metadata", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("returns the stored metadata (incl. poNotes) for pre-fill", async () => {
+    seedTicket(testDb, "VPL-100");
+    await PUT(
+      putRequest("VPL-100", { poNotes: "why I saved it", poStatus: "Ready" }),
+      makeParams("VPL-100"),
+    );
+
+    const response = await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-100/metadata"),
+      makeParams("VPL-100"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.poNotes).toBe("why I saved it");
+    expect(data.poStatus).toBe("Ready");
+  });
+
+  it("returns {} (not 404) for a ticket with no metadata row", async () => {
+    seedTicket(testDb, "VPL-101");
+
+    const response = await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-101/metadata"),
+      makeParams("VPL-101"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toEqual({});
+  });
+
+  it("returns {} for an unknown ticket so pre-fill degrades to empty", async () => {
+    const response = await GET(
+      new Request("http://localhost:3100/api/tickets/VPL-999/metadata"),
+      makeParams("VPL-999"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toEqual({});
   });
 });
 

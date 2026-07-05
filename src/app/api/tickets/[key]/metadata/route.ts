@@ -10,6 +10,26 @@ import { db } from "@/db";
 import { cache } from "@/lib/cache";
 import { emitTicketEvent, originFromRequest } from "@/lib/ticket-events";
 
+// Read the ticket's Bridge-local metadata (BRDG-475: the bookmark note-capture
+// pre-fills from poNotes). Returns {} when the ticket has no metadata row yet, so
+// the caller degrades to an empty note rather than surfacing a 404.
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ key: string }> },
+) {
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
+  if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
+
+  try {
+    const meta = await ticketService.getTicketMetadata(key);
+    return NextResponse.json(meta ?? {});
+  } catch (err) {
+    return handleServiceError(err);
+  }
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ key: string }> },
