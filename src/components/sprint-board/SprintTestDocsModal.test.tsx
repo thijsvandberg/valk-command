@@ -99,6 +99,25 @@ describe("buildTestDocDocument", () => {
     expect(buildTestDocDocument([...BASE.documented, unfinished], BASE.internal)).toContain("Open feature");
     expect(buildTestDocDocument(BASE.documented, BASE.internal)).not.toContain("Open feature");
   });
+
+  it("drops draft-only blocks unless includeDrafts is set (BRDG-473)", () => {
+    const draft = {
+      key: "VPL-9", type: "story", title: "Draft story", status: "DONE",
+      storyPoints: null, epic: null, doc: "**Draft feature**\n\n- Confirm D", isDraft: true,
+    };
+    const internalDraft = {
+      key: "VPL-10", type: "story", title: "Draft internal", status: "DONE",
+      storyPoints: null, epic: null, doc: "Internal draft one-liner", isDraft: true,
+    };
+    // Default (off): draft blocks are excluded from both sections.
+    const off = buildTestDocDocument([...BASE.documented, draft], [...BASE.internal, internalDraft]);
+    expect(off).not.toContain("Draft feature");
+    expect(off).not.toContain("Internal draft one-liner");
+    // Opted in: both appear.
+    const on = buildTestDocDocument([...BASE.documented, draft], [...BASE.internal, internalDraft], true);
+    expect(on).toContain("Draft feature");
+    expect(on).toContain("Internal draft one-liner");
+  });
 });
 
 describe("SprintTestDocsModal (BRDG-461)", () => {
@@ -356,5 +375,94 @@ describe("SprintTestDocsModal (BRDG-461)", () => {
     mockError = new Error("boom");
     renderModal();
     expect(screen.getByText(/Failed to load/)).toBeInTheDocument();
+  });
+
+  // --- Draft test docs in the bundle (BRDG-473) ---
+
+  it("folds a finished draft-only story into the document, tagged draft, with a top notice", () => {
+    mockData = {
+      ...BASE,
+      documented: [
+        ...BASE.documented,
+        { key: "VPL-9", type: "story", title: "Draft story", status: "DONE", storyPoints: null, epic: null, doc: "**Draft feature**\n\n- Confirm D", isDraft: true },
+      ],
+    };
+    renderModal();
+    const notice = screen.getByTestId("test-docs-draft-notice");
+    expect(notice).toHaveTextContent("1 story still has a draft test doc");
+    const blocks = screen.getAllByTestId("test-docs-block");
+    const draftBlock = blocks.find((b) => b.textContent?.includes("Draft feature")) as HTMLElement;
+    expect(within(draftBlock).getByText("draft")).toBeInTheDocument();
+  });
+
+  it("hides the draft notice and the Include drafts control when there are no drafts", () => {
+    renderModal();
+    expect(screen.queryByTestId("test-docs-draft-notice")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Include drafts")).not.toBeInTheDocument();
+  });
+
+  it("Include drafts toggles whether draft blocks land in the copy, default off", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    mockData = {
+      ...BASE,
+      documented: [
+        ...BASE.documented,
+        { key: "VPL-9", type: "story", title: "Draft story", status: "DONE", storyPoints: null, epic: null, doc: "**Draft feature**\n\n- Confirm D", isDraft: true },
+      ],
+    };
+    renderModal();
+
+    // Default off: the draft block shows in the preview but is left out of the copy.
+    expect(
+      screen.getAllByTestId("test-docs-block").some((b) => b.textContent?.includes("Draft feature")),
+    ).toBe(true);
+    fireEvent.click(screen.getByText("Copy document"));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0][0]).not.toContain("Draft feature");
+
+    // Opt in: the draft joins the copy.
+    fireEvent.click(screen.getByLabelText("Include drafts"));
+    writeText.mockClear();
+    fireEvent.click(screen.getByText("Copy document"));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0][0]).toContain("Draft feature");
+  });
+
+  it("keeps Copy disabled when the only content is an unincluded draft, enabling it once drafts are included", () => {
+    mockData = {
+      ...BASE,
+      documented: [
+        { key: "VPL-9", type: "story", title: "Draft only", status: "DONE", storyPoints: null, epic: null, doc: "**Draft feature**\n\n- Confirm D", isDraft: true },
+      ],
+      internal: [],
+      notNeeded: [],
+      missing: [],
+      other: [],
+    };
+    renderModal();
+    expect(screen.getByText("Copy document").closest("button")).toBeDisabled();
+    fireEvent.click(screen.getByLabelText("Include drafts"));
+    expect(screen.getByText("Copy document").closest("button")).not.toBeDisabled();
+  });
+
+  it("lets a draft-only unfinished row be ticked into the document as a draft block", () => {
+    mockData = {
+      ...BASE,
+      other: [
+        { key: "VPL-8", type: "story", title: "WIP draft", status: "IN PROGRESS", storyPoints: null, epic: null, doc: "**WIP feature**\n\n- Confirm E", isDraft: true, internalDoc: false },
+      ],
+    };
+    renderModal();
+    const section = screen.getByTestId("test-docs-other");
+    // A draft-only row carries the include checkbox (its draft rides in `doc`).
+    const checkbox = within(section).getByRole("checkbox");
+    expect(checkbox).toHaveAttribute("aria-label", "Include VPL-8 in the document");
+    fireEvent.click(checkbox);
+    const draftBlock = screen
+      .getAllByTestId("test-docs-block")
+      .find((b) => b.textContent?.includes("WIP feature")) as HTMLElement;
+    expect(draftBlock).toHaveTextContent("not finished yet");
+    expect(within(draftBlock).getByText("draft")).toBeInTheDocument();
   });
 });

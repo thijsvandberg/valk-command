@@ -172,22 +172,22 @@ single discriminator for the draft tag, the top-notice count, and the copy filte
 ## Acceptance Criteria
 
 - [x] The route returns draft content for draft-only stories, with `isDraft: true`, placed by draft classification. <!-- src/app/api/sprints/[id]/test-docs/route.ts -->
-- [ ] A finished (DONE/TEST) story with only a draft appears in the document (Documented or Misc), tagged as draft, and no longer in the "Missing documentation" gap list. <!-- route.ts bucketing + SprintTestDocsModal.tsx TestDocBlock isDraft -->
-- [ ] A notice at the top of the document states how many stories still carry a draft test doc. <!-- SprintTestDocsModal.tsx document pane, mirrors the missing block ~613 -->
-- [ ] An "Include drafts" choice sits next to "Copy document" in the footer, default off. <!-- SprintTestDocsModal.tsx footer ~782 -->
-- [ ] With the toggle off, the copied text excludes draft blocks; with it on, they are included. <!-- buildTestDocDocument includeDrafts + handleCopy -->
-- [ ] Draft blocks stay visible in the preview pane regardless of the toggle, always marked as draft. <!-- TestDocBlock isDraft tag -->
-- [ ] In the "Not finished yet" box, a story with only a draft can be ticked to include it, and renders as a draft block when included. <!-- SprintTestDocsModal.tsx other section leading checkbox ~738 -->
+- [x] A finished (DONE/TEST) story with only a draft appears in the document (Documented or Misc), tagged as draft, and no longer in the "Missing documentation" gap list. <!-- route.ts bucketing + SprintTestDocsModal.tsx TestDocBlock isDraft -->
+- [x] A notice at the top of the document states how many stories still carry a draft test doc. <!-- SprintTestDocsModal.tsx document pane, mirrors the missing block ~613 -->
+- [x] An "Include drafts" choice sits next to "Copy document" in the footer, default off. <!-- SprintTestDocsModal.tsx footer ~782 -->
+- [x] With the toggle off, the copied text excludes draft blocks; with it on, they are included. <!-- buildTestDocDocument includeDrafts + handleCopy -->
+- [x] Draft blocks stay visible in the preview pane regardless of the toggle, always marked as draft. <!-- TestDocBlock isDraft tag -->
+- [x] In the "Not finished yet" box, a story with only a draft can be ticked to include it, and renders as a draft block when included. <!-- SprintTestDocsModal.tsx other section leading checkbox ~738 -->
 - [x] `missing` counts only stories with neither a saved doc nor a draft. <!-- route.ts -->
 
 ## Tests
 
 - [x] Route buckets a draft-only finished story into `documented`/`internal` with `isDraft` and its draft content, and excludes it from `missing`. <!-- src/app/api/sprints/[id]/test-docs/route.test.ts -->
 - [x] Route puts a draft-only not-finished story into `other` with `isDraft` and draft content. <!-- src/app/api/sprints/[id]/test-docs/route.test.ts -->
-- [ ] `buildTestDocDocument` excludes/includes draft items based on the `includeDrafts` flag. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
-- [ ] Modal renders the top draft notice with the right count and a draft tag on draft blocks. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
-- [ ] Toggling "Include drafts" changes what `handleCopy` writes to the clipboard. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
-- [ ] A draft-only row in "Not finished yet" shows the include checkbox and folds into the document when ticked. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
+- [x] `buildTestDocDocument` excludes/includes draft items based on the `includeDrafts` flag. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
+- [x] Modal renders the top draft notice with the right count and a draft tag on draft blocks. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
+- [x] Toggling "Include drafts" changes what `handleCopy` writes to the clipboard. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
+- [x] A draft-only row in "Not finished yet" shows the include checkbox and folds into the document when ticked. <!-- src/components/sprint-board/SprintTestDocsModal.test.tsx -->
 
 ## Related
 

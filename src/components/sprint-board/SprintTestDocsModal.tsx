@@ -65,15 +65,19 @@ function withJiraKeyLink(doc: string, key: string): string {
  * features lead, matching the manual BT-style deliverables), internal
  * one-liners under a Misc header. Every block carries its ticket key behind
  * the title as a Jira link.
+ *
+ * Draft-only blocks (BRDG-473) are dropped unless `includeDrafts` is set: the
+ * preview always shows them (tagged draft), but a plain copy stays limited to
+ * validated content unless the PO opts drafts in.
  */
 export function buildTestDocDocument(
   documented: SprintTestDocItem[],
   internal: SprintTestDocItem[],
+  includeDrafts = false,
 ): string {
-  const parts: string[] = documented
-    .filter((d) => d.doc)
-    .map((d) => withJiraKeyLink(d.doc!, d.key));
-  const internalParts = internal.filter((d) => d.doc).map((d) => withJiraKeyLink(d.doc!, d.key));
+  const keep = (d: SprintTestDocItem) => Boolean(d.doc) && (includeDrafts || !d.isDraft);
+  const parts: string[] = documented.filter(keep).map((d) => withJiraKeyLink(d.doc!, d.key));
+  const internalParts = internal.filter(keep).map((d) => withJiraKeyLink(d.doc!, d.key));
   if (internalParts.length > 0) {
     parts.push(`**Misc**\n\n${internalParts.join("\n\n")}`);
   }
@@ -338,19 +342,22 @@ export function bundleAnchorId(suffix: string): string {
  * articles, not cards: a display-font story heading with a quiet meta line
  * (ticket pill + state tags) and the doc body in the app's reading typography.
  * `variant="misc"` renders the internal one-liners at a lower heading weight;
- * `provisional` (opt-in unfinished stories, BRDG-465) carries a brand-tinted
- * left accent + tag so it cannot be mistaken for a shipped deliverable.
+ * `provisional` (opt-in unfinished stories, BRDG-465) and `isDraft` (unreviewed
+ * draft folded in, BRDG-473) each carry a brand-tinted left accent + tag so the
+ * block cannot be mistaken for a shipped, reviewed deliverable.
  */
 function TestDocBlock({
   item,
   onEditItem,
   variant = "card",
   provisional = false,
+  isDraft = false,
 }: {
   item: SprintTestDocItem;
   onEditItem: (key: string) => void;
   variant?: "card" | "misc";
   provisional?: boolean;
+  isDraft?: boolean;
 }) {
   const { title, body } = splitDocTitle(item.doc ?? "");
   const isCard = variant === "card";
@@ -377,6 +384,7 @@ function TestDocBlock({
       </div>
       <div className={isCard ? "mb-3 mt-1.5 flex flex-wrap items-center gap-2" : "mb-2 mt-1 flex flex-wrap items-center gap-2"}>
         <TestDocTicketPill item={item} size="sm" />
+        {isDraft && <Tag color="brand">draft</Tag>}
         {item.needsInput && <Tag color="amber">needs input</Tag>}
         {provisional && <Tag color="neutral">not finished yet</Tag>}
       </div>
@@ -390,7 +398,7 @@ function TestDocBlock({
       data-testid={isCard ? "test-docs-block" : undefined}
       id={bundleAnchorId(`block-${item.key}`)}
       className={`group/block scroll-mt-4 ${isCard ? "py-7 first:pt-1 last:pb-2" : ""} ${
-        provisional ? "border-l-2 border-[var(--color-brand-400)]/45 pl-4" : ""
+        provisional || isDraft ? "border-l-2 border-[var(--color-brand-400)]/45 pl-4" : ""
       }`}
     >
       {header}
@@ -421,6 +429,10 @@ export function SprintTestDocsModal({
   // modal session; a stale key self-heals because rendering intersects it with
   // the current `other` list.
   const [selectedUnfinished, setSelectedUnfinished] = useState<Set<string>>(new Set());
+  // Draft-only stories (BRDG-473) always show in the preview (tagged draft); this
+  // master switch decides whether they leave in the copy. Default off: an
+  // unreviewed draft never lands in a stakeholder copy unless the PO opts in.
+  const [includeDrafts, setIncludeDrafts] = useState(false);
   const toggleUnfinished = useCallback((key: string) => {
     setSelectedUnfinished((prev) => {
       const next = new Set(prev);
@@ -478,9 +490,18 @@ export function SprintTestDocsModal({
     [data, selectedOther],
   );
 
-  const document = useMemo(
-    () => buildTestDocDocument(documentedAll, internalAll),
+  // Draft-only stories folded into the document (finished ones from the route,
+  // plus any opted-in not-finished draft). Drives the top notice and gates the
+  // copy toggle's visibility.
+  const draftCount = useMemo(
+    () =>
+      documentedAll.filter((i) => i.isDraft).length + internalAll.filter((i) => i.isDraft).length,
     [documentedAll, internalAll],
+  );
+
+  const document = useMemo(
+    () => buildTestDocDocument(documentedAll, internalAll, includeDrafts),
+    [documentedAll, internalAll, includeDrafts],
   );
   const hasContent = document.trim().length > 0;
 
@@ -516,7 +537,7 @@ export function SprintTestDocsModal({
           subtitle={
             <p className="mt-0.5 truncate text-body-sm text-text-tertiary">
               {data
-                ? `${documentedAll.length + internalAll.length} documented${data.missing.length > 0 ? ` · ${data.missing.length} missing` : ""}`
+                ? `${documentedAll.length + internalAll.length} documented${draftCount > 0 ? ` · ${draftCount} draft` : ""}${data.missing.length > 0 ? ` · ${data.missing.length} missing` : ""}`
                 : "…"}
             </p>
           }
@@ -644,6 +665,23 @@ export function SprintTestDocsModal({
                     </div>
                   )}
 
+                  {/* Draft notice: draft-only stories are folded into the document
+                      below (tagged draft) so the bundle reads complete, but they
+                      are unreviewed — flag that before the reader trusts it. */}
+                  {draftCount > 0 && (
+                    <div
+                      data-testid="test-docs-draft-notice"
+                      className="mb-8 border-l-2 border-[var(--color-brand-400)]/45 pl-4"
+                    >
+                      <p className="text-body-sm font-medium text-text-secondary">
+                        {draftCount} {draftCount === 1 ? "story still has" : "stories still have"} a draft test doc
+                      </p>
+                      <p className="mt-0.5 text-body-sm text-text-muted">
+                        Included below, marked as draft — review to finalize. Use “Include drafts” to copy them.
+                      </p>
+                    </div>
+                  )}
+
                   {documentedAll.length === 0 && internalAll.length === 0 && (
                     <EmptyState
                       className="py-8"
@@ -662,6 +700,7 @@ export function SprintTestDocsModal({
                             item={item}
                             onEditItem={onEditItem}
                             provisional={selectedUnfinished.has(item.key)}
+                            isDraft={item.isDraft}
                           />
                         ))}
                       </div>
@@ -683,6 +722,7 @@ export function SprintTestDocsModal({
                             onEditItem={onEditItem}
                             variant="misc"
                             provisional={selectedUnfinished.has(item.key)}
+                            isDraft={item.isDraft}
                           />
                         ))}
                       </div>
@@ -779,10 +819,27 @@ export function SprintTestDocsModal({
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-5 py-3.5">
-          <Button variant="ghost" size="md" onClick={onClose}>
+        <div className="flex shrink-0 items-center gap-2 border-t border-border-subtle px-5 py-3.5">
+          <Button variant="ghost" size="md" className="mr-auto" onClick={onClose}>
             Close
           </Button>
+          {/* Master switch for whether draft blocks leave in the copy (BRDG-473);
+              only shown when there is a draft to include. */}
+          {draftCount > 0 && (
+            <label className="flex cursor-pointer select-none items-center gap-2 pr-1 text-body-sm text-text-secondary">
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={includeDrafts}
+                onChange={(e) => setIncludeDrafts(e.target.checked)}
+              />
+              <Checkbox
+                checked={includeDrafts}
+                className="peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-brand-400)]"
+              />
+              Include drafts
+            </label>
+          )}
           <Button
             variant="primary"
             size="md"
