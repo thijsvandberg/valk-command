@@ -21,6 +21,7 @@ vi.mock("@/lib/api-client", async (importActual) => {
     tickets: {
       pushToJira: vi.fn().mockResolvedValue({ success: true }),
       toggleFlag: vi.fn().mockResolvedValue({}),
+      setBookmarked: vi.fn().mockResolvedValue({}),
     },
     // Real ApiError so the hook's `err instanceof ApiError` check matches.
     ApiError: actual.ApiError,
@@ -29,6 +30,7 @@ vi.mock("@/lib/api-client", async (importActual) => {
 
 vi.mock("@/lib/ticket-cache", () => ({
   patchTicketCaches: vi.fn(),
+  patchTicketDetailCache: vi.fn(),
   revalidateTicketCaches: vi.fn(),
 }));
 
@@ -115,6 +117,16 @@ describe("useTicketDetailPage", () => {
     expect(result.current.ticket!.jiraStatus).toBe("TO DO");
     // BRDG-355: the bookmark flag must be carried so the meta-panel toggle reflects state.
     expect(result.current.ticket!.bookmarked).toBe(true);
+  });
+
+  it("surfaces a failure toast when the header bookmark toggle write fails (does not fail silently)", async () => {
+    vi.mocked(tickets.setBookmarked!).mockRejectedValueOnce(new Error("boom"));
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+    await act(async () => {
+      await result.current.handleToggleBookmark();
+    });
+    // mockApiData is bookmarked, so the toggle attempts a removal that then fails.
+    expect(result.current.toast).toBe("Could not remove the bookmark");
   });
 
   it("maps API data to TicketDetail type correctly", () => {

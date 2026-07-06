@@ -43,8 +43,11 @@ export function useTicketDetailPage(key: string) {
     } catch {
       clearPendingEdit(key, "bookmarked");
       patchTicketDetailCache(key, { bookmarked });
+      // The board rows surface a failure toast via runFieldEdit; the header toggle
+      // must not fail silently and leave the PO thinking the bookmark stuck.
+      showToast(next ? "Could not bookmark this story" : "Could not remove the bookmark");
     }
-  }, [bookmarked, key, captureBookmarkNote]);
+  }, [bookmarked, key, captureBookmarkNote, showToast]);
 
   const ticket: Ticket | undefined = useMemo(() => apiData ? {
     key: apiData.key,

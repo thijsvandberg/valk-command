@@ -440,6 +440,16 @@ describe("updateTicketMetadata", () => {
     expect(cache.invalidate).not.toHaveBeenCalledWith("/api/bookmarks");
   });
 
+  it("invalidates the bookmarks cache on a poNotes edit, so the note-hover reflects the new note (BRDG-475)", async () => {
+    // The bookmark list reuses poNotes as its hover note, so a note-only write (the
+    // quick-note capture card) must drop the cache too or the launcher serves a stale
+    // note for the 30s server TTL.
+    seedTicket(testDb, "VPL-1");
+    vi.mocked(cache.invalidate).mockClear();
+    await updateTicketMetadata("VPL-1", { poNotes: "why I saved this" });
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/bookmarks");
+  });
+
   it("stores a valid Fibonacci guestimation", async () => {
     seedTicket(testDb, "VPL-1");
     const result = await updateTicketMetadata("VPL-1", { guestimation: 5 });

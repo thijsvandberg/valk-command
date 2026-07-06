@@ -646,7 +646,11 @@ export async function updateTicketMetadata(
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
-  if (input.bookmarked !== undefined) {
+  // The bookmark list payload carries both the bookmark flag AND the reused PO note
+  // (BRDG-355), so a poNotes-only write (e.g. the quick-note capture card, BRDG-475)
+  // must also drop the cache — otherwise the launcher/`/bookmarks` note-hover serves
+  // a stale note for up to the 30s server TTL after it was just saved.
+  if (input.bookmarked !== undefined || input.poNotes !== undefined) {
     cache.invalidate("/api/bookmarks");
   }
 
