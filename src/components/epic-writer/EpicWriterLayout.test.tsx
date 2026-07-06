@@ -166,9 +166,10 @@ describe("EpicWriterLayout content views (BRDG-484)", () => {
     // Breakdown board is the default right-region view.
     expect(screen.getByTestId("board")).toBeTruthy();
 
-    // Toggle to the Draft view -> the real StoryPreviewApp renders the saved
-    // epic draft (reusing the Story Writer pane app, not a bespoke panel).
-    fireEvent.click(screen.getByRole("button", { name: "Draft" }));
+    // Switch to the Draft view via the Apps dropdown -> the real StoryPreviewApp
+    // renders the saved epic draft (reusing the Story Writer pane app).
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Draft/ }));
     const markdownNodes = screen.getAllByTestId("markdown");
     expect(markdownNodes.some((n) => n.textContent === "Worked-out epic body")).toBe(true);
     // The board is unmounted while the draft view is active.

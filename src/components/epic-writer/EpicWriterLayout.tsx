@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { Loader2, CloudUpload, Save, Check, LayoutList, FileText } from "lucide-react";
+import { Loader2, CloudUpload, Save, Check } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { ViewHeader } from "@/components/shared/ViewHeader";
@@ -14,6 +14,7 @@ import { WriterProvider } from "@/components/story-writer/panes/WriterContext";
 import { StoryPreviewApp } from "@/components/story-writer/panes/apps/StoryPreviewApp";
 import { PhaseRail } from "./PhaseRail";
 import { BreakdownBoard } from "./BreakdownBoard";
+import { EpicAppsMenu, type EpicRightView } from "./EpicAppsMenu";
 import { useHorizontalSplit } from "./useHorizontalSplit";
 import { useEpicWriterContext } from "./useEpicWriterContext";
 import { isEpicWriterPhase, type EpicWriterPhase } from "@/types/epic-writer";
@@ -21,8 +22,6 @@ import { isEpicWriterPhase, type EpicWriterPhase } from "@/types/epic-writer";
 interface EpicWriterLayoutProps {
   epicKey: string;
 }
-
-type RightMode = "breakdown" | "draft";
 
 /**
  * Full-screen Epic Writer canvas. Reuses useStoryWriter (epic mode) and the
@@ -37,7 +36,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
   const writer = useStoryWriter(epicKey, { mode: "epic" });
   const { toast, toastLoading, showToast, dismissToast } = useToast();
   const [pushing, setPushing] = useState(false);
-  const [rightMode, setRightMode] = useState<RightMode>("breakdown");
+  const [rightMode, setRightMode] = useState<EpicRightView>("breakdown");
   const split = useHorizontalSplit(`ew:${epicKey}:split`);
   const writerContextValue = useEpicWriterContext(writer, epicKey);
 
@@ -136,6 +135,9 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             hideNotifications
             actions={
               <>
+                {/* Content-view switcher, matching the Story Writer's Apps affordance. */}
+                <EpicAppsMenu view={rightMode} onSelect={setRightMode} />
+
                 {/* Autosave indicator: edits persist on their own; this reports it,
                     and the explicit Save draft below flushes + toasts. */}
                 {writer.draftSaveState !== "idle" && (
@@ -227,47 +229,23 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             </div>
 
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-base/30">
-              {/* Region header: one place to switch between the breakdown board and
-                  the saved epic draft (BRDG-484). */}
-              <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-3 py-2">
-                <div className="flex items-center gap-0.5 rounded-md border border-border-subtle bg-overlay-subtle p-0.5">
-                  <RightModeButton
-                    active={rightMode === "breakdown"}
-                    onClick={() => setRightMode("breakdown")}
-                    icon={<LayoutList size={12} strokeWidth={1.5} />}
-                    label="Breakdown"
-                  />
-                  <RightModeButton
-                    active={rightMode === "draft"}
-                    onClick={() => setRightMode("draft")}
-                    icon={<FileText size={12} strokeWidth={1.5} />}
-                    label="Draft"
-                  />
-                </div>
-                {rightMode === "breakdown" && writer.cards.length > 0 && (
-                  <span className="text-label text-text-muted tabular-nums">
-                    {writer.cards.length} stories
-                  </span>
-                )}
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-hidden">
-                {rightMode === "breakdown" ? (
-                  <BreakdownBoard
-                    cards={writer.cards}
-                    onDeepen={writer.deepenCard}
-                    onEditBody={writer.updateCardBody}
-                    onCreateInJira={writer.createCardInJira}
-                    onConfirmLink={writer.confirmCardLink}
-                    onReassignSprint={writer.reassignCardSprint}
-                    onGenerateBreakdown={writer.generateBreakdown}
-                    busy={writer.status === "sending" || writer.status === "streaming"}
-                    hideHeader
-                  />
-                ) : (
-                  <StoryPreviewApp />
-                )}
-              </div>
+              {/* Each view owns its own header (BreakdownBoard's "Breakdown / N
+                  stories", StoryPreviewApp's title); the switcher lives in the
+                  header Apps dropdown so there is a single, consistent affordance. */}
+              {rightMode === "breakdown" ? (
+                <BreakdownBoard
+                  cards={writer.cards}
+                  onDeepen={writer.deepenCard}
+                  onEditBody={writer.updateCardBody}
+                  onCreateInJira={writer.createCardInJira}
+                  onConfirmLink={writer.confirmCardLink}
+                  onReassignSprint={writer.reassignCardSprint}
+                  onGenerateBreakdown={writer.generateBreakdown}
+                  busy={writer.status === "sending" || writer.status === "streaming"}
+                />
+              ) : (
+                <StoryPreviewApp />
+              )}
             </div>
           </div>
 
@@ -275,33 +253,5 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
         </div>
       </WriterProvider>
     </PaneProvider>
-  );
-}
-
-function RightModeButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-caption font-medium cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-        active
-          ? "bg-surface-floating text-text-secondary shadow-sm"
-          : "text-text-tertiary hover:text-text-secondary"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
