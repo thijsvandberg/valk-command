@@ -234,3 +234,18 @@ Located in `src/components/story-writer/`:
 | `SplitModeLayout` | Two-pane layout for split editing |
 | `SplitPaneHeader` | Header for each split pane |
 | `SplitStoryPicker` | Target ticket selector for split mode |
+
+### Reuse by the Epic Writer (BRDG-484)
+
+The Epic Writer (`src/components/epic-writer/EpicWriterLayout.tsx`) keeps its own
+chat + breakdown-board layout but reuses this pane layer for content views rather
+than forking a lookalike. Its right region toggles between the breakdown board and
+a `Draft` view that mounts the real `panes/apps/StoryPreviewApp` inside genuine
+`PaneProvider` + `WriterProvider`. `useEpicWriterContext` adapts the epic-mode
+`useStoryWriter` into a full `WriterContextValue` (live values for the fields the
+content apps read; safe async no-ops for the ticket-detail handlers the epic flow
+does not expose). No shared pane internals (`PaneContext`, `PaneArea`, `AppsMenu`,
+the apps) are modified, so the single-story Story Writer's pane behaviour is
+unaffected. The chat / right split is resizable via `useHorizontalSplit`
+(persisted under `ew:{key}:split`) and each column is height-bounded so its own
+`overflow-y-auto` scrolls instead of the page.
