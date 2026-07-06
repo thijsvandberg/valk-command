@@ -293,7 +293,11 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             />
           )}
           {effectiveMode === "sprints" && (
-            <EpicSprintPlanning epicKey={epicKey} onSelectChild={handleOpenChild} />
+            <EpicSprintPlanning
+              epicKey={epicKey}
+              onSelectChild={handleOpenChild}
+              onChildChanged={() => void writer.refreshSession()}
+            />
           )}
           {effectiveMode === "draft" && (
             <StoryDraftEditor

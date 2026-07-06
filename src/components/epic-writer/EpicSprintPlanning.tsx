@@ -9,6 +9,13 @@ interface EpicSprintPlanningProps {
   epicKey: string;
   /** Open a created child story in-place in the Epic Writer (BRDG-485 child view). */
   onSelectChild?: (jiraKey: string) => void;
+  /**
+   * Notify the host that a child changed here (e.g. a sprint move), so it can
+   * refresh the breakdown board's cards - they come from a separate data source
+   * (the writer session) and would otherwise show a stale sprint badge until the
+   * next session refetch.
+   */
+  onChildChanged?: () => void;
 }
 
 /**
@@ -22,9 +29,15 @@ interface EpicSprintPlanningProps {
  * breakdown DRAFT cards: only created stories live in Jira and can be scheduled, so
  * uncreated cards are structurally absent from this view.
  */
-export function EpicSprintPlanning({ epicKey, onSelectChild }: EpicSprintPlanningProps) {
+export function EpicSprintPlanning({ epicKey, onSelectChild, onChildChanged }: EpicSprintPlanningProps) {
   const { data, isLoading, mutate } = useTicketDetail(epicKey);
-  const handleMutate = useCallback(() => { void mutate(); }, [mutate]);
+  const handleMutate = useCallback(() => {
+    void mutate();
+    // Keep the breakdown board's sprint badges in step: its cards are loaded from
+    // the writer session, not this detail cache, so a move here must also refresh
+    // that source (mirrors how the board's own reassignCardSprint refreshes it).
+    onChildChanged?.();
+  }, [mutate, onChildChanged]);
 
   const children = data?.epicChildren ?? [];
 

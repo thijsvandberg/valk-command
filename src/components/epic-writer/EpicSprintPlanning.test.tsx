@@ -25,6 +25,7 @@ vi.mock("@/components/ticket-detail/EpicChildrenSection", () => ({
         <button onClick={() => (props.onSelectTicket as (k: string) => void)?.("VPL-10")}>
           mock-select-child
         </button>
+        <button onClick={() => (props.onMutate as () => void)?.()}>mock-mutate</button>
       </div>
     );
   },
@@ -104,5 +105,20 @@ describe("EpicSprintPlanning (BRDG-486)", () => {
 
     fireEvent.click(screen.getByText("mock-select-child"));
     expect(onSelectChild).toHaveBeenCalledWith("VPL-10");
+  });
+
+  it("refreshes the epic detail and notifies the host on a mutation (keeps the breakdown badge in step)", () => {
+    const mutate = vi.fn();
+    mockUseTicketDetail.mockReturnValue({
+      data: { epicChildren: CREATED_CHILDREN },
+      isLoading: false,
+      mutate,
+    });
+    const onChildChanged = vi.fn();
+    render(<EpicSprintPlanning epicKey="VPL-1" onChildChanged={onChildChanged} />);
+
+    fireEvent.click(screen.getByText("mock-mutate"));
+    expect(mutate).toHaveBeenCalled();
+    expect(onChildChanged).toHaveBeenCalled();
   });
 });

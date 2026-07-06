@@ -49,10 +49,11 @@ vi.mock("./ChildStoryView", () => ({
 // self-fetches the epic's children; stub it so the layout test stays focused on
 // the view switching and its own onSelectChild wiring.
 vi.mock("./EpicSprintPlanning", () => ({
-  EpicSprintPlanning: ({ epicKey, onSelectChild }: { epicKey: string; onSelectChild?: (k: string) => void }) => (
+  EpicSprintPlanning: ({ epicKey, onSelectChild, onChildChanged }: { epicKey: string; onSelectChild?: (k: string) => void; onChildChanged?: () => void }) => (
     <div data-testid="sprint-planning">
       {epicKey}
       <button onClick={() => onSelectChild?.("VPL-555")}>mock-plan-open-child</button>
+      <button onClick={() => onChildChanged?.()}>mock-plan-changed</button>
     </div>
   ),
 }));
@@ -117,6 +118,7 @@ function setWriter(overrides: Record<string, unknown>) {
     reassignCardSprint: vi.fn(),
     linkExistingChildren: vi.fn().mockResolvedValue({ linked: ["VPL-100"], failed: [] }),
     generateBreakdown: vi.fn(),
+    refreshSession: vi.fn().mockResolvedValue(undefined),
     saveDraft: vi.fn().mockResolvedValue(undefined),
     pushToJira: vi.fn().mockResolvedValue({ success: true, conflict: false, contentChanged: false }),
   };
@@ -288,6 +290,17 @@ describe("EpicWriterLayout content views (BRDG-484)", () => {
     // Selecting a story in the Sprints view opens it as the in-place child writer.
     expect(screen.getByTestId("child-view")).toHaveTextContent("VPL-555");
     expect(screen.queryByTestId("sprint-planning")).toBeNull();
+  });
+
+  it("refreshes the writer session when a child is moved in the Sprints view (BRDG-486)", () => {
+    setWriter({ session: { localDraft: "Epic body", localTitle: "Room deposit" }, cards: [] });
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+
+    fireEvent.click(screen.getByText("phase-sprints"));
+    fireEvent.click(screen.getByText("mock-plan-changed"));
+    // The breakdown board's cards come from the session, so a sprint move in the
+    // Sprints view must refresh it to keep the sprint badges in step.
+    expect(mockWriter.refreshSession).toHaveBeenCalled();
   });
 
   it("opens the link-existing picker and links the chosen stories (BRDG-487)", async () => {
