@@ -465,6 +465,11 @@ export const epicWriter = {
     apiFetch<{ ok: boolean; sourceKey: string; destKey: string; relation: string }>(
       `/api/epics/${enc(key)}/writer/link-children`, { method: "POST", body: data, signal },
     ),
+  // Re-parent existing stories into the epic as children (BRDG-487).
+  linkExisting: (key: string, data: { jiraKeys: string[] }, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean; linked: string[]; failed: string[] }>(
+      `/api/epics/${enc(key)}/writer/link-existing`, { method: "POST", body: data, signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------

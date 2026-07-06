@@ -573,6 +573,22 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     [isEpicMode, refreshSession],
   );
 
+  // Link existing stories into the epic as children (BRDG-487): re-parents them
+  // in Jira and adds them to the breakdown board. Returns the linked/failed keys.
+  const linkExistingChildren = useCallback(
+    async (jiraKeys: string[]): Promise<{ linked: string[]; failed: string[] } | null> => {
+      if (!isEpicMode) return null;
+      try {
+        const res = await epicWriterApi.linkExisting(ticketKey, { jiraKeys });
+        await refreshSession();
+        return { linked: res.linked, failed: res.failed };
+      } catch {
+        return null;
+      }
+    },
+    [isEpicMode, ticketKey, refreshSession],
+  );
+
   const saveDraft = useCallback(() => drafts.saveDraft(session), [drafts, session]);
   const pushToJira = useCallback(() => drafts.pushToJira(session), [drafts, session]);
 
@@ -622,5 +638,6 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     createCardInJira,
     confirmCardLink,
     reassignCardSprint,
+    linkExistingChildren,
   };
 }

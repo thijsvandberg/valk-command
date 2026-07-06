@@ -14,11 +14,20 @@ vi.mock("@/components/story-writer/StoryWriterChat", () => ({
   StoryWriterChat: () => <div data-testid="chat" />,
 }));
 vi.mock("./BreakdownBoard", () => ({
-  BreakdownBoard: ({ onOpenChild }: { onOpenChild?: (k: string) => void }) => (
+  BreakdownBoard: ({ onOpenChild, onLinkExisting }: { onOpenChild?: (k: string) => void; onLinkExisting?: () => void }) => (
     <div data-testid="board">
       <button onClick={() => onOpenChild?.("VPL-999")}>mock-open-child</button>
+      <button onClick={() => onLinkExisting?.()}>mock-link-existing</button>
     </div>
   ),
+}));
+vi.mock("./LinkExistingStoryModal", () => ({
+  LinkExistingStoryModal: ({ open, onLink }: { open: boolean; onLink: (k: string[]) => Promise<void> }) =>
+    open ? (
+      <div data-testid="link-existing-modal">
+        <button onClick={() => onLink(["VPL-100"])}>mock-confirm-link</button>
+      </div>
+    ) : null,
 }));
 // The Draft view now embeds the editable RichEditor (BRDG-485); stub it so the
 // switch renders the epic's draft body.
@@ -94,6 +103,7 @@ function setWriter(overrides: Record<string, unknown>) {
     createCardInJira: vi.fn(),
     confirmCardLink: vi.fn(),
     reassignCardSprint: vi.fn(),
+    linkExistingChildren: vi.fn().mockResolvedValue({ linked: ["VPL-100"], failed: [] }),
     generateBreakdown: vi.fn(),
     saveDraft: vi.fn().mockResolvedValue(undefined),
     pushToJira: vi.fn().mockResolvedValue({ success: true, conflict: false, contentChanged: false }),
@@ -223,5 +233,18 @@ describe("EpicWriterLayout content views (BRDG-484)", () => {
     fireEvent.click(screen.getByText("close-child"));
     expect(screen.queryByTestId("child-view")).toBeNull();
     expect(screen.getByTestId("board")).toBeTruthy();
+  });
+
+  it("opens the link-existing picker and links the chosen stories (BRDG-487)", async () => {
+    setWriter({ session: { localDraft: "Epic body", localTitle: "Room deposit" }, cards: [] });
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+
+    expect(screen.queryByTestId("link-existing-modal")).toBeNull();
+    fireEvent.click(screen.getByText("mock-link-existing"));
+    expect(screen.getByTestId("link-existing-modal")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("mock-confirm-link"));
+    await screen.findByText("Linked 1 story to the epic");
+    expect(mockWriter.linkExistingChildren).toHaveBeenCalledWith(["VPL-100"]);
   });
 });

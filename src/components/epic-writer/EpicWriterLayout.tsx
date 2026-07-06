@@ -15,6 +15,7 @@ import { BreakdownBoard } from "./BreakdownBoard";
 import { EpicAppsMenu, type EpicRightView } from "./EpicAppsMenu";
 import { StoryDraftEditor } from "./StoryDraftEditor";
 import { ChildStoryView } from "./ChildStoryView";
+import { LinkExistingStoryModal } from "./LinkExistingStoryModal";
 import { useHorizontalSplit } from "./useHorizontalSplit";
 import { isEpicWriterPhase, type EpicWriterPhase } from "@/types/epic-writer";
 
@@ -37,6 +38,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
   const [pushing, setPushing] = useState(false);
   const [rightMode, setRightMode] = useState<EpicRightView>("breakdown");
   const [openChildKey, setOpenChildKey] = useState<string | null>(null);
+  const [showLinkExisting, setShowLinkExisting] = useState(false);
   const split = useHorizontalSplit(`ew:${epicKey}:split`);
 
   const { messageDraftMap, draftContentMap } = useMemo(() => {
@@ -83,6 +85,27 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
     setOpenChildKey(null);
     setRightMode("breakdown");
   }, []);
+
+  // Re-parent existing stories into the epic (BRDG-487) and surface the outcome.
+  const handleLinkExisting = useCallback(
+    async (jiraKeys: string[]) => {
+      const res = await writer.linkExistingChildren(jiraKeys);
+      setRightMode("breakdown");
+      if (!res) {
+        showToast("Could not link the stories");
+        return;
+      }
+      const linkedCount = res.linked.length;
+      if (linkedCount === 0) {
+        showToast("No stories were linked");
+      } else if (res.failed.length > 0) {
+        showToast(`Linked ${linkedCount}; ${res.failed.length} could not be linked`);
+      } else {
+        showToast(linkedCount === 1 ? "Linked 1 story to the epic" : `Linked ${linkedCount} stories to the epic`);
+      }
+    },
+    [writer, showToast],
+  );
 
   // Save draft feedback (BRDG-478): the autosave still runs on its own; this is
   // the explicit flush. Report the outcome so the action never looks like a
@@ -261,6 +284,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
               onReassignSprint={writer.reassignCardSprint}
               onGenerateBreakdown={writer.generateBreakdown}
               onOpenChild={handleOpenChild}
+              onLinkExisting={() => setShowLinkExisting(true)}
               busy={writer.status === "sending" || writer.status === "streaming"}
             />
           )}
@@ -281,6 +305,13 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
           )}
         </div>
       </div>
+
+      <LinkExistingStoryModal
+        open={showLinkExisting}
+        epicKey={epicKey}
+        onClose={() => setShowLinkExisting(false)}
+        onLink={handleLinkExisting}
+      />
 
       {toast && <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />}
     </div>

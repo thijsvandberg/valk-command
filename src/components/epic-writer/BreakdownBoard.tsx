@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutList, Loader2, Sparkles } from "lucide-react";
+import { LayoutList, Loader2, Sparkles, Link2 } from "lucide-react";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { Button } from "@/components/ui/Button";
 import { ChildStoryCard } from "./ChildStoryCard";
@@ -21,6 +21,8 @@ interface BreakdownBoardProps {
   onGenerateBreakdown?: () => void | Promise<unknown>;
   // Open a created child story in-place in the Epic Writer (BRDG-485).
   onOpenChild?: (jiraKey: string) => void;
+  // Open the "link existing story" picker to re-parent existing stories (BRDG-487).
+  onLinkExisting?: () => void;
   // True while a workspace task is running: cards disable their deepen action.
   busy?: boolean;
   // When the surrounding region owns the header (BRDG-484 mode toggle), drop the
@@ -43,6 +45,7 @@ export function BreakdownBoard({
   onReassignSprint,
   onGenerateBreakdown,
   onOpenChild,
+  onLinkExisting,
   busy,
   hideHeader,
 }: BreakdownBoardProps) {
@@ -84,6 +87,16 @@ export function BreakdownBoard({
         <p className="text-caption text-text-muted/80">
           or ask in chat, e.g. &ldquo;split this into stories&rdquo;.
         </p>
+        {onLinkExisting && (
+          <button
+            type="button"
+            onClick={onLinkExisting}
+            className="mt-1 flex items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+          >
+            <Link2 size={12} strokeWidth={1.75} />
+            Link existing story
+          </button>
+        )}
       </div>
     );
   }
@@ -93,7 +106,20 @@ export function BreakdownBoard({
       {!hideHeader && (
         <header className="flex shrink-0 items-center justify-between border-b border-border-subtle px-4 py-2.5">
           <span className="text-body-sm font-semibold text-text-secondary">Breakdown</span>
-          <span className="text-label text-text-muted">{cards.length} stories</span>
+          <span className="flex items-center gap-3">
+            {onLinkExisting && (
+              <button
+                type="button"
+                onClick={onLinkExisting}
+                className="flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                title="Link an existing story into this epic"
+              >
+                <Link2 size={11} strokeWidth={1.75} />
+                Link existing
+              </button>
+            )}
+            <span className="text-label text-text-muted">{cards.length} stories</span>
+          </span>
         </header>
       )}
       <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
