@@ -496,7 +496,6 @@ export function TicketMetaContent({
           type="button"
           data-testid="test-doc-draft-banner"
           onClick={() => setTestDocIntent("view")}
-          title="Review the draft test doc and accept it"
           className="group/tdbanner mb-3 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-status-warning)]/25 bg-[var(--color-status-warning)]/[0.07] px-3 py-2.5 text-left shadow-[0_4px_16px_-8px_#ca8a0459] hover:bg-[var(--color-status-warning)]/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-90"
           style={{ transition: "background-color 0.15s ease, opacity 0.15s ease" }}
         >
@@ -619,11 +618,11 @@ export function TicketMetaContent({
           {canHaveTestDoc && (
             <DetailRow label="Test documentation">
               <div className="flex items-center justify-end gap-0.5 -mr-2">
+                <Tooltip content="Open the test documentation review">
                 <button
                   type="button"
                   data-testid="meta-test-doc"
                   onClick={() => setTestDocIntent("view")}
-                  title="Open the test documentation review"
                   className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-body-sm hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   style={{ transition: "background-color 0.15s ease" }}
                 >
@@ -648,12 +647,13 @@ export function TicketMetaContent({
                     </span>
                   )}
                 </button>
+                </Tooltip>
                 {testDocState == null && (
                   <>
+                    <Tooltip content="Generate test documentation">
                     <button
                       type="button"
                       aria-label="Generate test documentation"
-                      title="Generate test documentation"
                       disabled={testDocBusy}
                       onClick={() => setTestDocIntent("generate")}
                       className={TEST_DOC_ACTION_CLASS}
@@ -661,10 +661,11 @@ export function TicketMetaContent({
                     >
                       <Play size={13} strokeWidth={1.75} />
                     </button>
+                    </Tooltip>
+                    <Tooltip content="No test documentation needed">
                     <button
                       type="button"
                       aria-label="Mark as not needing test documentation"
-                      title="No test documentation needed"
                       disabled={testDocBusy}
                       onClick={() => handleTestDocNotNeeded(true)}
                       className={TEST_DOC_ACTION_CLASS}
@@ -672,13 +673,14 @@ export function TicketMetaContent({
                     >
                       <FileX2 size={13} strokeWidth={1.75} />
                     </button>
+                    </Tooltip>
                   </>
                 )}
                 {testDocState === "not_needed" && (
+                  <Tooltip content="Remove 'not needed' marker">
                   <button
                     type="button"
                     aria-label="Remove the 'not needed' marker"
-                    title="Remove 'not needed' marker"
                     disabled={testDocBusy}
                     onClick={() => handleTestDocNotNeeded(false)}
                     className={TEST_DOC_ACTION_CLASS}
@@ -686,12 +688,13 @@ export function TicketMetaContent({
                   >
                     <Undo2 size={13} strokeWidth={1.75} />
                   </button>
+                  </Tooltip>
                 )}
                 {(testDocState === "draft" || testDocState === "accepted") && (
+                  <Tooltip content="Regenerate test documentation">
                   <button
                     type="button"
                     aria-label="Regenerate test documentation"
-                    title="Regenerate test documentation"
                     disabled={testDocBusy}
                     onClick={() => setTestDocIntent("regenerate")}
                     className={TEST_DOC_ACTION_CLASS}
@@ -699,6 +702,7 @@ export function TicketMetaContent({
                   >
                     <RefreshCw size={13} strokeWidth={1.75} />
                   </button>
+                  </Tooltip>
                 )}
               </div>
             </DetailRow>
