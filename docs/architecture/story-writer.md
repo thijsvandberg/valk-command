@@ -76,7 +76,9 @@ Drafts are stored in `story_writer_draft` with a `draft_index` for ordering and 
 
 ### Draft Acceptance
 
-The PO reviews AI drafts in the editor panel. Accepting a draft merges it into the session's `localDraft` field. The PO can further edit before pushing.
+The PO reviews AI drafts in the editor panel. Accepting a draft merges it into the session's `localDraft` field (or `targetLocalDraft` for the split target slot). The PO can further edit before pushing.
+
+**Accepted marker persistence (BRDG-483):** the chat's "Accepted" badge is derived from persisted data, not client-only React state, so it survives a refresh. `computeAcceptedDraftIds` (`src/lib/accepted-drafts.ts`) treats a draft as accepted when its content matches the session's saved `localDraft` / `targetLocalDraft` for its `story_slot`; the resulting set flows through `StoryWriterChat` (`acceptedDraftIds`) into `ChatMessage`, which keeps only an optimistic flag for instant feedback on click. No DB migration. The same shared path serves the Epic Writer (all original-slot).
 
 ### Push to Jira
 
