@@ -7,6 +7,7 @@ import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { ExecutionLogViewer } from "@/components/story-writer/ExecutionLogViewer";
 import { WorkspaceStatusBadge } from "@/components/story-writer/WorkspaceStatusBadge";
 import { tickets } from "@/lib/api-client";
+import { computeAcceptedDraftIds } from "@/lib/accepted-drafts";
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
 
@@ -27,6 +28,18 @@ export function ChatApp() {
     }
     return { messageDraftMap: msgMap, draftContentMap: contentMap };
   }, [writer.aiDrafts, writer.targetAiDrafts]);
+
+  // BRDG-483: derive the accepted marker from persisted session content so it
+  // survives a refresh (both slots), instead of relying on click-only state.
+  const acceptedDraftIds = useMemo(
+    () =>
+      computeAcceptedDraftIds(
+        [...writer.aiDrafts, ...writer.targetAiDrafts],
+        writer.session?.localDraft ?? null,
+        writer.session?.targetLocalDraft ?? null,
+      ),
+    [writer.aiDrafts, writer.targetAiDrafts, writer.session?.localDraft, writer.session?.targetLocalDraft],
+  );
 
   const handleViewDraft = (draftId: string) => {
     const content = draftContentMap[draftId];
@@ -154,6 +167,7 @@ export function ChatApp() {
           onLinkCandidate={writer.onLinkCandidate}
           messageDraftMap={messageDraftMap}
           draftContentMap={draftContentMap}
+          acceptedDraftIds={acceptedDraftIds}
           onViewDraft={handleViewDraft}
           onFocusDraft={handleFocusDraft}
           onAcceptDraft={handleAcceptDraft}

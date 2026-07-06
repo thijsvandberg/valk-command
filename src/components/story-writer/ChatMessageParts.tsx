@@ -269,11 +269,15 @@ export function ChatMessage({
   currentTitle,
   currentType,
   isLatestDraft,
+  accepted,
 }: {
   message: Message;
   draftId?: string;
   draftContent?: string;
   isLatestDraft?: boolean;
+  // BRDG-483: derived from persisted session content (this draft matches the
+  // saved localDraft/targetLocalDraft), so the "Accepted" state survives refresh.
+  accepted?: boolean;
   onViewDraft?: (draftId: string) => void;
   onFocusDraft?: (draftId: string) => void;
   onAcceptDraft?: (draftId: string) => void;
@@ -294,8 +298,12 @@ export function ChatMessage({
 }) {
   const isUser = message.role === "user";
   const [expanded, setExpanded] = useState(false);
-  const [draftExpanded, setDraftExpanded] = useState<boolean>(() => Boolean(isLatestDraft && draftId));
-  const [draftAccepted, setDraftAccepted] = useState(false);
+  // BRDG-483: the accepted state is derived from persisted data (`accepted`), so
+  // it holds across a refresh. The optimistic flag only covers the moment between
+  // the click and the session refresh catching up, for instant feedback.
+  const [optimisticAccepted, setOptimisticAccepted] = useState(false);
+  const draftAccepted = accepted === true || optimisticAccepted;
+  const [draftExpanded, setDraftExpanded] = useState<boolean>(() => Boolean(isLatestDraft && draftId && accepted !== true));
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -613,7 +621,7 @@ export function ChatMessage({
                       type="button"
                       onClick={() => {
                         onAcceptDraft(draftId);
-                        setDraftAccepted(true);
+                        setOptimisticAccepted(true);
                       }}
                       className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-500)] bg-[var(--color-brand-500)]/[0.1] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.16] active:bg-[var(--color-brand-500)]/[0.2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
                     >

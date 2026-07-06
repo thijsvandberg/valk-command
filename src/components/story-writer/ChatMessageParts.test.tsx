@@ -390,6 +390,58 @@ describe("ChatMessage empty-bubble suppression (BRDG-478)", () => {
   });
 });
 
+describe("ChatMessage accepted-draft persistence (BRDG-483)", () => {
+  it("shows the Accepted badge and hides the Accept button when accepted is derived true", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({ content: "" })}
+        draftId="d-1"
+        draftContent="Accepted body"
+        isLatestDraft
+        accepted
+        onAcceptDraft={vi.fn()}
+      />,
+    );
+    // Accepted drafts collapse by default; expand to confirm no Accept button.
+    fireEvent.click(screen.getByText("Draft updated"));
+    expect(screen.getByText("Accepted")).toBeInTheDocument();
+    expect(screen.queryByText("Accept draft")).toBeNull();
+  });
+
+  it("still offers the Accept button on a not-yet-accepted draft", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({ content: "" })}
+        draftId="d-1"
+        draftContent="Fresh body"
+        isLatestDraft
+        accepted={false}
+        onAcceptDraft={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Accept draft")).toBeInTheDocument();
+    expect(screen.queryByText("Accepted")).toBeNull();
+  });
+
+  it("optimistically flips to Accepted on click before the derived value catches up", () => {
+    const onAcceptDraft = vi.fn();
+    render(
+      <ChatMessage
+        message={makeMessage({ content: "" })}
+        draftId="d-1"
+        draftContent="Body to accept"
+        isLatestDraft
+        accepted={false}
+        onAcceptDraft={onAcceptDraft}
+      />,
+    );
+    fireEvent.click(screen.getByText("Accept draft"));
+    expect(onAcceptDraft).toHaveBeenCalledWith("d-1");
+    expect(screen.getByText("Accepted")).toBeInTheDocument();
+    expect(screen.queryByText("Accept draft")).toBeNull();
+  });
+});
+
 describe("stripEpicSuggestionTags", () => {
   it("strips epic-suggestion XML tags", () => {
     const input = `before <epic-suggestion><epic key="VPL-1" confidence="high" reason="r" /></epic-suggestion> after`;

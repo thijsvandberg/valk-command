@@ -58,6 +58,9 @@ interface StoryWriterChatProps {
   onLinkCandidate?: (candidateId: string, isLinked: boolean) => Promise<void>;
   messageDraftMap: Record<string, string>;
   draftContentMap: Record<string, string>;
+  // BRDG-483: draft ids whose content matches the session's saved draft, so the
+  // "Accepted" marker renders correctly after a refresh (not just this session).
+  acceptedDraftIds?: Set<string>;
   onViewDraft?: (draftId: string) => void;
   onFocusDraft?: (draftId: string) => void;
   onAcceptDraft?: (draftId: string) => void;
@@ -212,6 +215,7 @@ export function StoryWriterChat({
   onLinkCandidate,
   messageDraftMap,
   draftContentMap,
+  acceptedDraftIds,
   onViewDraft,
   onFocusDraft,
   onAcceptDraft,
@@ -468,6 +472,7 @@ export function StoryWriterChat({
                 draftId={messageDraftMap[msg.id]}
                 draftContent={messageDraftMap[msg.id] ? draftContentMap[messageDraftMap[msg.id]] : undefined}
                 isLatestDraft={msg.id === latestDraftMessageId}
+                accepted={messageDraftMap[msg.id] ? acceptedDraftIds?.has(messageDraftMap[msg.id]) : false}
                 onViewDraft={onViewDraft}
                 onFocusDraft={onFocusDraft}
                 onAcceptDraft={onAcceptDraft}
