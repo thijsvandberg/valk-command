@@ -88,6 +88,23 @@ describe("buildEpicContext", () => {
     expect(ctx).toContain("image/png");
   });
 
+  // BRDG-487 #8: the epic's current (possibly unsaved) local draft must win over
+  // the Jira-synced description so a breakdown/refine turn reflects what the PO
+  // just edited in the draft view, not the last-pushed version.
+  it("uses the session local draft over the Jira description when provided", async () => {
+    seedEpicWithContext("VPL-E1");
+    const ctx = await buildEpicContext("VPL-E1", "Freshly edited epic body the PO just typed");
+
+    expect(ctx).toContain("Freshly edited epic body the PO just typed");
+    expect(ctx).not.toContain("Improve checkout");
+  });
+
+  it("falls back to the Jira description when the local draft is empty", async () => {
+    seedEpicWithContext("VPL-E1");
+    expect(await buildEpicContext("VPL-E1", "   ")).toContain("Improve checkout");
+    expect(await buildEpicContext("VPL-E1", null)).toContain("Improve checkout");
+  });
+
   it("handles a near-empty epic with no children", async () => {
     seedTicket(testDb, { jiraKey: "VPL-E2", type: "epic", title: "Thin", description: null });
     const ctx = await buildEpicContext("VPL-E2");
@@ -212,6 +229,28 @@ describe("sendStoryWriterMessage (epic mode, phase-aware breakdown)", () => {
     expect(args).toContain("Existing card");
     expect(args).toContain("VPL-E1 - Checkout revamp");
     expect(args).toContain("split card 1");
+  });
+
+  it("threads the session local draft into the breakdown context (BRDG-487 #8)", async () => {
+    seedEpicWithContext("VPL-E1");
+    const conv = seedConversation(testDb, { id: "conv-draft" });
+    seedStoryWriterSession(testDb, {
+      id: "sess-draft",
+      ticketKey: "VPL-E1",
+      conversationId: conv.id,
+      status: "active",
+      mode: "epic",
+      phase: "breakdown",
+      localDraft: "PO just rewrote the epic body inline",
+    });
+
+    await sendStoryWriterMessage({ key: "VPL-E1", content: "break it down", codebaseResearch: false });
+
+    const [, opts] = mockAgentFetch.mock.calls[0] as [string, { body: Record<string, unknown> }];
+    const args = (opts.body.args as { args: string }).args;
+    // The live local draft, not the stale Jira description, is what the AI sees.
+    expect(args).toContain("PO just rewrote the epic body inline");
+    expect(args).not.toContain("Improve checkout");
   });
 
   it("carries the <story-detail> tag contract in the refine phase first message", async () => {

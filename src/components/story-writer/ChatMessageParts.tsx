@@ -352,8 +352,12 @@ export function ChatMessage({
   const baseContent = stripEpicSuggestionTags(
     stripLinkSuggestionTags(
       (() => {
+        // Tag strips are attribute-tolerant (`\b[^>]*`) so an opening tag that
+        // carries attributes is still removed (BRDG-487 #5, follow-up to BRDG-478
+        // #5): <story-detail index="N"> and <story-draft slot="target"> both leaked
+        // into the chat prose because the bare-tag regex missed the attribute form.
         let c = message.content
-          .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
+          .replace(/<story-draft\b[^>]*>[\s\S]*?<\/story-draft>/g, "")
           .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
           .replace(/<related-request\b[^>]*?\/?>(?:<\/related-request>)?/gi, "")
           .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
@@ -363,10 +367,10 @@ export function ChatMessage({
           // Epic Writer structured blocks (BRDG-478): these are parsed for the
           // breakdown board by apply-output; in the chat only the AI's prose
           // commentary should show, not the raw JSON/XML.
-          .replace(/<epic-breakdown>[\s\S]*?<\/epic-breakdown>/g, "")
-          .replace(/<epic-questions>[\s\S]*?<\/epic-questions>/g, "")
-          .replace(/<story-detail>[\s\S]*?<\/story-detail>/g, "")
-          .replace(/<sprint-plan>[\s\S]*?<\/sprint-plan>/g, "")
+          .replace(/<epic-breakdown\b[^>]*>[\s\S]*?<\/epic-breakdown>/g, "")
+          .replace(/<epic-questions\b[^>]*>[\s\S]*?<\/epic-questions>/g, "")
+          .replace(/<story-detail\b[^>]*>[\s\S]*?<\/story-detail>/g, "")
+          .replace(/<sprint-plan\b[^>]*>[\s\S]*?<\/sprint-plan>/g, "")
           .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "");
         // When the message contained related-stories results, strip the verbose
         // scoring breakdown since the card already displays all candidates.

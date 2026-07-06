@@ -344,6 +344,43 @@ describe("ChatMessage epic-writer tag stripping (BRDG-478)", () => {
     expect(body.textContent).toContain("Intro.");
     expect(body.textContent).toContain("Outro.");
   });
+
+  // BRDG-487 #5: the real skill emits attribute-carrying tags (a deepen turn
+  // returns <story-detail index="N">, split mode returns <story-draft slot="...">).
+  // The bare-tag strip missed the attribute form and leaked raw XML into the chat.
+  it("strips attribute-carrying <story-detail index> blocks", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({
+          content:
+            'Deepened it. <story-detail index="0">## Description\nFull body\n\n## Acceptance criteria\n- Given X</story-detail> Done.',
+        })}
+      />,
+    );
+    const body = screen.getByTestId("markdown");
+    expect(body.textContent).not.toContain("story-detail");
+    expect(body.textContent).not.toContain("Full body");
+    expect(body.textContent).not.toContain("Acceptance criteria");
+    expect(body.textContent).toContain("Deepened it.");
+    expect(body.textContent).toContain("Done.");
+  });
+
+  it("strips slotted <story-draft slot> blocks (split mode)", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({
+          content:
+            'Split done. <story-draft slot="target">Target body here</story-draft> <story-draft slot="original">Original body</story-draft> Ready.',
+        })}
+      />,
+    );
+    const body = screen.getByTestId("markdown");
+    expect(body.textContent).not.toContain("story-draft");
+    expect(body.textContent).not.toContain("Target body here");
+    expect(body.textContent).not.toContain("Original body");
+    expect(body.textContent).toContain("Split done.");
+    expect(body.textContent).toContain("Ready.");
+  });
 });
 
 describe("ChatMessage empty-bubble suppression (BRDG-478)", () => {

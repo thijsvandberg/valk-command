@@ -269,8 +269,12 @@ async function logSuccess(key: string, summary: string, messageStart: number, me
  * attachments (filenames/types). This is the context the AI sees when working
  * out an epic. Child filtering mirrors /api/epics/[key]/tickets (excludes the
  * epic itself and removed/draft tickets).
+ *
+ * `localDraft` is the session's current (possibly unsaved) epic body. When set it
+ * wins over the Jira-synced description (BRDG-487 #8) so a breakdown/refine turn
+ * reflects what the PO just edited in the draft view, not the last-pushed version.
  */
-export async function buildEpicContext(key: string): Promise<string> {
+export async function buildEpicContext(key: string, localDraft?: string | null): Promise<string> {
   const [epicRow, children, confluence, attachments] = await Promise.all([
     db.select().from(ticket).where(eq(ticket.jiraKey, key)).get(),
     db
@@ -294,7 +298,7 @@ export async function buildEpicContext(key: string): Promise<string> {
   parts.push(`You are helping work out an epic. The epic is the subject.`);
   if (epicRow) {
     parts.push(`Epic: ${key} - ${epicRow.title}`);
-    parts.push(`Epic description:\n${selectCurrentDescription(null, epicRow.description)}`);
+    parts.push(`Epic description:\n${selectCurrentDescription(localDraft, epicRow.description)}`);
   } else {
     parts.push(`Epic: ${key}`);
   }
@@ -385,13 +389,13 @@ export const STORY_DETAIL_INSTRUCTION =
  * the <story-detail> tag contract so deepened cards land back on the board.
  */
 async function buildEpicBreakdownBody(
-  session: { id: string; conversationId: string; phase?: string | null },
+  session: { id: string; conversationId: string; localDraft?: string | null; phase?: string | null },
   key: string,
   content: string,
   codebaseResearch: boolean,
   model: string | undefined,
 ) {
-  const epicContext = await buildEpicContext(key);
+  const epicContext = await buildEpicContext(key, session.localDraft);
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
   const phase = session.phase ?? "breakdown";
   const breakdownState = await buildBreakdownStateForSession(session.id);
@@ -423,7 +427,7 @@ export async function buildEpicFirstMessageBody(
     return buildEpicBreakdownBody(session, key, content, codebaseResearch, model);
   }
 
-  const epicContext = await buildEpicContext(key);
+  const epicContext = await buildEpicContext(key, session.localDraft);
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
 
   // The epic itself is refined via the regular single-story draft flow (epic as
