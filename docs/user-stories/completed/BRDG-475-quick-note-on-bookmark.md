@@ -9,6 +9,7 @@
 - **Card polish:** the capture card now shows the bookmark in a brand-tinted rounded chip, a clearer header, and a subtle `↵ save · esc dismiss … optional` hint row.
 - **Auto-grow field:** the single-line input became an auto-growing textarea (`[field-sizing:content]`, capped then scrolls). Enter saves, Shift+Enter adds a line.
 - **Bulk note capture (reverses the original "skip on bulk" decision):** bookmarking multiple stories at once now surfaces the same card and writes **one shared note to every selected story**. `captureBookmarkNote` takes one key or many; `useRowActions.runFieldEdit` fires it for any successful bookmark-ON (single or bulk), passing the full succeeded set. Bulk capture does not pre-fill (the one note is written to all targets).
+- **Save hardening + confirmation + board marker (PO feedback round 2):** the note write now patches the **list** caches (`patchTicketCaches`), so the board's existing note marker (`MessageSquare`) appears immediately on every affected row and persists (the `/api/tickets` list payload already carries `notes`). The card awaits all writes, reports per-key success/failure, and revalidates on failure so an optimistic board note self-heals. The provider shows a confirmation toast ("Note added" / "Note added to N stories", or a partial-failure message). Note: the underlying bulk save was verified to persist to every story in the DB; the reported "only the 2nd story" symptom did not reproduce and was most likely a stale dev build.
 
 ## Description
 
