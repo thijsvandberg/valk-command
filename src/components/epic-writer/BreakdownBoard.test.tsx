@@ -26,7 +26,7 @@ function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSpr
 describe("BreakdownBoard", () => {
   it("shows an empty state when there are no cards", () => {
     render(<BreakdownBoard cards={[]} />);
-    expect(screen.getByText("No breakdown yet")).toBeInTheDocument();
+    expect(screen.getByText(/Turn this epic into child stories/i)).toBeInTheDocument();
   });
 
   it("offers a Generate breakdown action on the empty board and calls it on click", () => {

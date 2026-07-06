@@ -21,6 +21,9 @@ interface BreakdownBoardProps {
   onGenerateBreakdown?: () => void | Promise<unknown>;
   // True while a workspace task is running: cards disable their deepen action.
   busy?: boolean;
+  // When the surrounding region owns the header (BRDG-484 mode toggle), drop the
+  // internal "Breakdown / N stories" bar so there is no double header.
+  hideHeader?: boolean;
 }
 
 /**
@@ -38,6 +41,7 @@ export function BreakdownBoard({
   onReassignSprint,
   onGenerateBreakdown,
   busy,
+  hideHeader,
 }: BreakdownBoardProps) {
   // Titles + created-state lookups so each card can name its suggested-link
   // targets and only allow a link once both ends are live in Jira.
@@ -49,21 +53,20 @@ export function BreakdownBoard({
   }
 
   if (cards.length === 0) {
+    // Compact, top-aligned prompt (BRDG-484): the empty state is the contextual
+    // "next action" for the breakdown phase, not a hero that fills the pane.
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-brand-500)]/[0.12] bg-[var(--color-brand-500)]/[0.08]">
-          <LayoutList size={20} strokeWidth={1.5} className="text-[var(--color-brand-400)] opacity-70" />
+      <div className="flex h-full flex-col items-center gap-2.5 px-5 pt-8 text-center">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-brand-500)]/[0.12] bg-[var(--color-brand-500)]/[0.08]">
+          <LayoutList size={15} strokeWidth={1.5} className="text-[var(--color-brand-400)] opacity-70" />
         </div>
-        <div className="space-y-1">
-          <p className="text-body-sm font-semibold text-text-secondary">No breakdown yet</p>
-          <p className="max-w-[30ch] text-label leading-relaxed text-text-muted">
-            Turn this epic into child stories. You can refine, split, and add stories afterwards.
-          </p>
-        </div>
+        <p className="max-w-[32ch] text-label leading-relaxed text-text-muted">
+          Turn this epic into child stories, then refine, split, and add more.
+        </p>
         {onGenerateBreakdown && (
           <Button
             variant="primary"
-            size="md"
+            size="sm"
             disabled={busy}
             icon={
               busy
@@ -75,8 +78,8 @@ export function BreakdownBoard({
             {busy ? "Generating breakdown…" : "Generate breakdown"}
           </Button>
         )}
-        <p className="max-w-[30ch] text-caption text-text-muted/80">
-          Or ask in chat, e.g. &ldquo;split this into stories&rdquo;.
+        <p className="text-caption text-text-muted/80">
+          or ask in chat, e.g. &ldquo;split this into stories&rdquo;.
         </p>
       </div>
     );
@@ -84,10 +87,12 @@ export function BreakdownBoard({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-center justify-between border-b border-border-subtle px-4 py-2.5">
-        <span className="text-body-sm font-semibold text-text-secondary">Breakdown</span>
-        <span className="text-label text-text-muted">{cards.length} stories</span>
-      </header>
+      {!hideHeader && (
+        <header className="flex shrink-0 items-center justify-between border-b border-border-subtle px-4 py-2.5">
+          <span className="text-body-sm font-semibold text-text-secondary">Breakdown</span>
+          <span className="text-label text-text-muted">{cards.length} stories</span>
+        </header>
+      )}
       <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
         {cards.map((card) => (
           <ChildStoryCard
