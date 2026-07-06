@@ -137,6 +137,10 @@ export async function POST(request: Request) {
     return errorResponse(message, 502);
   }
 
+  // Persist the description locally as markdown (BRDG-478) so the Epic Writer
+  // session seeds its draft from it on first open, before any Jira sync lands.
+  // Jira stores the ADF form above; the local mirror stays markdown like every
+  // other ticket.description.
   await db.insert(ticket).values({
     jiraKey: jiraResult.key,
     jiraId: jiraResult.id,
@@ -144,6 +148,7 @@ export async function POST(request: Request) {
     type: "epic",
     status: "TO DO",
     flagged: false,
+    ...(descriptionText ? { description: descriptionText } : {}),
   });
 
   // Prefix-clears /api/epics and /api/epics/progress so the new epic surfaces.

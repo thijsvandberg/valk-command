@@ -193,6 +193,21 @@ describe("POST /api/epics", () => {
     expect(rows[0].title).toBe("Persisted epic");
   });
 
+  it("persists the description as markdown on the local row (BRDG-478)", async () => {
+    await POST(postRequest({ title: "Seeded epic", description: "**bold** context" }));
+    const rows = testDb.select().from(ticket).all();
+    expect(rows).toHaveLength(1);
+    // Local mirror keeps markdown (Jira gets the ADF form); the Epic Writer
+    // seeds its draft from this on first open.
+    expect(rows[0].description).toBe("**bold** context");
+  });
+
+  it("leaves the local description empty when no description is given (BRDG-478)", async () => {
+    await POST(postRequest({ title: "No desc epic" }));
+    const rows = testDb.select().from(ticket).all();
+    expect(rows[0].description ?? null).toBeNull();
+  });
+
   it("invalidates the epic caches", async () => {
     await POST(postRequest({ title: "Cache epic" }));
     expect(mockCache.invalidate).toHaveBeenCalledWith("/api/epics");
