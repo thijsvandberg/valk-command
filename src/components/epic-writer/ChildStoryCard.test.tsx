@@ -22,6 +22,27 @@ vi.mock("@/components/shared/TicketRefPill", () => ({
   TicketRefPill: ({ ticketKey }: { ticketKey: string }) => <span>{ticketKey}</span>,
 }));
 
+// The body editor is the shared Tiptap RichEditor (BRDG-490 #6), which does not
+// run in jsdom. Stub it as a controlled textarea so the edit flow is testable.
+vi.mock("@/components/rich-editor/RichEditor", () => ({
+  RichEditor: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+  }) => (
+    <textarea
+      aria-label="body editor"
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  ),
+}));
+
 function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSprint {
   return {
     id: overrides.id ?? "c1",
@@ -83,31 +104,93 @@ describe("ChildStoryCard", () => {
     expect(screen.getByRole("button", { name: /deepen/i })).toBeDisabled();
   });
 
-  it("expands the worked-out body and persists an edit on blur", async () => {
-    const onEditBody = vi.fn();
-    render(<ChildStoryCard card={card({ cardIndex: 1, body: "Original body" })} onEditBody={onEditBody} />);
+  // BRDG-490 #6: the detail body renders as formatted markdown (not raw text) and
+  // is edited in place with the shared story editor, committed via Save.
+  it("renders the detail as markdown and persists a body edit on Save", async () => {
+    const onEditCard = vi.fn();
+    render(<ChildStoryCard card={card({ cardIndex: 1, body: "**Original**" })} onEditCard={onEditCard} />);
 
-    // Body is collapsed by default; expand it.
+    // Body is collapsed by default; expand it. The markdown is rendered, so the
+    // raw asterisks do not appear as literal text.
     fireEvent.click(screen.getByRole("button", { name: /show detail/i }));
-    expect(screen.getByText("Original body")).toBeInTheDocument();
+    expect(screen.getByText("Original")).toBeInTheDocument();
+    expect(screen.queryByText("**Original**")).not.toBeInTheDocument();
 
-    // Click the body region to edit, change it, blur to commit.
-    fireEvent.click(screen.getByText("Original body"));
-    const textarea = await screen.findByRole("textbox");
-    fireEvent.change(textarea, { target: { value: "Edited body" } });
-    fireEvent.blur(textarea);
+    // Open the inline editor, change it, Save to commit.
+    fireEvent.click(screen.getByRole("button", { name: /edit detail/i }));
+    const editor = await screen.findByRole("textbox", { name: /body editor/i });
+    fireEvent.change(editor, { target: { value: "Edited body" } });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
-    await waitFor(() => expect(onEditBody).toHaveBeenCalledWith(1, "Edited body"));
+    await waitFor(() => expect(onEditCard).toHaveBeenCalledWith(1, { body: "Edited body" }));
   });
 
-  it("does not call onEditBody when the body is unchanged", async () => {
-    const onEditBody = vi.fn();
-    render(<ChildStoryCard card={card({ body: "Same" })} onEditBody={onEditBody} />);
+  it("does not persist a body edit that was cancelled", async () => {
+    const onEditCard = vi.fn();
+    render(<ChildStoryCard card={card({ body: "Same" })} onEditCard={onEditCard} />);
     fireEvent.click(screen.getByRole("button", { name: /show detail/i }));
-    fireEvent.click(screen.getByText("Same"));
-    const textarea = await screen.findByRole("textbox");
+    fireEvent.click(screen.getByRole("button", { name: /edit detail/i }));
+    const editor = await screen.findByRole("textbox", { name: /body editor/i });
+    fireEvent.change(editor, { target: { value: "changed but cancelled" } });
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onEditCard).not.toHaveBeenCalled();
+  });
+
+  // BRDG-490 #5: DRAFT cards are editable in place - title, bullets, and body.
+  it("renames a DRAFT card title in place", () => {
+    const onEditCard = vi.fn();
+    render(<ChildStoryCard card={card({ cardIndex: 2, title: "Old title" })} onEditCard={onEditCard} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Old title" }));
+    const input = screen.getByDisplayValue("Old title");
+    fireEvent.change(input, { target: { value: "New title" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onEditCard).toHaveBeenCalledWith(2, { title: "New title" });
+  });
+
+  it("does not persist an emptied title", () => {
+    const onEditCard = vi.fn();
+    render(<ChildStoryCard card={card({ title: "Keep me" })} onEditCard={onEditCard} />);
+    fireEvent.click(screen.getByRole("button", { name: "Keep me" }));
+    const input = screen.getByDisplayValue("Keep me");
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.blur(input);
+    expect(onEditCard).not.toHaveBeenCalled();
+  });
+
+  it("edits a DRAFT card's bullets in place (one per line)", () => {
+    const onEditCard = vi.fn();
+    render(
+      <ChildStoryCard card={card({ cardIndex: 3, bullets: ["one", "two"] })} onEditCard={onEditCard} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /edit bullets/i }));
+    const textarea = screen.getByPlaceholderText("One bullet per line");
+    fireEvent.change(textarea, { target: { value: "one\nthree\n" } });
     fireEvent.blur(textarea);
-    expect(onEditBody).not.toHaveBeenCalled();
+
+    expect(onEditCard).toHaveBeenCalledWith(3, { bullets: ["one", "three"] });
+  });
+
+  it("offers Add detail on a DRAFT card with no body yet", () => {
+    render(<ChildStoryCard card={card({ bullets: ["b"], body: null })} onEditCard={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /add detail/i })).toBeInTheDocument();
+  });
+
+  // Created cards round-trip through the story editor, so no inline editing here.
+  it("does not offer inline title/bullets/detail editing on a created card", () => {
+    render(
+      <ChildStoryCard
+        card={card({ status: "created", jiraKey: "VPL-900", title: "Live", bullets: ["b"], body: "Body" })}
+        onEditCard={vi.fn()}
+      />,
+    );
+    // Title is plain text, not a rename button.
+    expect(screen.queryByRole("button", { name: "Live" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit bullets/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /show detail/i }));
+    expect(screen.queryByRole("button", { name: /edit detail/i })).not.toBeInTheDocument();
   });
 
   it("shows a Create in Jira menu on a DRAFT card and promotes with the chosen placement", async () => {

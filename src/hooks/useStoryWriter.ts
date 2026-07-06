@@ -521,18 +521,31 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     );
   }, [isEpicMode, session, ticketKey, setSession, sendMessage]);
 
-  // Persist a PO hand-edit of a card's worked-out body. Optimistically updates
-  // the local card so the depth badge and body reflect the edit immediately.
-  const updateCardBody = useCallback(async (index: number, body: string | null) => {
-    if (!isEpicMode) return;
-    const trimmed = body && body.trim().length > 0 ? body : null;
-    setCards((prev) => prev.map((c) => (c.cardIndex === index ? { ...c, body: trimmed } : c)));
-    try {
-      await epicWriterApi.updateCard(ticketKey, index, { body: trimmed });
-    } catch {
-      void refreshSession();
-    }
-  }, [isEpicMode, ticketKey, refreshSession]);
+  // Persist a PO hand-edit of a card in place (BRDG-490 #5): any of title,
+  // bullets, or body. Optimistically merges the patch into the local card so the
+  // status badge and content reflect the edit immediately; on failure we resync.
+  const updateCard = useCallback(
+    async (index: number, patch: { title?: string; bullets?: string[]; body?: string | null }) => {
+      if (!isEpicMode) return;
+      const normalized: { title?: string; bullets?: string[]; body?: string | null } = { ...patch };
+      if ("body" in normalized) {
+        normalized.body = normalized.body && normalized.body.trim().length > 0 ? normalized.body : null;
+      }
+      setCards((prev) => prev.map((c) => (c.cardIndex === index ? { ...c, ...normalized } : c)));
+      try {
+        await epicWriterApi.updateCard(ticketKey, index, normalized);
+      } catch {
+        void refreshSession();
+      }
+    },
+    [isEpicMode, ticketKey, refreshSession],
+  );
+
+  // Body-only convenience wrapper kept for callers that only touch the body.
+  const updateCardBody = useCallback(
+    (index: number, body: string | null) => updateCard(index, { body }),
+    [updateCard],
+  );
 
   // Persist a manual drag-reorder of the breakdown cards (BRDG-487 #10).
   // Optimistically reassigns cardIndex to the new positions and remaps every
@@ -679,6 +692,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     setPhase,
     deepenCard,
     generateBreakdown,
+    updateCard,
     updateCardBody,
     reorderCards,
     createCardInJira,

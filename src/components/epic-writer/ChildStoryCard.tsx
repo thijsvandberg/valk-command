@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check, PenLine } from "lucide-react";
+import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check, PenLine, Plus } from "lucide-react";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { SprintOrBacklogBadge } from "@/components/shared/IssueMetaBadges";
+import { RichEditor } from "@/components/rich-editor/RichEditor";
+import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import { SprintPlacementMenu } from "./SprintPlacementMenu";
 
 interface ChildStoryCardProps {
@@ -12,8 +14,14 @@ interface ChildStoryCardProps {
   // Deepen the card into a full body + AC (refine phase). Omitted when the board
   // is read-only (e.g. no active deepen path available).
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
-  // Persist a PO hand-edit of the worked-out body.
-  onEditBody?: (index: number, body: string | null) => void | Promise<unknown>;
+  // Persist a PO hand-edit of the card in place (BRDG-490 #5): any of title,
+  // bullets, or body. Only wired for DRAFT cards; created cards edit through the
+  // story editor (the Open action), so their title/bullets/body stay read-only
+  // here. Omitting it makes the card fully read-only.
+  onEditCard?: (
+    index: number,
+    patch: { title?: string; bullets?: string[]; body?: string | null },
+  ) => void | Promise<unknown>;
   // Promote this DRAFT card to a real Jira issue under the epic with the chosen
   // placement. Omitted on a read-only board.
   onCreateInJira?: (index: number, placement: string) => void | Promise<unknown>;
@@ -77,7 +85,7 @@ const DEPTH_META: Record<Depth, { label: string; icon: typeof Layers }> = {
 export function ChildStoryCard({
   card,
   onDeepen,
-  onEditBody,
+  onEditCard,
   onCreateInJira,
   onConfirmLink,
   onReassignSprint,
@@ -101,30 +109,71 @@ export function ChildStoryCard({
   const [reassigning, setReassigning] = useState(false);
   const [linkingKey, setLinkingKey] = useState<string | null>(null);
 
+  // In-place editing (BRDG-490 #5) is offered on DRAFT cards only; created cards
+  // round-trip through the story editor (the Open action), so they stay read-only
+  // here. The body is always rendered as formatted markdown (BRDG-490 #6).
+  const canEdit = !isCreated && !!onEditCard;
+
   const [expanded, setExpanded] = useState(false);
-  const [editing, setEditing] = useState(false);
-  // The edit buffer is seeded from the card body each time editing starts (see
-  // startEdit), so the read view always reflects the latest AI/persisted body
-  // and edits never clobber a sparring refine that lands while collapsed.
-  const [draft, setDraft] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingBullets, setEditingBullets] = useState(false);
+  const [editingBody, setEditingBody] = useState(false);
+  // Each edit buffer is seeded from the card each time editing starts, so the
+  // read view always reflects the latest AI/persisted content and edits never
+  // clobber a sparring refine that lands while a field is not being edited.
+  const [titleDraft, setTitleDraft] = useState("");
+  const [bulletsDraft, setBulletsDraft] = useState("");
+  const [bodyDraft, setBodyDraft] = useState("");
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const bulletsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    if (editing) textareaRef.current?.focus();
-  }, [editing]);
+    if (editingTitle) titleInputRef.current?.focus();
+  }, [editingTitle]);
+  useEffect(() => {
+    if (editingBullets) bulletsTextareaRef.current?.focus();
+  }, [editingBullets]);
 
-  const startEdit = () => {
-    setExpanded(true);
-    setDraft(card.body ?? "");
-    setEditing(true);
+  const startEditTitle = () => {
+    setTitleDraft(card.title);
+    setEditingTitle(true);
   };
-
-  const commitEdit = () => {
-    setEditing(false);
-    if ((card.body ?? "") !== draft) {
-      void onEditBody?.(card.cardIndex, draft.length > 0 ? draft : null);
+  const commitTitle = () => {
+    setEditingTitle(false);
+    const next = titleDraft.trim();
+    // The title must stay non-empty; an empty edit reverts to the current title.
+    if (next.length > 0 && next !== card.title) {
+      void onEditCard?.(card.cardIndex, { title: next });
     }
   };
+
+  const startEditBullets = () => {
+    setBulletsDraft(bullets.join("\n"));
+    setEditingBullets(true);
+  };
+  const commitBullets = () => {
+    setEditingBullets(false);
+    const next = bulletsDraft
+      .split("\n")
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0);
+    if (JSON.stringify(next) !== JSON.stringify(bullets)) {
+      void onEditCard?.(card.cardIndex, { bullets: next });
+    }
+  };
+
+  const startEditBody = () => {
+    setExpanded(true);
+    setBodyDraft(card.body ?? "");
+    setEditingBody(true);
+  };
+  const commitBody = () => {
+    setEditingBody(false);
+    if ((card.body ?? "") !== bodyDraft) {
+      void onEditCard?.(card.cardIndex, { body: bodyDraft.length > 0 ? bodyDraft : null });
+    }
+  };
+  const cancelBody = () => setEditingBody(false);
 
   return (
     <article className="rounded-lg border border-border-subtle bg-surface-elevated/60 p-3.5 shadow-sm">
@@ -134,9 +183,45 @@ export function ChildStoryCard({
           <span className="font-mono text-label tabular-nums text-text-muted">
             {card.cardIndex + 1}
           </span>
-          <h3 className="min-w-0 truncate text-body-lg font-semibold text-text-primary">
-            {card.title}
-          </h3>
+          {canEdit && editingTitle ? (
+            <input
+              ref={titleInputRef}
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitTitle();
+                } else if (e.key === "Escape") {
+                  setEditingTitle(false);
+                }
+              }}
+              className="min-w-0 flex-1 rounded border border-border-default bg-surface-base px-1.5 py-0.5 text-body-lg font-semibold text-text-primary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+            />
+          ) : (
+            <h3
+              className={`min-w-0 truncate text-body-lg font-semibold text-text-primary ${
+                canEdit ? "cursor-text" : ""
+              }`}
+              {...(canEdit
+                ? {
+                    role: "button" as const,
+                    tabIndex: 0,
+                    title: "Click to rename",
+                    onClick: startEditTitle,
+                    onKeyDown: (e: React.KeyboardEvent) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        startEditTitle();
+                      }
+                    },
+                  }
+                : {})}
+            >
+              {card.title}
+            </h3>
+          )}
         </div>
         {/* Per-card collapse toggle (BRDG-490 #1): fold this card to its title
             independently of the others. The board's Collapse all / Expand all
@@ -159,7 +244,21 @@ export function ChildStoryCard({
         )}
       </header>
 
-      {!collapsed && bullets.length > 0 && (
+      {/* Bullets (BRDG-490 #5): editable in place on DRAFT cards via a plain
+          one-per-line textarea (bullets are short strings, not markdown). */}
+      {!collapsed && editingBullets ? (
+        <div className="mt-2.5">
+          <textarea
+            ref={bulletsTextareaRef}
+            value={bulletsDraft}
+            onChange={(e) => setBulletsDraft(e.target.value)}
+            onBlur={commitBullets}
+            rows={Math.min(10, Math.max(2, bulletsDraft.split("\n").length + 1))}
+            placeholder="One bullet per line"
+            className="w-full resize-y rounded-md border border-border-default bg-surface-base px-2.5 py-2 text-body leading-body text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+          />
+        </div>
+      ) : !collapsed && bullets.length > 0 ? (
         <ul className="mt-2.5 space-y-1">
           {bullets.map((bullet, i) => (
             <li key={i} className="flex gap-1.5 text-body leading-body text-text-secondary">
@@ -167,57 +266,105 @@ export function ChildStoryCard({
               <span className="min-w-0">{bullet}</span>
             </li>
           ))}
+          {canEdit && (
+            <li>
+              <button
+                type="button"
+                onClick={startEditBullets}
+                className="mt-0.5 flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <PenLine size={11} strokeWidth={1.75} />
+                Edit bullets
+              </button>
+            </li>
+          )}
         </ul>
-      )}
+      ) : !collapsed && canEdit ? (
+        <button
+          type="button"
+          onClick={startEditBullets}
+          className="mt-2.5 flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        >
+          <Plus size={11} strokeWidth={2} />
+          Add bullets
+        </button>
+      ) : null}
 
-      {!collapsed && hasBody && (
+      {/* Detail body (BRDG-490 #6): rendered as formatted markdown in the read
+          view, and edited in place with the shared story editor (RichEditor) on
+          DRAFT cards - not a raw textarea. A draft with no body yet gets an
+          "Add detail" affordance. */}
+      {!collapsed && editingBody ? (
+        <div className="mt-2.5 overflow-hidden rounded-md border border-border-default bg-surface-base">
+          <RichEditor
+            value={bodyDraft}
+            onChange={setBodyDraft}
+            borderless
+            minHeight={120}
+            placeholder="Work out the story description and acceptance criteria…"
+          />
+          <div className="flex items-center justify-end gap-1.5 border-t border-border-subtle px-2 py-1.5">
+            <button
+              type="button"
+              onClick={cancelBody}
+              className="rounded-md px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={commitBody}
+              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+            >
+              <Check size={11} strokeWidth={2} />
+              Save
+            </button>
+          </div>
+        </div>
+      ) : !collapsed && hasBody ? (
         <div className="mt-2.5">
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            aria-expanded={expanded}
-          >
-            {expanded ? (
-              <ChevronDown size={11} strokeWidth={2} />
-            ) : (
-              <ChevronRight size={11} strokeWidth={2} />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              aria-expanded={expanded}
+            >
+              {expanded ? (
+                <ChevronDown size={11} strokeWidth={2} />
+              ) : (
+                <ChevronRight size={11} strokeWidth={2} />
+              )}
+              {expanded ? "Hide detail" : "Show detail"}
+            </button>
+            {expanded && canEdit && (
+              <button
+                type="button"
+                onClick={startEditBody}
+                className="flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <PenLine size={11} strokeWidth={1.75} />
+                Edit detail
+              </button>
             )}
-            {expanded ? "Hide detail" : "Show detail"}
-          </button>
+          </div>
 
           {expanded && (
-            editing ? (
-              <div className="mt-1.5">
-                <textarea
-                  ref={textareaRef}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onBlur={commitEdit}
-                  rows={Math.min(16, Math.max(4, draft.split("\n").length + 1))}
-                  className="w-full resize-y rounded-md border border-border-default bg-surface-base px-2.5 py-2 text-body leading-body text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-                />
-              </div>
-            ) : (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => onEditBody && startEdit()}
-                onKeyDown={(e) => {
-                  if (onEditBody && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault();
-                    startEdit();
-                  }
-                }}
-                title={onEditBody ? "Click to edit" : undefined}
-                className={`mt-1.5 whitespace-pre-wrap rounded-md bg-overlay-subtle px-2.5 py-2 text-body leading-body text-text-secondary ${onEditBody ? "cursor-text" : ""}`}
-              >
-                {card.body}
-              </div>
-            )
+            <div className="description-content mt-1.5 rounded-md bg-overlay-subtle px-2.5 py-2 text-body leading-body text-text-secondary">
+              {renderMarkdown(card.body as string, { linkifyRefs: true })}
+            </div>
           )}
         </div>
-      )}
+      ) : !collapsed && canEdit ? (
+        <button
+          type="button"
+          onClick={startEditBody}
+          className="mt-2.5 flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        >
+          <Plus size={11} strokeWidth={2} />
+          Add detail
+        </button>
+      ) : null}
 
       {!collapsed && suggestedLinks.length > 0 && (
         <ul className="mt-2.5 space-y-1">

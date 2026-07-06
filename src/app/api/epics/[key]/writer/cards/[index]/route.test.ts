@@ -104,4 +104,63 @@ describe("PATCH /api/epics/[key]/writer/cards/[index]", () => {
     const res = await PATCH(patchReq("VPL-NONE", "0", { body: "x" }), makeParams("VPL-NONE", "0"));
     expect(res.status).toBe(404);
   });
+
+  // BRDG-490 #5: DRAFT cards are editable in place - title / bullets / body.
+  it("persists a hand-edited title", async () => {
+    seedEpicWithCard("VPL-T1", "sess-t1", 0, null);
+    const res = await PATCH(patchReq("VPL-T1", "0", { title: "  Renamed card  " }), makeParams("VPL-T1", "0"));
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.title).toBe("Renamed card");
+
+    const cardRow = testDb.select().from(epicChildDraft).where(eq(epicChildDraft.cardIndex, 0)).get();
+    expect(cardRow!.title).toBe("Renamed card");
+  });
+
+  it("rejects an empty title", async () => {
+    seedEpicWithCard("VPL-T2", "sess-t2", 0, null);
+    const res = await PATCH(patchReq("VPL-T2", "0", { title: "   " }), makeParams("VPL-T2", "0"));
+    expect(res.status).toBe(400);
+  });
+
+  it("persists hand-edited bullets, trimming blanks", async () => {
+    seedEpicWithCard("VPL-B1", "sess-b1", 0, null);
+    const res = await PATCH(
+      patchReq("VPL-B1", "0", { bullets: ["first", "  second  ", "", "   "] }),
+      makeParams("VPL-B1", "0"),
+    );
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.bullets).toEqual(["first", "second"]);
+
+    const cardRow = testDb.select().from(epicChildDraft).where(eq(epicChildDraft.cardIndex, 0)).get();
+    expect(cardRow!.bullets).toEqual(["first", "second"]);
+  });
+
+  it("rejects bullets that are not an array of strings", async () => {
+    seedEpicWithCard("VPL-B2", "sess-b2", 0, null);
+    const res = await PATCH(patchReq("VPL-B2", "0", { bullets: ["ok", 3] }), makeParams("VPL-B2", "0"));
+    expect(res.status).toBe(400);
+  });
+
+  it("applies a multi-field patch and leaves unspecified fields untouched", async () => {
+    seedEpicWithCard("VPL-M1", "sess-m1", 0, "keep body");
+    const res = await PATCH(
+      patchReq("VPL-M1", "0", { title: "New", bullets: ["x"] }),
+      makeParams("VPL-M1", "0"),
+    );
+    expect(res.status).toBe(200);
+
+    const cardRow = testDb.select().from(epicChildDraft).where(eq(epicChildDraft.cardIndex, 0)).get();
+    expect(cardRow!.title).toBe("New");
+    expect(cardRow!.bullets).toEqual(["x"]);
+    // Body was not in the patch, so it stays as seeded.
+    expect(cardRow!.body).toBe("keep body");
+  });
+
+  it("rejects an empty patch with no editable fields", async () => {
+    seedEpicWithCard("VPL-E1", "sess-e1", 0, null);
+    const res = await PATCH(patchReq("VPL-E1", "0", { foo: "bar" }), makeParams("VPL-E1", "0"));
+    expect(res.status).toBe(400);
+  });
 });

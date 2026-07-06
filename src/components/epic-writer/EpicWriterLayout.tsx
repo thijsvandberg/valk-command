@@ -300,7 +300,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             <BreakdownBoard
               cards={writer.cards}
               onDeepen={writer.deepenCard}
-              onEditBody={writer.updateCardBody}
+              onEditCard={writer.updateCard}
               onCreateInJira={writer.createCardInJira}
               onConfirmLink={writer.confirmCardLink}
               onReassignSprint={writer.reassignCardSprint}

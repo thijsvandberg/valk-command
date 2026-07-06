@@ -25,8 +25,11 @@ interface BreakdownBoardProps {
   cards: EpicChildCardWithSprint[];
   // Deepen a card into a full body + AC (refine phase).
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
-  // Persist a PO hand-edit of a card's worked-out body.
-  onEditBody?: (index: number, body: string | null) => void | Promise<unknown>;
+  // Persist a PO hand-edit of a DRAFT card in place (BRDG-490 #5): title / bullets / body.
+  onEditCard?: (
+    index: number,
+    patch: { title?: string; bullets?: string[]; body?: string | null },
+  ) => void | Promise<unknown>;
   // Promote a DRAFT card to a real Jira issue under the epic.
   onCreateInJira?: (index: number, placement: string) => void | Promise<unknown>;
   // Confirm one AI-proposed inter-story link.
@@ -58,7 +61,7 @@ interface BreakdownBoardProps {
 export function BreakdownBoard({
   cards,
   onDeepen,
-  onEditBody,
+  onEditCard,
   onCreateInJira,
   onConfirmLink,
   onReassignSprint,
@@ -199,7 +202,7 @@ export function BreakdownBoard({
                   card={card}
                   reorderable={!!onReorder}
                   onDeepen={onDeepen}
-                  onEditBody={onEditBody}
+                  onEditCard={onEditCard}
                   onCreateInJira={onCreateInJira}
                   onConfirmLink={onConfirmLink}
                   onReassignSprint={onReassignSprint}

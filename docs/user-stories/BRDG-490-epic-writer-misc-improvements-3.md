@@ -51,13 +51,13 @@ The phase rail is its own full-width row under the header, costing vertical spac
 
 ### 5. Edit DRAFT breakdown cards directly (not yet a Jira story)
 A breakdown card that only has title/bullets/description (DRAFT, no Jira issue yet) can currently only be changed via chat. The PO wants to edit it directly.
-- [ ] Make DRAFT cards' title, bullets, and description editable in place (persist to `epic_child_draft`; there is already `updateCardBody` for the body - extend to title/bullets).
+- [x] Make DRAFT cards' title, bullets, and description editable in place (persist to `epic_child_draft`; there is already `updateCardBody` for the body - extend to title/bullets).
 - Note: keep created-in-Jira cards' editing behaviour as-is (those round-trip through the story editor / Jira).
 
 ### 6. Render card detail as formatted markdown (+ inline formatted editor)
 The expanded card detail ("Show detail") shows RAW markdown (`### User Story`, `- bullets`) instead of rendered markdown (`ChildStoryCard.tsx` prints `card.body` as text, no `renderMarkdown`).
-- [ ] Render the card detail as formatted markdown.
-- [ ] Ideally combine display + editing: an inline editor that shows the formatted markdown you can edit in place (reuse the story editor rather than a raw textarea).
+- [x] Render the card detail as formatted markdown.
+- [x] Ideally combine display + editing: an inline editor that shows the formatted markdown you can edit in place (reuse the story editor rather than a raw textarea).
 - Note: editing the body vs the bullets are two different things, so expect two edit affordances (one for bullets, one for the full body). Ties into BRDG-490 #5 (editable DRAFT cards).
 
 ### 7. Clarify / unify the Refine vs Deepen card buttons

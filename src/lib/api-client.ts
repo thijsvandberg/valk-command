@@ -451,7 +451,13 @@ export const epicWriter = {
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/messages`, { method: "POST", body: data, signal }),
   applyOutput: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/apply-output`, { method: "POST", body: data, signal }),
-  updateCard: (key: string, index: number, data: { body: string | null }, signal?: AbortSignal) =>
+  // Partial edit of a card (BRDG-490 #5): any of title / bullets / body.
+  updateCard: (
+    key: string,
+    index: number,
+    data: { title?: string; bullets?: string[]; body?: string | null },
+    signal?: AbortSignal,
+  ) =>
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/cards/${index}`, { method: "PATCH", body: data, signal }),
   // Persist a manual drag-reorder of the breakdown cards (BRDG-487 #10).
   reorderCards: (key: string, data: { orderedIds: string[] }, signal?: AbortSignal) =>

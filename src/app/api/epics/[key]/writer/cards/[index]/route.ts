@@ -11,11 +11,12 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 type RouteContext = { params: Promise<{ key: string; index: string }> };
 
 /**
- * Edits one child card's worked-out body in place. The detail phase fills the
- * body via the AI (<story-detail>), but the PO can then refine it by hand; this
- * is the persistence path for that edit, so the depth (and the body sent on a
- * later Create-in-Jira) reflects the PO's own wording. An empty body clears the
- * detail, dropping the card's depth back to bullets.
+ * Edits one child card in place. The AI fills the card during breakdown/refine,
+ * but the PO can then hand-edit it; this is the persistence path for that edit.
+ * A partial patch of any of title / bullets / body is accepted (each optional),
+ * so the PO can rename a DRAFT card, retype its bullets, or reword its body
+ * (BRDG-490 #5). An empty body clears the detail, dropping the card's depth back
+ * to bullets; the title must stay non-empty.
  */
 export async function PATCH(request: Request, { params }: RouteContext) {
   const limited = await applyRateLimit("write");
@@ -33,11 +34,35 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const parsed = await parseJsonBody(request);
   if ("error" in parsed) return parsed.error;
   const body = parsed.data as Record<string, unknown>;
-  if (!("body" in body) || (body.body !== null && typeof body.body !== "string")) {
-    return errorResponse("body must be a string or null", 400);
+
+  const patch: { title?: string; bullets?: string[]; body?: string | null } = {};
+
+  if ("title" in body) {
+    if (typeof body.title !== "string" || body.title.trim().length === 0) {
+      return errorResponse("title must be a non-empty string", 400);
+    }
+    patch.title = body.title.trim();
   }
-  const trimmed = typeof body.body === "string" ? body.body.trim() : "";
-  const nextBody = trimmed.length > 0 ? trimmed : null;
+
+  if ("bullets" in body) {
+    if (!Array.isArray(body.bullets) || body.bullets.some((b) => typeof b !== "string")) {
+      return errorResponse("bullets must be an array of strings", 400);
+    }
+    // Drop blank lines so an accidental trailing empty bullet is not persisted.
+    patch.bullets = (body.bullets as string[]).map((b) => b.trim()).filter((b) => b.length > 0);
+  }
+
+  if ("body" in body) {
+    if (body.body !== null && typeof body.body !== "string") {
+      return errorResponse("body must be a string or null", 400);
+    }
+    const trimmed = typeof body.body === "string" ? body.body.trim() : "";
+    patch.body = trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return errorResponse("Provide at least one of title, bullets, or body", 400);
+  }
 
   try {
     const session = await db
@@ -74,10 +99,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const now = new Date().toISOString();
     await db
       .update(epicChildDraft)
-      .set({ body: nextBody, updatedAt: now })
+      .set({ ...patch, updatedAt: now })
       .where(eq(epicChildDraft.id, card.id));
 
-    return NextResponse.json({ ok: true, cardIndex, body: nextBody });
+    return NextResponse.json({ ok: true, cardIndex, ...patch });
   } catch (err) {
     logger.error("epic-writer", "PATCH card body failed", err);
     return errorResponse("Failed to update card", 500);
