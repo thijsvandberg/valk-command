@@ -35,7 +35,7 @@ The PO wants to fold/unfold single stories on the breakdown board, independently
 
 ### 2. Merge the DRAFT and depth (Title/Bullets/Full) indicators into one status
 `ChildStoryCard.tsx` shows two separate signals: the `DRAFT`/created state, and a depth badge (`Title` / `Bullets` / `Full`, from `cardDepth`). Together they read as redundant/confusing.
-- [ ] Combine them into a single, clear status representation (e.g. one badge that conveys both "draft vs created" and how worked-out it is), consistent with Bridge's badge conventions.
+- [x] Combine them into a single, clear status representation (e.g. one badge that conveys both "draft vs created" and how worked-out it is), consistent with Bridge's badge conventions.
 
 ### 3. Toggle chat vs editor when editing a story in the Epic Writer
 When editing a child story in the writer, the layout is a fixed 50/50 chat|editor split, so each side gets too small.
@@ -60,7 +60,7 @@ The expanded card detail ("Show detail") shows RAW markdown (`### User Story`, `
 
 ### 7. Clarify / unify the Refine vs Deepen card buttons
 The card work-out button is one action (`onDeepen`) labeled by state: `hasBody ? "Refine" : "Deepen"` (line ~322). Same action, two labels - confusing, and "Refine" now collides with the phase name (BRDG-488).
-- [ ] Make the card work-out action clear: either one consistent label, or clearly-distinct labels/tooltips that explain "flesh out to full" vs "adjust the existing full story". Avoid clashing with the "Refine" phase name.
+- [x] Make the card work-out action clear: either one consistent label, or clearly-distinct labels/tooltips that explain "flesh out to full" vs "adjust the existing full story". Avoid clashing with the "Refine" phase name.
 
 ### 8. Card AI-action buttons: send-now vs stage-in-chat (split button)
 The quick-prompt chips in the chat already offer two modes (send immediately, or drop the prompt into the compose box via the small arrow so the PO can edit it first - see the "Investigate" chip). The card actions (Deepen/Refine, and the empty-board "Generate breakdown") only send immediately.

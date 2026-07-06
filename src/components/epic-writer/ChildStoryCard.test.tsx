@@ -51,15 +51,31 @@ describe("ChildStoryCard", () => {
     expect(onDeepen).toHaveBeenCalledWith(2, "Cart summary");
   });
 
-  it("labels the action Refine once a body exists", () => {
+  // BRDG-490 #7: the action no longer says "Refine" (which collides with the
+  // Refine phase name); a worked-out card labels it "Improve".
+  it("labels the action Improve once a body exists, never Refine", () => {
     render(<ChildStoryCard card={card({ body: "Worked out" })} onDeepen={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /refine/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /improve/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^deepen$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /refine/i })).not.toBeInTheDocument();
   });
 
-  it("shows the Full depth badge once a body is filled", () => {
+  // BRDG-490 #2: the depth badge and the DRAFT pill are folded into one status.
+  it("folds draft state and depth into a single 'Draft · Full' status once a body is filled", () => {
     render(<ChildStoryCard card={card({ body: "Full description" })} />);
-    expect(screen.getByTitle("Depth: Full")).toBeInTheDocument();
+    expect(screen.getByText("Draft · Full")).toBeInTheDocument();
+    // No separate depth badge remains.
+    expect(screen.queryByTitle(/^Depth:/)).not.toBeInTheDocument();
+  });
+
+  it("shows a bullets-depth draft as 'Draft · Bullets'", () => {
+    render(<ChildStoryCard card={card({ bullets: ["a"], body: null })} />);
+    expect(screen.getByText("Draft · Bullets")).toBeInTheDocument();
+  });
+
+  it("shows a title-only draft as plain 'Draft'", () => {
+    render(<ChildStoryCard card={card({ bullets: [], body: null })} />);
+    expect(screen.getByText("Draft")).toBeInTheDocument();
   });
 
   it("disables the deepen action while a task is busy", () => {
@@ -184,8 +200,9 @@ describe("ChildStoryCard", () => {
   });
 
   it("marks a DRAFT card as not schedulable until it is created in Jira (BRDG-486)", () => {
+    // The default card has bullets, so the merged badge reads "Draft · Bullets".
     render(<ChildStoryCard card={card({})} />);
-    expect(screen.getByText("Draft")).toHaveAttribute(
+    expect(screen.getByText("Draft · Bullets")).toHaveAttribute(
       "title",
       expect.stringMatching(/create this story in jira/i),
     );

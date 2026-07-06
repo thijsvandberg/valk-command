@@ -44,9 +44,10 @@ interface ChildStoryCardProps {
 }
 
 /**
- * Depth of a card drives the badge: title-only (skeleton), bullets (the default
- * detail level), or full (a worked-out body added in the refine phase). The
- * badge tells the PO at a glance how far a story has been taken.
+ * Depth of a card: title-only (skeleton), bullets (the default detail level), or
+ * full (a worked-out body added in the refine phase). It feeds the single status
+ * badge (BRDG-490 #2), which folds the old separate DRAFT pill and depth badge
+ * into one signal that reads "draft vs created" AND how worked-out the card is.
  */
 type Depth = "title" | "bullets" | "full";
 
@@ -131,13 +132,6 @@ export function ChildStoryCard({
             {card.title}
           </h3>
         </div>
-        <span
-          className="flex shrink-0 items-center gap-1 rounded-md bg-overlay-default px-1.5 py-0.5 text-label font-medium text-text-tertiary"
-          title={`Depth: ${meta.label}`}
-        >
-          <DepthIcon size={10} strokeWidth={1.75} />
-          {meta.label}
-        </span>
       </header>
 
       {!compact && bullets.length > 0 && (
@@ -269,11 +263,20 @@ export function ChildStoryCard({
             />
           </span>
         ) : (
+          /* Single status badge (BRDG-490 #2): one signal for a not-yet-created
+             card that folds the old separate "Draft" pill and depth badge into
+             "Draft" + how worked-out it is ("Draft · Bullets" / "Draft · Full").
+             A title-only card stays plain "Draft". */
           <span
-            className="rounded bg-overlay-subtle px-1.5 py-0.5 text-label font-medium uppercase tracking-wide text-text-muted"
-            title="Draft - create this story in Jira to schedule it into a sprint"
+            className="flex shrink-0 items-center gap-1 rounded-md bg-overlay-subtle px-1.5 py-0.5 text-label font-medium text-text-tertiary"
+            title={
+              depth === "title"
+                ? "Draft outline - create this story in Jira to schedule it into a sprint"
+                : `Draft (worked out to ${meta.label.toLowerCase()}) - create this story in Jira to schedule it into a sprint`
+            }
           >
-            Draft
+            <DepthIcon size={10} strokeWidth={1.75} />
+            {depth === "title" ? "Draft" : `Draft · ${meta.label}`}
           </span>
         )}
 
@@ -312,14 +315,21 @@ export function ChildStoryCard({
               disabled={busy}
               onClick={() => void onDeepen(card.cardIndex, card.title)}
               className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-              title={hasBody ? "Refine the worked-out story" : "Work this story out in full"}
+              // Distinct, non-colliding labels (BRDG-490 #7): the old "Refine" label
+              // clashed with the Refine phase name (BRDG-488). "Deepen" fleshes an
+              // outline out to a full story; "Improve" adjusts an already-full one.
+              title={
+                hasBody
+                  ? "Improve the worked-out story (adjust the full description and acceptance criteria)"
+                  : "Work this story out into a full description and acceptance criteria"
+              }
             >
               {busy ? (
                 <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
               ) : (
                 <Sparkles size={11} strokeWidth={1.75} />
               )}
-              {hasBody ? "Refine" : "Deepen"}
+              {hasBody ? "Improve" : "Deepen"}
             </button>
           )}
 
