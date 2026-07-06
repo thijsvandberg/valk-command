@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Loader2, CloudUpload, Save, Check } from "lucide-react";
-import Link from "next/link";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
-import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { ViewHeader } from "@/components/shared/ViewHeader";
+import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { Button } from "@/components/ui/Button";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import { PhaseRail } from "./PhaseRail";
 import { BreakdownBoard } from "./BreakdownBoard";
 import { isEpicWriterPhase, type EpicWriterPhase } from "@/types/epic-writer";
@@ -24,6 +26,8 @@ interface EpicWriterLayoutProps {
  */
 export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
   const writer = useStoryWriter(epicKey, { mode: "epic" });
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
+  const [pushing, setPushing] = useState(false);
 
   const { messageDraftMap, draftContentMap } = useMemo(() => {
     const msgMap: Record<string, string> = {};
@@ -38,6 +42,56 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
   const phase: EpicWriterPhase = isEpicWriterPhase(writer.session?.phase)
     ? writer.session.phase
     : "feed";
+
+  // Save draft feedback (BRDG-478): the autosave still runs on its own; this is
+  // the explicit flush. Report the outcome so the action never looks like a
+  // silent no-op, and surface the "nothing to save yet" case.
+  const handleSaveDraft = useCallback(async () => {
+    const session = writer.session;
+    const hasContent = !!(session?.localDraft || session?.localTitle);
+    if (!hasContent) {
+      showToast("Nothing to save yet");
+      return;
+    }
+    try {
+      await writer.saveDraft();
+      showToast("Draft saved");
+    } catch {
+      showToast("Could not save the draft");
+    }
+  }, [writer, showToast]);
+
+  // Push to Jira feedback (BRDG-478): mirrors the single-story Story Writer's
+  // success / conflict / error messaging so the PO gets confirmation instead of
+  // silence.
+  const handlePush = useCallback(async () => {
+    const session = writer.session;
+    const hasContent = !!(session?.localDraft || session?.localTitle);
+    if (!hasContent) {
+      showToast("Nothing to push to Jira yet");
+      return;
+    }
+    setPushing(true);
+    showToast("Pushing to Jira…", 0, { loading: true });
+    try {
+      const result = await writer.pushToJira();
+      if (result.success) {
+        showToast("Pushed to Jira");
+      } else if (result.conflict) {
+        showToast(
+          result.contentChanged
+            ? "Jira was updated externally. Review the diff on the ticket detail page."
+            : "Metadata changed in Jira. Try pushing again.",
+        );
+      } else {
+        showToast("Nothing to push to Jira yet");
+      }
+    } catch {
+      showToast("Push to Jira failed");
+    } finally {
+      setPushing(false);
+    }
+  }, [writer, showToast]);
 
   if (writer.status === "loading") {
     return (
@@ -56,9 +110,26 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
         hideNotifications
         actions={
           <>
+            {/* Autosave indicator: edits persist on their own; this reports it,
+                and the explicit Save draft below flushes + toasts. */}
+            {writer.draftSaveState !== "idle" && (
+              <span className="flex items-center gap-1.5 pr-1 text-label font-medium text-text-muted">
+                {writer.draftSaveState === "saving" ? (
+                  <>
+                    <Loader2 size={12} strokeWidth={1.75} className="animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Check size={12} strokeWidth={2} className="text-[var(--color-brand-400)]" />
+                    Saved
+                  </>
+                )}
+              </span>
+            )}
             <button
               type="button"
-              onClick={() => writer.saveDraft()}
+              onClick={() => void handleSaveDraft()}
               className="flex h-7 items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-3 text-body-sm font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
             >
               <Save size={13} strokeWidth={1.5} />
@@ -67,25 +138,20 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             <Button
               variant="primary"
               size="md"
-              icon={<CloudUpload size={13} strokeWidth={1.5} />}
-              onClick={() => writer.pushToJira()}
+              disabled={pushing}
+              icon={
+                pushing
+                  ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+                  : <CloudUpload size={13} strokeWidth={1.5} />
+              }
+              onClick={() => void handlePush()}
             >
               Push to Jira
             </Button>
           </>
         }
       >
-        <span className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2.5 py-1 text-label font-medium text-text-tertiary">
-          <Check size={11} strokeWidth={2} />
-          Epic
-        </span>
-        <ViewHeaderDivider />
-        <Link
-          href={`/tickets/${epicKey}`}
-          className="font-mono text-label text-text-muted transition-colors duration-150 cursor-pointer hover:text-[var(--color-brand-400)]"
-        >
-          {epicKey}
-        </Link>
+        <TicketRefPill ticketKey={epicKey} />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
           {title}
         </span>
@@ -129,6 +195,8 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
           />
         </aside>
       </div>
+
+      {toast && <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />}
     </div>
   );
 }
