@@ -266,14 +266,31 @@ views (`EpicRightView`):
   with the same `RichEditor` + `StoryWriterChat`. One child at a time; Save/Push
   target the child ticket. Clicking a story in the Sprints view opens it the same way.
 
-Each breakdown card (`ChildStoryCard`) shows a created story's live sprint as a
-badge - brand-tinted when scheduled, muted "To be planned" for the backlog, and a
-"not schedulable until created in Jira" hint on DRAFT cards. The board's cards come
-from the writer session while the Sprints view reads the ticket-detail cache (two
-sources), so a Sprints-view move calls `onChildChanged` -> `writer.refreshSession()`
-to keep the breakdown badge in step without a reload.
+Each breakdown card (`ChildStoryCard`) renders a created story's Jira key as the
+shared `TicketRefPill` and its sprint via Bridge's standard `SprintOrBacklogBadge`
+(sprint name when scheduled, a neutral "Backlog" chip otherwise), matching the
+board (BRDG-487 #9); DRAFT cards show a "not schedulable until created in Jira"
+hint. The board's cards come from the writer session while the Sprints view reads
+the ticket-detail cache (two sources), so a Sprints-view move calls `onChildChanged`
+-> `writer.refreshSession()` to keep the badge in step without a reload.
+
+The breakdown board also offers (BRDG-487): an **expand/compact toggle** in its
+header that collapses cards to titles only (persisted under `ew:breakdown-compact`),
+and **drag-to-reorder** via `@dnd-kit` - each card carries a grip handle, and a drop
+calls `writer.reorderCards(orderedIds)`, which optimistically reassigns `cardIndex`
+and remaps `suggestedLinks.targetIndex` before persisting through the reorder route
+(same remap server-side).
+
+**Chat as a toggleable app (BRDG-487 #3):** the chat is no longer a permanent left
+column. `EpicAppsMenu` lists **Chat** as a toggle above the mutually-exclusive right
+views; hiding it drops the chat column + resizer so the right region takes the full
+width. The choice persists under `ew:{key}:chat`. The phase rail (`PhaseRail`) aligns
+to the header content inset (`CONTENT_MAX` + `px-8`) so it reads as page chrome, not
+part of the chat (BRDG-487 #4).
 
 No shared pane internals (`PaneContext`, `PaneArea`, `AppsMenu`, the apps) are
 modified, so the single-story Story Writer is unaffected. The chat / right split
 is resizable via `useHorizontalSplit` (persisted under `ew:{key}:split`) and each
 column is height-bounded so its own `overflow-y-auto` scrolls instead of the page.
+The Draft editor (`StoryDraftEditor`) uses the `RichEditor`'s `borderless` mode so it
+owns its own bounded scroll region (BRDG-487 #7).
