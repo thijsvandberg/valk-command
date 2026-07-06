@@ -73,4 +73,17 @@ describe("getBookmarks", () => {
     expect(result.map((b) => b.key)).toEqual(["VPL-30"]);
     expect(result[0].notes).toBe("revisit after spike");
   });
+
+  it("keeps a bookmarked epic (BRDG-481) but still drops subtasks", async () => {
+    seedTicket("VPL-40", null, "epic");
+    seedTicket("VPL-41", null, "subtask");
+    testDb.insert(ticketMetadata).values([
+      { jiraKey: "VPL-40", bookmarkedAt: "2026-07-06T10:00:00.000Z" },
+      { jiraKey: "VPL-41", bookmarkedAt: "2026-07-06T11:00:00.000Z" },
+    ]).run();
+
+    const result = await getBookmarks();
+    expect(result.map((b) => b.key)).toEqual(["VPL-40"]);
+    expect(result[0].type).toBe("epic");
+  });
 });

@@ -20,7 +20,8 @@ export interface BookmarkEntry {
 
 // Every bookmarked ticket, cross-sprint (incl. backlog), most-recently-bookmarked
 // first. Joins metadata -> ticket so a bookmarked backlog ticket with no sprint
-// still appears. Draft/subtask/epic rows are excluded to mirror the board.
+// still appears. Draft rows and subtasks are excluded; epics ARE kept (BRDG-481) so a
+// deliberately bookmarked epic is not silently missing from the launcher and page.
 export async function getBookmarks(): Promise<BookmarkEntry[]> {
   const rows = await db
     .select({
@@ -44,8 +45,9 @@ export async function getBookmarks(): Promise<BookmarkEntry[]> {
     .orderBy(desc(ticketMetadata.bookmarkedAt));
 
   // Type filtered in JS (not SQL) so a null-typed row is kept, mirroring the board.
+  // Subtasks are excluded (noise); epics are kept so a bookmarked epic still appears.
   return rows
-    .filter((r) => r.type !== "subtask" && r.type !== "epic")
+    .filter((r) => r.type !== "subtask")
     .map((r) => ({
       key: r.key,
       title: r.title,

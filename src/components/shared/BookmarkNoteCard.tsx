@@ -94,7 +94,26 @@ export function BookmarkNoteCard({ ticketKeys, onClose, onSaved }: BookmarkNoteC
     // confirm; on any failure, revalidate so the optimistic board note self-heals.
     void (async () => {
       const results = await Promise.allSettled(
-        keys.map((k) => ticketsApi.updateMetadata(k, { poNotes: value })),
+        keys.map(async (k) => {
+          // Single-item capture pre-fills the existing note, so `value` already is the
+          // full edited note -> write it as-is. Bulk can't pre-fill (N different notes),
+          // so it APPENDS to any existing note rather than clobbering it (BRDG-480).
+          let note = value;
+          if (isBulk) {
+            try {
+              const meta = await ticketsApi.getMetadata(k);
+              const existing = typeof meta?.poNotes === "string" ? meta.poNotes.trim() : "";
+              if (existing) {
+                note = `${existing}\n\n${value}`;
+                patchTicketCaches(k, { notes: note });
+              }
+            } catch {
+              // Fetch failed: fall back to writing just the typed value (no worse than
+              // the pre-BRDG-480 behaviour), so a note is never silently dropped.
+            }
+          }
+          return ticketsApi.updateMetadata(k, { poNotes: note });
+        }),
       );
       const failed = results.filter((r) => r.status === "rejected").length;
       scopedMutate("/api/bookmarks");

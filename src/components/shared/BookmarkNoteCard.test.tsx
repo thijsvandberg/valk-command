@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BookmarkNoteCard, AUTO_DISMISS_MS } from "./BookmarkNoteCard";
 
@@ -180,14 +180,39 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     fireEvent.change(input, { target: { value: "sprint review batch" } });
     fireEvent.keyDown(input, { key: "Enter" });
 
+    // The optimistic board-note patch is synchronous for every target.
     for (const k of ["A-1", "A-2", "A-3"]) {
-      expect(updateMetadata).toHaveBeenCalledWith(k, { poNotes: "sprint review batch" });
       expect(patchTicketCaches).toHaveBeenCalledWith(k, { notes: "sprint review batch" });
     }
     expect(onClose).toHaveBeenCalledTimes(1);
-    await flush();
+
+    // No existing notes (getMetadata -> {}), so each write is the plain shared note;
+    // the write is now async (it first fetches to know whether to append, BRDG-480).
+    await waitFor(() => {
+      for (const k of ["A-1", "A-2", "A-3"]) {
+        expect(updateMetadata).toHaveBeenCalledWith(k, { poNotes: "sprint review batch" });
+      }
+    });
     expect(scopedMutate).toHaveBeenCalledWith("/api/bookmarks");
     expect(onSaved).toHaveBeenCalledWith(3, 0);
+  });
+
+  it("bulk: appends the shared note to an existing PO note instead of clobbering it (BRDG-480)", async () => {
+    // A-1 already has a note, A-2 does not. The one shared note must append to A-1 and
+    // write plain on A-2 — never overwriting A-1's existing note.
+    getMetadata.mockImplementation((k: string) =>
+      k === "A-1" ? Promise.resolve({ poNotes: "old note" }) : Promise.resolve({}),
+    );
+    render(<BookmarkNoteCard ticketKeys={["A-1", "A-2"]} onClose={vi.fn()} />);
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "batch note" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(updateMetadata).toHaveBeenCalledWith("A-1", { poNotes: "old note\n\nbatch note" });
+    });
+    expect(updateMetadata).toHaveBeenCalledWith("A-2", { poNotes: "batch note" });
   });
 
   it("reports a partial failure and self-heals the board when a write rejects", async () => {

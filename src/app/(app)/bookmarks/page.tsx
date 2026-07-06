@@ -8,7 +8,7 @@ import type { Ticket, TicketReadiness } from "@/types/ticket";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import type { BookmarkEntry } from "@/lib/bookmarks";
 import { tickets as ticketsApi, swrFetcher } from "@/lib/api-client";
-import { useTickets, useJiraSprints } from "@/hooks/useSprintBoard";
+import { useTickets, useJiraSprints, useTicketsByKeys } from "@/hooks/useSprintBoard";
 import { mapJiraSprints, saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { makeInboxDispatchAdapter, type RowDataAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
@@ -54,17 +54,25 @@ export default function BookmarksPage() {
     return m;
   }, [sprints]);
 
+  // Epics are excluded from the board's All-view feed (`/api/tickets`), so a bookmarked
+  // epic would hydrate to nothing here. Fetch those keys directly (the single-ticket
+  // endpoint has no type filter) and merge them in so epics show on the page too
+  // (BRDG-481) — matching the launcher, which reads /api/bookmarks straight.
+  const epicKeys = useMemo(() => (order ?? []).filter((e) => e.type === "epic").map((e) => e.key), [order]);
+  const epicTickets = useTicketsByKeys(epicKeys);
+
   // The /api/bookmarks batch is the authoritative "what is bookmarked" set (already
   // bookmarkedAt-desc); hydrate each entry with the full ticket from the All-view list
-  // so rows render readiness/epic/etc. Deriving from the batch (not `allTickets`
-  // filtered) means any un-bookmark — from the row menu, bulk bar or the side panel —
-  // drops the row as soon as the batch revalidates, and the open panel auto-closes
-  // when its row disappears.
+  // (plus the separately-fetched epics) so rows render readiness/epic/etc. Deriving from
+  // the batch (not `allTickets` filtered) means any un-bookmark — from the row menu, bulk
+  // bar or the side panel — drops the row as soon as the batch revalidates, and the open
+  // panel auto-closes when its row disappears.
   const rows = useMemo(() => {
     if (!order) return [];
     const byKey = new Map((allTickets ?? []).map((t) => [t.key, t]));
+    for (const t of epicTickets) byKey.set(t.key, t);
     return order.map((e) => byKey.get(e.key)).filter((t): t is Ticket => Boolean(t));
-  }, [allTickets, order]);
+  }, [allTickets, order, epicTickets]);
 
   // --- Selection ---
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
