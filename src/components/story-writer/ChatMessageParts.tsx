@@ -352,6 +352,13 @@ export function ChatMessage({
           .replace(/<summary>[\s\S]*?<\/summary>/g, "")
           .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
           .replace(/<investigation>[\s\S]*?<\/investigation>/g, "")
+          // Epic Writer structured blocks (BRDG-478): these are parsed for the
+          // breakdown board by apply-output; in the chat only the AI's prose
+          // commentary should show, not the raw JSON/XML.
+          .replace(/<epic-breakdown>[\s\S]*?<\/epic-breakdown>/g, "")
+          .replace(/<epic-questions>[\s\S]*?<\/epic-questions>/g, "")
+          .replace(/<story-detail>[\s\S]*?<\/story-detail>/g, "")
+          .replace(/<sprint-plan>[\s\S]*?<\/sprint-plan>/g, "")
           .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "");
         // When the message contained related-stories results, strip the verbose
         // scoring breakdown since the card already displays all candidates.
@@ -422,6 +429,23 @@ export function ChatMessage({
   const isLong = countWords(displayContent) > SHOW_MORE_WORD_THRESHOLD;
   const truncatedContent = isLong ? truncateAtWords(displayContent, TRUNCATE_WORD_COUNT) : displayContent;
   const isCancelled = !!message.cancelled;
+
+  // BRDG-478: an assistant message whose entire content was structured blocks
+  // (e.g. a related-stories <html-report> or an <epic-breakdown>) strips down to
+  // nothing renderable. Render no bubble at all instead of an empty one.
+  // Cancelled messages are kept so their "Cancelled" badge still shows.
+  const nothingToRender =
+    !isUser &&
+    !isCancelled &&
+    !displayContent &&
+    !contentAfter &&
+    allTitleSuggestions.length === 0 &&
+    !typeSuggestion &&
+    linkSuggestions.length === 0 &&
+    epicSuggestions.length === 0 &&
+    !investigationResult &&
+    !draftId;
+  if (nothingToRender) return null;
 
   return (
     <div className={`group flex flex-col ${isUser ? "items-end" : "items-start"}`}>

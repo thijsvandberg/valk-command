@@ -313,6 +313,83 @@ describe("ChatMessage investigation rendering (BRDG-435)", () => {
   });
 });
 
+describe("ChatMessage epic-writer tag stripping (BRDG-478)", () => {
+  it("strips <epic-breakdown> from the displayed body but keeps commentary", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({
+          content: 'Here is a first cut. <epic-breakdown>[{"title":"A"}]</epic-breakdown>',
+        })}
+      />,
+    );
+    const body = screen.getByTestId("markdown");
+    expect(body.textContent).not.toContain("epic-breakdown");
+    expect(body.textContent).not.toContain("title");
+    expect(body.textContent).toContain("Here is a first cut.");
+  });
+
+  it("strips <epic-questions>, <story-detail> and <sprint-plan> blocks", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({
+          content:
+            "Intro. <epic-questions>q</epic-questions> <story-detail>d</story-detail> <sprint-plan>s</sprint-plan> Outro.",
+        })}
+      />,
+    );
+    const body = screen.getByTestId("markdown");
+    expect(body.textContent).not.toContain("epic-questions");
+    expect(body.textContent).not.toContain("story-detail");
+    expect(body.textContent).not.toContain("sprint-plan");
+    expect(body.textContent).toContain("Intro.");
+    expect(body.textContent).toContain("Outro.");
+  });
+});
+
+describe("ChatMessage empty-bubble suppression (BRDG-478)", () => {
+  it("renders nothing when an assistant message is only an <html-report>", () => {
+    const { container } = render(
+      <ChatMessage
+        message={makeMessage({ content: `<html-report>${"x".repeat(100)}</html-report>` })}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByTestId("markdown")).toBeNull();
+  });
+
+  it("renders nothing when an assistant message is only an <epic-breakdown>", () => {
+    const { container } = render(
+      <ChatMessage
+        message={makeMessage({ content: '<epic-breakdown>[{"title":"A"}]</epic-breakdown>' })}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("still renders a draft-only assistant message (has draftId)", () => {
+    render(<ChatMessage message={makeMessage({ content: "" })} draftId="d-1" draftContent="Some draft" />);
+    expect(screen.queryByText("Draft updated")).not.toBeNull();
+  });
+
+  it("still renders a cancelled empty assistant message so its badge shows", () => {
+    render(<ChatMessage message={makeMessage({ content: "<html-report>big</html-report>", cancelled: true })} />);
+    expect(screen.queryByTestId("cancelled-badge")).not.toBeNull();
+  });
+
+  it("still renders a normal assistant message", () => {
+    render(<ChatMessage message={makeMessage({ content: "Just commentary." })} />);
+    expect(screen.queryByText("Just commentary.")).not.toBeNull();
+  });
+
+  it("does not suppress an empty user message bubble", () => {
+    // Suppression is assistant-only; user rows are handled elsewhere.
+    const { container } = render(
+      <ChatMessage message={makeMessage({ role: "user", content: "<html-report>x</html-report>" })} />,
+    );
+    expect(container.firstChild).not.toBeNull();
+  });
+});
+
 describe("stripEpicSuggestionTags", () => {
   it("strips epic-suggestion XML tags", () => {
     const input = `before <epic-suggestion><epic key="VPL-1" confidence="high" reason="r" /></epic-suggestion> after`;
