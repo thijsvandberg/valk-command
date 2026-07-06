@@ -401,6 +401,20 @@ describe("useStoryWriter", () => {
       expect(deleteCall?.[0]).toBe(`${API_BASE}/messages?id=srv-msg-9`);
     });
 
+    it("clearChat empties messages and calls DELETE ?all=true (BRDG-489)", async () => {
+      const fetchSpy = mockFetchWithSession({ onPostMessage: () => ({ ok: true, status: 201, json: async () => ({}) }) as Response });
+
+      const { result } = renderHook(() => useStoryWriter(TICKET_KEY));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+      expect(result.current.messages.length).toBeGreaterThan(0);
+
+      await act(async () => { await result.current.clearChat(); });
+
+      expect(result.current.messages).toHaveLength(0);
+      const deleteCall = fetchSpy.mock.calls.find(([, init]) => init?.method === "DELETE");
+      expect(deleteCall?.[0]).toBe(`${API_BASE}/messages?all=true`);
+    });
+
     it("skips the server delete when dismissing a temp-id message", async () => {
       // No messageId in the error body, so the optimistic temp id is kept.
       const fetchSpy = mockFetchWithSession({

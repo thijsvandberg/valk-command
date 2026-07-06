@@ -5,6 +5,8 @@ import { agentErrorResponse, errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import {
   sendStoryWriterMessage,
+  deleteMessage,
+  clearConversationMessages,
   StoryWriterError,
   StoryWriterAgentError,
 } from "@/lib/story-writer-messages";
@@ -49,6 +51,40 @@ export async function POST(request: Request, { params }: RouteContext) {
     if (err instanceof StoryWriterAgentError) {
       return agentErrorResponse(err.agentError, err.status);
     }
+    if (err instanceof StoryWriterError) {
+      return errorResponse(err.message, err.status, err.code);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Clears the epic conversation (BRDG-489, ?all=true) or dismisses one failed/pending
+ * message (?id=). Keeps the session, its localDraft, and the breakdown cards; only
+ * the chat history is removed. Mirrors the ticket story-writer messages DELETE.
+ */
+export async function DELETE(request: Request, { params }: RouteContext) {
+  const limited = await applyRateLimit("delete");
+  if (limited) return limited;
+
+  const { key } = await params;
+  const invalid = validatePathParam(key);
+  if (invalid) return invalid;
+
+  const url = new URL(request.url);
+  const messageId = url.searchParams.get("id");
+  const clearAll = url.searchParams.get("all") === "true";
+
+  if (!clearAll && !messageId) {
+    return errorResponse("Missing query parameter: id (or all=true to clear)", 400);
+  }
+
+  try {
+    const result = clearAll
+      ? await clearConversationMessages(key)
+      : await deleteMessage(key, messageId as string);
+    return NextResponse.json(result);
+  } catch (err) {
     if (err instanceof StoryWriterError) {
       return errorResponse(err.message, err.status, err.code);
     }

@@ -267,6 +267,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
               onRetry={writer.retryMessage}
               onDismissFailed={writer.dismissFailedMessage}
               onCancel={writer.cancelCurrentTask}
+              onClearChat={writer.clearChat}
               messageDraftMap={messageDraftMap}
               draftContentMap={draftContentMap}
               acceptedDraftIds={acceptedDraftIds}

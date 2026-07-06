@@ -962,3 +962,34 @@ export async function deleteMessage(key: string, messageId: string): Promise<{ s
     );
   return { success: true, deleted: deleted.changes };
 }
+
+/**
+ * Clears the whole conversation of the active session (BRDG-489) so a long chat
+ * stops bloating the per-turn context. Deletes every message row for the session's
+ * conversation regardless of status, but leaves the session, its localDraft/edits,
+ * and any breakdown cards (epic_child_draft) intact. AI suggestion drafts
+ * (story_writer_draft) survive too: their message_id FK is ON DELETE SET NULL, so
+ * the rows are kept (just unlinked from the now-gone messages). After a clear the
+ * next turn still carries the story/epic context, just no chat history.
+ */
+export async function clearConversationMessages(key: string): Promise<{ success: boolean; deleted: number }> {
+  const session = await db
+    .select()
+    .from(storyWriterSession)
+    .where(
+      and(
+        eq(storyWriterSession.ticketKey, key),
+        eq(storyWriterSession.status, "active"),
+      ),
+    )
+    .get();
+
+  if (!session) {
+    throw new StoryWriterError("No active session", 404);
+  }
+
+  const deleted = await db
+    .delete(message)
+    .where(eq(message.conversationId, session.conversationId));
+  return { success: true, deleted: deleted.changes };
+}

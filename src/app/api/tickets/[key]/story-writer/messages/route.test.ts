@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, conversation, storyWriterSession, message } from "@/db/schema";
+import { ticket, conversation, storyWriterSession, storyWriterDraft, message } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
@@ -357,6 +357,12 @@ describe("DELETE /api/tickets/[key]/story-writer/messages", () => {
     });
   }
 
+  function makeClearRequest(key: string) {
+    return new Request(`http://localhost:3100/api/tickets/${key}/story-writer/messages?all=true`, {
+      method: "DELETE",
+    });
+  }
+
   function seedMessage(convId: string, status: "pending" | "sent" | "failed") {
     const id = randomUUID();
     testDb.insert(message).values({
@@ -398,7 +404,7 @@ describe("DELETE /api/tickets/[key]/story-writer/messages", () => {
     expect(remaining).toHaveLength(1);
   });
 
-  it("returns 400 when id is missing", async () => {
+  it("returns 400 when neither id nor all is given", async () => {
     seedSession(testDb, "VPL-100");
 
     const res = await DELETE(makeDeleteRequest("VPL-100"), makeParams("VPL-100"));
@@ -410,6 +416,54 @@ describe("DELETE /api/tickets/[key]/story-writer/messages", () => {
     testDb.insert(ticket).values({ jiraKey: "VPL-999", title: "T", status: "TO DO" }).run();
 
     const res = await DELETE(makeDeleteRequest("VPL-999", randomUUID()), makeParams("VPL-999"));
+
+    expect(res.status).toBe(404);
+  });
+
+  // BRDG-489: ?all=true clears the whole conversation but keeps session + draft.
+  it("clears all messages (any status) with ?all=true, keeping session and draft", async () => {
+    const { convId, sessionId } = seedSession(testDb, "VPL-100");
+    seedMessage(convId, "sent");
+    seedMessage(convId, "sent");
+    seedMessage(convId, "failed");
+
+    const res = await DELETE(makeClearRequest("VPL-100"), makeParams("VPL-100"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.deleted).toBe(3);
+    expect(testDb.select().from(message).where(eq(message.conversationId, convId)).all()).toHaveLength(0);
+
+    // Session + its draft survive the clear.
+    const session = testDb.select().from(storyWriterSession).where(eq(storyWriterSession.id, sessionId)).get();
+    expect(session?.status).toBe("active");
+    expect(session?.localDraft).toBe("Current local draft");
+  });
+
+  it("keeps AI suggestion drafts on a clear, unlinking them from the deleted messages", async () => {
+    const { convId, sessionId } = seedSession(testDb, "VPL-100");
+    const msgId = seedMessage(convId, "sent");
+    const draftId = randomUUID();
+    testDb.insert(storyWriterDraft).values({
+      id: draftId,
+      sessionId,
+      draftIndex: 0,
+      content: "AI draft body",
+      messageId: msgId,
+    }).run();
+
+    await DELETE(makeClearRequest("VPL-100"), makeParams("VPL-100"));
+
+    // The draft row survives (message_id FK is ON DELETE SET NULL).
+    const draft = testDb.select().from(storyWriterDraft).where(eq(storyWriterDraft.id, draftId)).get();
+    expect(draft?.content).toBe("AI draft body");
+    expect(draft?.messageId).toBeNull();
+  });
+
+  it("returns 404 on ?all=true when no active session exists", async () => {
+    testDb.insert(ticket).values({ jiraKey: "VPL-998", title: "T", status: "TO DO" }).run();
+
+    const res = await DELETE(makeClearRequest("VPL-998"), makeParams("VPL-998"));
 
     expect(res.status).toBe(404);
   });

@@ -20,9 +20,11 @@ import {
   AlertCircle,
   RotateCcw,
   X,
+  Eraser,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { WorkspaceUsage } from "@/hooks/useStoryWriter";
 import type { RelatedStoryCandidate } from "@/types/story-writer";
 import {
@@ -51,6 +53,10 @@ interface StoryWriterChatProps {
   onRetry?: (messageId: string) => Promise<boolean>;
   onDismissFailed?: (messageId: string) => Promise<void> | void;
   onCancel?: () => void;
+  // Clears the conversation's messages while keeping the draft + breakdown cards
+  // (BRDG-489). When provided, a "Clear chat" button and the `/clear` compose
+  // command are enabled, both gated behind a confirmation.
+  onClearChat?: () => void | Promise<void>;
   onFindRelated?: () => void;
   onOpenRelatedPanel?: () => void;
   onStoryKeyClick?: (key: string) => void;
@@ -208,6 +214,7 @@ export function StoryWriterChat({
   onRetry,
   onDismissFailed,
   onCancel,
+  onClearChat,
   onFindRelated,
   onOpenRelatedPanel,
   onStoryKeyClick,
@@ -239,6 +246,7 @@ export function StoryWriterChat({
   const [sending, setSending] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [dupWarning, setDupWarning] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -378,6 +386,14 @@ export function StoryWriterChat({
     const trimmed = inputValue.trim();
     if (!trimmed || sending || isStreaming) return;
 
+    // `/clear` is an in-app command, not a message (BRDG-489): swallow it (never
+    // send or persist it) and open the clear-chat confirmation instead.
+    if (trimmed === "/clear") {
+      setInputValue("");
+      if (onClearChat) setShowClearConfirm(true);
+      return;
+    }
+
     // Client-side dedup: block identical message sent within 10s
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (lastUserMsg && lastUserMsg.content.trim() === trimmed) {
@@ -398,7 +414,7 @@ export function StoryWriterChat({
     if (!success) setInputValue(trimmed);
     setSending(false);
     textareaRef.current?.focus();
-  }, [inputValue, sending, isStreaming, messages, onSend]);
+  }, [inputValue, sending, isStreaming, messages, onSend, onClearChat]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -694,6 +710,23 @@ export function StoryWriterChat({
                   onClose={() => setShowActions(false)}
                   disabled={isBusy}
                 />
+                {/* Clear chat (BRDG-489): wipes the conversation (draft + cards
+                    survive) after a confirmation. Disabled while a turn is in
+                    flight so we never clear mid-response, and hidden when the
+                    chat is already empty. The `/clear` command opens the same
+                    confirmation. */}
+                {onClearChat && messages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowClearConfirm(true)}
+                    disabled={isBusy}
+                    title="Clear chat (removes the conversation; keeps the draft)"
+                    className="flex h-6 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  >
+                    <Eraser size={12} strokeWidth={1.75} />
+                    Clear
+                  </button>
+                )}
                 {usage && (usage.inputTokens > 0 || usage.outputTokens > 0) && (
                   <span className="text-caption text-text-tertiary tabular-nums">
                     {(usage.inputTokens / 1000).toFixed(1)}k&nbsp;in&nbsp;·&nbsp;{(usage.outputTokens / 1000).toFixed(1)}k&nbsp;out
@@ -740,6 +773,17 @@ export function StoryWriterChat({
           </div>
         </div>
       </div>
+
+      {onClearChat && (
+        <ConfirmDialog
+          open={showClearConfirm}
+          onClose={() => setShowClearConfirm(false)}
+          title="Clear chat?"
+          description="This removes the whole conversation. Your draft and any breakdown cards are kept, and the next question still has the full story context - only the chat history is cleared."
+          confirmLabel="Clear chat"
+          onConfirm={() => { void onClearChat(); }}
+        />
+      )}
     </div>
   );
 }

@@ -158,6 +158,7 @@ export function ChildStoryView({ childKey, onClose, showToast }: ChildStoryViewP
               onSend={child.sendMessage}
               onRetry={child.retryMessage}
               onDismissFailed={child.dismissFailedMessage}
+              onClearChat={child.clearChat}
               onCancel={child.cancelCurrentTask}
               messageDraftMap={messageDraftMap}
               draftContentMap={draftContentMap}

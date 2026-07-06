@@ -7,6 +7,7 @@ import { parseJsonBody } from "@/lib/request-parser";
 import {
   sendStoryWriterMessage,
   deleteMessage,
+  clearConversationMessages,
   StoryWriterError,
   StoryWriterAgentError,
 } from "@/lib/story-writer-messages";
@@ -66,13 +67,18 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   const key = resolveDraftKey(rawKey);
   const url = new URL(request.url);
   const messageId = url.searchParams.get("id");
+  // Clear-all variant (BRDG-489): ?all=true wipes the whole conversation while
+  // keeping the session, draft, and breakdown cards.
+  const clearAll = url.searchParams.get("all") === "true";
 
-  if (!messageId) {
-    return errorResponse("Missing query parameter: id", 400);
+  if (!clearAll && !messageId) {
+    return errorResponse("Missing query parameter: id (or all=true to clear)", 400);
   }
 
   try {
-    const result = await deleteMessage(key, messageId);
+    const result = clearAll
+      ? await clearConversationMessages(key)
+      : await deleteMessage(key, messageId as string);
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof StoryWriterError) {

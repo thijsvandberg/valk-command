@@ -376,6 +376,20 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     } catch { /* best-effort; a refreshSession will resurface the row if this failed */ }
   }, [apiBase]);
 
+  // Clear the whole conversation (BRDG-489) without touching the draft or breakdown
+  // cards. Optimistically empties the local list, then wipes the server-side history
+  // via the messages DELETE clear-all variant. apiBase is the ticket story-writer
+  // route, which resolves the active session by key for both story and epic mode
+  // (same path dismissFailedMessage uses). On failure we resync from the server.
+  const clearChat = useCallback(async () => {
+    setMessages([]);
+    try {
+      await apiFetch<void>(`${apiBase}/messages?all=true`, { method: "DELETE" });
+    } catch {
+      void refreshSession();
+    }
+  }, [apiBase, refreshSession]);
+
   const activateSplit = useCallback(async (targetKey?: string, sprintId?: string, title?: string, issueType?: string): Promise<{ targetTicketKey: string }> => {
     const data = await storyWriterApi.activateSplit(ticketKey, {
       ...(targetKey ? { targetKey } : {}),
@@ -643,6 +657,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     sendMessage,
     retryMessage,
     dismissFailedMessage,
+    clearChat,
     cancelCurrentTask,
     updateLocalDraft: drafts.updateLocalDraft,
     updateLocalTitle: drafts.updateLocalTitle,

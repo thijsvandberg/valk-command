@@ -41,6 +41,7 @@ function makeWriterValue(overrides?: Partial<WriterContextValue>): WriterContext
     onSend: vi.fn().mockResolvedValue(true),
     onRetry: vi.fn().mockResolvedValue(true),
     onDismissFailed: vi.fn().mockResolvedValue(undefined),
+    onClearChat: vi.fn().mockResolvedValue(undefined),
     onCancel: vi.fn().mockResolvedValue(undefined),
     onCreateLink: vi.fn().mockResolvedValue(undefined),
     linkedIssueKeys: new Set(),
