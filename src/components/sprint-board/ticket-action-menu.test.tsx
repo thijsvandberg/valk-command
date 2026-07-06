@@ -267,6 +267,22 @@ describe("TicketActionMenuContent", () => {
     expect(screen.queryByText("Back")).not.toBeInTheDocument();
   });
 
+  it("carries the flag toggle inside the Update view (bar dropdown)", () => {
+    const onSetFlagged = vi.fn();
+    render(
+      <TicketActionMenuContent
+        onSetStatus={vi.fn()}
+        onSetFlagged={onSetFlagged}
+        flagState="unflagged"
+        initialView="update"
+        close={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Set Status")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Flag"));
+    expect(onSetFlagged).toHaveBeenCalledWith(true);
+  });
+
   describe("flag items follow flagState", () => {
     it("shows only Flag when all targets are unflagged", () => {
       render(<TicketActionMenuContent onSetFlagged={vi.fn()} flagState="unflagged" close={vi.fn()} />);

@@ -120,20 +120,25 @@ describe("BulkActionBar", () => {
     expect(screen.getByRole("button", { name: "Move" })).toBeTruthy();
   });
 
-  it("opens the Flag icon group and fires onSetFlagged(true)", () => {
+  // Flag lives under the Update dropdown now, not as its own bar icon.
+  it("shows Flag under the Update dropdown and fires onSetFlagged(true)", () => {
     const onSetFlagged = vi.fn();
-    render(<BulkActionBar {...defaultProps} onSetFlagged={onSetFlagged} flagState="unflagged" />);
-    openGroup("Flag");
+    render(<BulkActionBar {...defaultProps} onSetStatus={vi.fn()} onSetFlagged={onSetFlagged} flagState="unflagged" />);
+    openGroup("Update");
     fireEvent.click(screen.getByText("Flag"));
     expect(onSetFlagged).toHaveBeenCalledWith(true);
   });
 
-  it("shows Remove flag in the Flag group when targets are already flagged", () => {
-    render(<BulkActionBar {...defaultProps} onSetFlagged={vi.fn()} flagState="flagged" />);
-    openGroup("Flag");
+  it("shows Remove flag under the Update dropdown when targets are already flagged", () => {
+    render(<BulkActionBar {...defaultProps} onSetStatus={vi.fn()} onSetFlagged={vi.fn()} flagState="flagged" />);
+    openGroup("Update");
     expect(screen.getByText("Remove flag")).toBeTruthy();
-    // No "Flag" menu item (only the icon trigger's aria-label, which getByText ignores).
     expect(screen.queryByText("Flag")).toBeNull();
+  });
+
+  it("renders the Update dropdown for flag-only actions (no other update fields)", () => {
+    render(<BulkActionBar {...defaultProps} onSetFlagged={vi.fn()} flagState="unflagged" />);
+    expect(screen.getByRole("button", { name: "Update" })).toBeTruthy();
   });
 
   it("lists pinned sprints first, in pinned order, under the other-sprint picker", () => {

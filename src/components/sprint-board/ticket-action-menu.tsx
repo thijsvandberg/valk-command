@@ -258,7 +258,21 @@ export function TicketActionMenuContent({
   );
 
   // Bar dropdowns open straight into one group's items (no root menu, no Back).
-  if (initialView === "update") return <>{updateItems}</>;
+  // The bar's Update dropdown also carries the flag toggle: flag is no longer a
+  // standalone bar icon, it lives under Update. Kept out of `updateItems` so the
+  // root right-click menu (which lists flag as a direct item below) never shows it twice.
+  if (initialView === "update")
+    return (
+      <>
+        {updateItems}
+        {showFlag && (
+          <>
+            {divider}
+            {flagItems}
+          </>
+        )}
+      </>
+    );
   if (initialView === "move") return <>{moveItems}</>;
   if (initialView === "flag") return <>{flagItems}</>;
   if (initialView === "assist") return <>{assistItems}</>;

@@ -16,7 +16,6 @@ import {
   ChevronDown,
   Copy,
   FilePen,
-  Flag,
   Loader2,
   RefreshCw,
   Sparkles,
@@ -223,7 +222,8 @@ export function BulkActionBar({
    */
   floating?: boolean;
 }) {
-  const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel;
+  // Flag now lives inside the Update dropdown, so its presence also warrants the group.
+  const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel || onSetFlagged;
   const hasMove = (onQuickMove && quickMoves && quickMoves.length > 0) || (onMoveSprint && sprints);
   const hasAssist = onReviewStory || onGenerateSubtasks || onGenerateTestDocs || onExportForStakeholders;
   const hasGroup = hasUpdate || hasMove || onSetFlagged || onSetBookmarked || hasAssist;
@@ -302,6 +302,8 @@ export function BulkActionBar({
               epicClearable
               onUpdateAssignee={onUpdateAssignee}
               onUpdateLabel={onUpdateLabel}
+              onSetFlagged={onSetFlagged}
+              flagState={flagState}
               initialView="update"
               close={close}
             />
@@ -323,16 +325,6 @@ export function BulkActionBar({
               initialView="move"
               close={close}
             />
-          )}
-        />
-      )}
-      {onSetFlagged && (
-        <GroupDropdown
-          label="Flag"
-          icon={Flag}
-          width="w-52"
-          render={(close) => (
-            <TicketActionMenuContent onSetFlagged={onSetFlagged} flagState={flagState} initialView="flag" close={close} />
           )}
         />
       )}
