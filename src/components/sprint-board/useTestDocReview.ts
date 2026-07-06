@@ -6,7 +6,7 @@ import { parseTestDoc, coerceClassification, type TestDocClassification } from "
 import { getCachedTestDoc, primeTestDocCache, invalidateTestDocCache, revalidateTestDocViews } from "@/lib/test-doc-prefetch";
 import { tickets as ticketsApi, workspaceTasks, ApiError } from "@/lib/api-client";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
-import { patchTicketDetailCache } from "@/lib/ticket-cache";
+import { patchTicketCaches } from "@/lib/ticket-cache";
 
 // Generations run ahead of the PO's review so the queue never waits (bulk
 // prefetch). Capped: each generation is a full agent task on the workspace,
@@ -309,7 +309,7 @@ export function useTestDocReview({
           .then(() => {
             if (becomesDraft) {
               confirmPendingEdit(key, "testDocState");
-              patchTicketDetailCache(key, { testDocState: "draft" });
+              patchTicketCaches(key, { testDocState: "draft" });
             }
             revalidateTestDocViews();
           })
@@ -369,11 +369,18 @@ export function useTestDocReview({
       });
       hasSavedRef.current.add(currentKey);
       confirmPendingEdit(currentKey, "testDocState");
-      patchTicketDetailCache(currentKey, { testDocState: "accepted" });
+      // Patch the LIST cache too (not just the detail), so the board row holds
+      // the new state itself and the overlay self-heals at once. This diverges
+      // from the "detail-only" rule (optimistic-updates doc) deliberately: that
+      // rule guards Jira-lagged fields whose real read snaps back to stale for a
+      // while. The marker derives from Bridge's OWN testDoc column, written
+      // synchronously here, so a real read never lags — and without this the
+      // overlay's 30s TTL expires before the next list refetch (deduped 15s,
+      // polled 60s) confirms the value, snapping the marker back (BRDG-476).
+      patchTicketCaches(currentKey, { testDocState: "accepted" });
       invalidateTestDocCache(currentKey);
-      // Refresh the detail panel, the board rows (the marker flips to accepted)
-      // AND any sprint bundle it was opened from; the server cache is already
-      // invalidated.
+      // Refresh the detail panel, the board rows AND any sprint bundle it was
+      // opened from; the server cache is already invalidated.
       revalidateTestDocViews();
       setSaving(false);
       if (result.conflict) {
@@ -411,7 +418,7 @@ export function useTestDocReview({
       // The not-needed write clears the accepted doc and the draft server-side.
       hasSavedRef.current.delete(currentKey);
       confirmPendingEdit(currentKey, "testDocState");
-      patchTicketDetailCache(currentKey, { testDocState: "not_needed" });
+      patchTicketCaches(currentKey, { testDocState: "not_needed" });
       invalidateTestDocCache(currentKey);
       revalidateTestDocViews();
       setSaving(false);
@@ -438,7 +445,7 @@ export function useTestDocReview({
     try {
       await ticketsApi.unmarkTestDocNotNeeded(currentKey);
       confirmPendingEdit(currentKey, "testDocState");
-      patchTicketDetailCache(currentKey, { testDocState: null });
+      patchTicketCaches(currentKey, { testDocState: null });
       invalidateTestDocCache(currentKey);
       revalidateTestDocViews();
       setSaving(false);
@@ -470,7 +477,7 @@ export function useTestDocReview({
       const result = await ticketsApi.deleteTestDoc(currentKey);
       hasSavedRef.current.delete(currentKey);
       confirmPendingEdit(currentKey, "testDocState");
-      patchTicketDetailCache(currentKey, { testDocState: null });
+      patchTicketCaches(currentKey, { testDocState: null });
       invalidateTestDocCache(currentKey);
       revalidateTestDocViews();
       setSaving(false);

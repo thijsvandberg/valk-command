@@ -96,7 +96,9 @@ early, letting the next stale refetch win - the exact snap-back this overlay pre
 Rule for any sidebar field that also lives on the board row: overlay for the board list,
 `patchTicketDetailCache` for the sidebar's own re-seed, never `patchTicketCaches` (which
 patches the list). Fields with no board-row presence (PO notes, labels) may keep using
-`patchTicketCaches`.
+`patchTicketCaches`. The one board-row exception is `testDocState`, which patches the list
+deliberately because its value has no Jira read-after-write lag — see the Test-doc marker
+section below.
 
 ### Test-doc marker (testDocState)
 
@@ -106,10 +108,23 @@ Save / "No test doc needed" / the background draft save in the review modal
 (`useTestDocReview`) — registers on this overlay. The immediate list revalidation those
 handlers fire can be served a pre-write snapshot (the `/api/tickets` response cache plus
 the browser honoring its `max-age=10, stale-while-revalidate=20` header), which kept the
-old icon until a manual refresh. Two specifics: an accepted doc outranks a draft
-server-side (`deriveTestDocState`), so the draft-save path skips the overlay when an
-accepted doc exists; and an open detail panel gets `patchTicketDetailCache`, per the
-sidebar rule above.
+old icon until a manual refresh.
+
+**Exception to the sidebar rule: these handlers also patch the *list* cache
+(`patchTicketCaches`), not just the detail (BRDG-476).** The general rule above forbids a
+client-side list patch because a Jira-lagged field's real read genuinely stays stale for a
+while, so the patch would clear the overlay early and the next stale refetch would win.
+That reasoning does **not** apply to `testDocState`: it derives from Bridge's own `testDoc`
+/ `testDocDraft` columns (`deriveTestDocState`), written synchronously by the save route,
+so a real read never lags. Without the list patch the marker relied solely on the overlay's
+30s safety-net TTL — which expired before the next list refetch could confirm the value
+(SWR dedupes for 15s and only polls every 60s, and generate-then-save happens well inside
+that window), snapping the icon back to its pre-save state until a later poll. Patching the
+list directly lets the overlay self-heal at once and keeps the row correct.
+
+Two more specifics: an accepted doc outranks a draft server-side (`deriveTestDocState`), so
+the draft-save path skips the overlay when an accepted doc exists; and the detail panel is
+covered by the same `patchTicketCaches` call (it patches `/api/tickets/<key>` too).
 
 ### The save helpers must not patch the list cache for overlay fields (BRDG-383)
 

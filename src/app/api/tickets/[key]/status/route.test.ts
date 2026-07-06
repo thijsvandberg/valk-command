@@ -218,10 +218,18 @@ describe("PUT /api/tickets/[key]/status", () => {
       expect(mockMaybeAutoGen).toHaveBeenCalledWith("BRDG-1");
     });
 
-    it("does not arm the trigger on a non-TEST transition", async () => {
+    it("arms the trigger on a move into Done", async () => {
       seedTicket(testDb, { jiraKey: "BRDG-1", status: "IN PROGRESS" });
 
       await PUT(putRequest("BRDG-1", { status: "DONE" }), makeParams("BRDG-1"));
+
+      expect(mockMaybeAutoGen).toHaveBeenCalledWith("BRDG-1");
+    });
+
+    it("does not arm the trigger on a transition that is neither Test nor Done", async () => {
+      seedTicket(testDb, { jiraKey: "BRDG-1", status: "TO DO" });
+
+      await PUT(putRequest("BRDG-1", { status: "IN PROGRESS" }), makeParams("BRDG-1"));
 
       expect(mockMaybeAutoGen).not.toHaveBeenCalled();
     });

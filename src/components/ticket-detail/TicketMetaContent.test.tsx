@@ -557,6 +557,7 @@ describe("TicketMetaContent - test-doc row (BRDG-468)", () => {
   beforeEach(() => {
     __resetPendingEdits();
     patchTicketDetailCache.mockClear();
+    patchTicketCaches.mockClear();
     reportClientError.mockClear();
     showToast.mockClear();
     lastToast = null;
@@ -611,7 +612,7 @@ describe("TicketMetaContent - test-doc row (BRDG-468)", () => {
 
     rerender(<TicketMetaContent ticket={makeTicket({ testDocState: "draft" })} detail={detail} />);
     const banner = screen.getByTestId("test-doc-draft-banner");
-    expect(banner).toHaveTextContent("Test doc draft ready for review");
+    expect(banner).toHaveTextContent("Test documentation draft ready for review");
     // The banner is additive: the meta row still shows the draft state.
     expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("Draft pending review");
 
@@ -636,13 +637,13 @@ describe("TicketMetaContent - test-doc row (BRDG-468)", () => {
     expect(modalProps).toHaveBeenLastCalledWith(
       expect.objectContaining({ keys: ["PROJ-42"], autoGenerate: false, regenerateOnOpen: false }),
     );
-    fireEvent.click(screen.getByLabelText("Generate test doc"));
+    fireEvent.click(screen.getByLabelText("Generate test documentation"));
     expect(modalProps).toHaveBeenLastCalledWith(
       expect.objectContaining({ keys: ["PROJ-42"], autoGenerate: true, regenerateOnOpen: false }),
     );
 
     rerender(<TicketMetaContent ticket={makeTicket({ testDocState: "accepted" })} detail={detail} />);
-    fireEvent.click(screen.getByLabelText("Regenerate test doc"));
+    fireEvent.click(screen.getByLabelText("Regenerate test documentation"));
     expect(modalProps).toHaveBeenLastCalledWith(
       expect.objectContaining({ keys: ["PROJ-42"], autoGenerate: false, regenerateOnOpen: true }),
     );
@@ -655,7 +656,9 @@ describe("TicketMetaContent - test-doc row (BRDG-468)", () => {
 
     await waitFor(() => expect(markTestDocNotNeeded).toHaveBeenCalledWith("PROJ-42"));
     await waitFor(() => expect(markerEdit()).toMatchObject({ value: "not_needed", confirmed: true }));
-    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { testDocState: "not_needed" });
+    // Patches the LIST cache (not detail-only): the board row must hold the new
+    // marker state so the overlay self-heals instead of reverting (BRDG-476).
+    expect(patchTicketCaches).toHaveBeenCalledWith("PROJ-42", { testDocState: "not_needed" });
     expect(invalidateTestDocCache).toHaveBeenCalledWith("PROJ-42");
     expect(revalidateTestDocViews).toHaveBeenCalled();
     // The row flips optimistically to the marked state with its undo action.
@@ -670,7 +673,7 @@ describe("TicketMetaContent - test-doc row (BRDG-468)", () => {
 
     await waitFor(() => expect(unmarkTestDocNotNeeded).toHaveBeenCalledWith("PROJ-42"));
     await waitFor(() => expect(markerEdit()).toMatchObject({ value: null, confirmed: true }));
-    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { testDocState: null });
+    expect(patchTicketCaches).toHaveBeenCalledWith("PROJ-42", { testDocState: null });
     expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("No doc yet");
   });
 
@@ -684,6 +687,6 @@ describe("TicketMetaContent - test-doc row (BRDG-468)", () => {
     expect(hasPendingEdit("PROJ-42", "testDocState")).toBe(false);
     expect(screen.getByTestId("meta-test-doc")).toHaveTextContent("No doc yet");
     expect(showToast).toHaveBeenCalledWith(expect.stringContaining("PROJ-42"));
-    expect(patchTicketDetailCache).not.toHaveBeenCalled();
+    expect(patchTicketCaches).not.toHaveBeenCalled();
   });
 });

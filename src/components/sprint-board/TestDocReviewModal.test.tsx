@@ -67,9 +67,9 @@ vi.mock("swr", () => ({
 
 // ticket-cache pulls in swr-scoped-mutate, whose top-level swr import the "swr"
 // mock above does not provide.
-const mockPatchTicketDetailCache = vi.fn();
+const mockPatchTicketCaches = vi.fn();
 vi.mock("@/lib/ticket-cache", () => ({
-  patchTicketDetailCache: (...args: unknown[]) => mockPatchTicketDetailCache(...args),
+  patchTicketCaches: (...args: unknown[]) => mockPatchTicketCaches(...args),
 }));
 
 import { TestDocReviewModal } from "./TestDocReviewModal";
@@ -133,7 +133,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
     mockCancelTask.mockResolvedValue({ ok: true });
     mockMutate.mockReset();
     mockRevalidateTestDocViews.mockReset();
-    mockPatchTicketDetailCache.mockReset();
+    mockPatchTicketCaches.mockReset();
     __resetPendingEdits();
   });
 
@@ -377,7 +377,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       // Task started but no result yet: the button must already work.
       await waitFor(() => expect(streamsByTask[taskIdFor("VPL-1")]).toBeDefined());
 
-      fireEvent.click(screen.getByText("No test doc needed"));
+      fireEvent.click(screen.getByText("No test documentation needed"));
 
       await waitFor(() => expect(mockMarkNotNeeded).toHaveBeenCalledWith("VPL-1"));
       expect(mockCancelTask).toHaveBeenCalledWith(taskIdFor("VPL-1"));
@@ -395,7 +395,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       render(<TestDocReviewModal keys={["VPL-1", "VPL-2"]} onClose={() => {}} />);
       await emitResult("VPL-1", DOC);
 
-      fireEvent.click(screen.getByText("No test doc needed"));
+      fireEvent.click(screen.getByText("No test documentation needed"));
 
       await waitFor(() =>
         expect(screen.getByTestId("test-doc-queue-position")).toHaveTextContent("2 / 2"),
@@ -424,7 +424,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
       // The footer offers the inverse action instead of re-marking.
       expect(screen.getByText("Remove 'not needed' marker")).toBeInTheDocument();
-      expect(screen.queryByText("No test doc needed")).not.toBeInTheDocument();
+      expect(screen.queryByText("No test documentation needed")).not.toBeInTheDocument();
     });
 
     it("removing the marker lands in idle without generating and resets the board marker", async () => {
@@ -440,14 +440,14 @@ describe("TestDocReviewModal (BRDG-426)", () => {
 
       // The board marker resets through the pending-edits overlay + detail patch.
       expect(findMarkerEdit("VPL-1")).toMatchObject({ value: null, confirmed: true });
-      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: null });
+      expect(mockPatchTicketCaches).toHaveBeenCalledWith("VPL-1", { testDocState: null });
 
       // Board lists and the sprint bundle revalidate so the reset is visible
       // without a hard refresh (matcher unit-tested in test-doc-prefetch.test.ts).
       expect(mockRevalidateTestDocViews).toHaveBeenCalled();
 
       // Back to the normal footer action.
-      expect(screen.getByText("No test doc needed")).toBeInTheDocument();
+      expect(screen.getByText("No test documentation needed")).toBeInTheDocument();
     });
 
     it("explicit generate from the marker state still works", async () => {
@@ -455,7 +455,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
       await waitFor(() => expect(screen.getByTestId("test-doc-not-needed")).toBeInTheDocument());
 
-      fireEvent.click(screen.getByText("Generate test doc anyway"));
+      fireEvent.click(screen.getByText("Generate test documentation anyway"));
 
       await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1"));
       await emitResult("VPL-1", DOC);
@@ -488,7 +488,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       await waitFor(() =>
         expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "draft", confirmed: true }),
       );
-      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: "draft" });
+      expect(mockPatchTicketCaches).toHaveBeenCalledWith("VPL-1", { testDocState: "draft" });
     });
 
     it("does not flip the marker to draft when an accepted doc exists (accepted outranks)", async () => {
@@ -516,7 +516,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       await waitFor(() =>
         expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "accepted", confirmed: true }),
       );
-      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: "accepted" });
+      expect(mockPatchTicketCaches).toHaveBeenCalledWith("VPL-1", { testDocState: "accepted" });
     });
 
     it("a failed Save clears the edit so the marker falls back to server data", async () => {
@@ -533,11 +533,11 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       render(<TestDocReviewModal keys={["VPL-1"]} onClose={() => {}} />);
       await emitResult("VPL-1", DOC);
 
-      fireEvent.click(screen.getByText("No test doc needed"));
+      fireEvent.click(screen.getByText("No test documentation needed"));
       await waitFor(() =>
         expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "not_needed", confirmed: true }),
       );
-      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: "not_needed" });
+      expect(mockPatchTicketCaches).toHaveBeenCalledWith("VPL-1", { testDocState: "not_needed" });
     });
   });
 
@@ -567,7 +567,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       await waitFor(() => expect(screen.getByTestId("test-doc-idle")).toBeInTheDocument());
       expect(screen.queryByTestId("test-doc-versions")).not.toBeInTheDocument();
       expect(findMarkerEdit("VPL-1")).toMatchObject({ value: null, confirmed: true });
-      expect(mockPatchTicketDetailCache).toHaveBeenCalledWith("VPL-1", { testDocState: null });
+      expect(mockPatchTicketCaches).toHaveBeenCalledWith("VPL-1", { testDocState: null });
       expect(mockRevalidateTestDocViews).toHaveBeenCalled();
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
     });
@@ -682,7 +682,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
 
       // Save → not-needed on VPL-1, then the queue advances; VPL-2's fresh
       // generation must still flip to draft (per-key isolation of the ref).
-      fireEvent.click(screen.getByText("No test doc needed"));
+      fireEvent.click(screen.getByText("No test documentation needed"));
       await waitFor(() =>
         expect(screen.getByTestId("test-doc-queue-position")).toHaveTextContent("2 / 2"),
       );
@@ -718,7 +718,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       fireEvent.click(screen.getByText("Remove 'not needed' marker"));
       await waitFor(() => expect(screen.getByTestId("test-doc-idle")).toBeInTheDocument());
 
-      fireEvent.click(screen.getByText("Generate test doc"));
+      fireEvent.click(screen.getByText("Generate test documentation"));
       await emitResult("VPL-1", DOC);
       await waitFor(() =>
         expect(findMarkerEdit("VPL-1")).toMatchObject({ value: "draft", confirmed: true }),
@@ -733,7 +733,7 @@ describe("TestDocReviewModal (BRDG-426)", () => {
       await waitFor(() => expect(screen.getByTestId("test-doc-idle")).toBeInTheDocument());
       expect(mockGenerateTestDoc).not.toHaveBeenCalled();
 
-      fireEvent.click(screen.getByText("Generate test doc"));
+      fireEvent.click(screen.getByText("Generate test documentation"));
       await waitFor(() => expect(mockGenerateTestDoc).toHaveBeenCalledWith("VPL-1"));
       await emitResult("VPL-1", DOC);
       expect(screen.getByTestId("test-doc-preview")).toHaveTextContent("Confirm the thing");

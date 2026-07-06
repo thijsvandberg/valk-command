@@ -979,7 +979,9 @@ describe("EpicChildrenSection", () => {
       renderSection(SAMPLE_CHILDREN);
       selectRow("VPL-10");
       selectRow("VPL-11");
-      openBulkMenu("Flag", "Flag");
+      // Flag now lives at the bottom of the Update dropdown, not as a standalone
+      // toolbar button (bulk-flag refactor 15236563).
+      openBulkMenu("Update", "Flag");
       await waitFor(() => {
         expect(mockToggleFlag).toHaveBeenCalledTimes(2);
       });

@@ -38,7 +38,7 @@ vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
 // ticket-cache pulls in swr-scoped-mutate, whose top-level swr import the "swr"
 // mock above does not provide.
 vi.mock("@/lib/ticket-cache", () => ({
-  patchTicketDetailCache: vi.fn(),
+  patchTicketCaches: vi.fn(),
 }));
 
 import { SprintTestDocsModal, buildTestDocDocument } from "./SprintTestDocsModal";

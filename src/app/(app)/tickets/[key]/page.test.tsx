@@ -331,7 +331,7 @@ describe("TicketDetailPage header - generate test doc (BRDG-426)", () => {
     resetHook(null, { ticket: { ...baseTicket, testDocState: null } });
     await renderPage();
     fireEvent.click(screen.getByLabelText("More actions"));
-    fireEvent.click(screen.getByText("Generate test doc"));
+    fireEvent.click(screen.getByText("Generate test documentation"));
     const modal = await screen.findByTestId("test-doc-review-modal");
     expect(modal).toHaveAttribute("data-keys", "VPL-100");
     expect(modal).toHaveAttribute("data-auto-generate", "true");
@@ -343,8 +343,8 @@ describe("TicketDetailPage header - generate test doc (BRDG-426)", () => {
       resetHook(null, { ticket: { ...baseTicket, testDocState } });
       await renderPage();
       fireEvent.click(screen.getByLabelText("More actions"));
-      expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
-      fireEvent.click(screen.getByText("View test doc"));
+      expect(screen.queryByText("Generate test documentation")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByText("View test documentation"));
       const modal = await screen.findByTestId("test-doc-review-modal");
       expect(modal).toHaveAttribute("data-auto-generate", "false");
     },
@@ -354,8 +354,8 @@ describe("TicketDetailPage header - generate test doc (BRDG-426)", () => {
     resetHook(null, { ticket: { ...baseTicket, type, testDocState: null } });
     await renderPage();
     fireEvent.click(screen.getByLabelText("More actions"));
-    expect(screen.queryByText("Generate test doc")).not.toBeInTheDocument();
-    expect(screen.queryByText("View test doc")).not.toBeInTheDocument();
+    expect(screen.queryByText("Generate test documentation")).not.toBeInTheDocument();
+    expect(screen.queryByText("View test documentation")).not.toBeInTheDocument();
   });
 });
 
