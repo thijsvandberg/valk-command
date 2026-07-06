@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check, CalendarRange } from "lucide-react";
+import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check, CalendarRange, PenLine } from "lucide-react";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { SprintPlacementMenu } from "./SprintPlacementMenu";
 
@@ -20,6 +20,9 @@ interface ChildStoryCardProps {
   // Reassign a created card's sprint (jiraKey, target sprint id or "__backlog__").
   // Only offered once a card is live in Jira. Omitted on a read-only board.
   onReassignSprint?: (jiraKey: string, targetSprintId: string) => void | Promise<unknown>;
+  // Open a created child story in-place in the Epic Writer (BRDG-485). Only shown
+  // once the card is live in Jira (a DRAFT has no ticket to open yet).
+  onOpenChild?: (jiraKey: string) => void;
   // Titles of all cards by cardIndex, so a suggested link can name its target.
   cardTitles?: Record<number, string>;
   // cardIndexes of cards already created in Jira; a link can only be confirmed
@@ -62,6 +65,7 @@ export function ChildStoryCard({
   onCreateInJira,
   onConfirmLink,
   onReassignSprint,
+  onOpenChild,
   cardTitles,
   createdIndexes,
   busy,
@@ -278,6 +282,18 @@ export function ChildStoryCard({
                 }
               }}
             />
+          )}
+
+          {isCreated && card.jiraKey && onOpenChild && (
+            <button
+              type="button"
+              onClick={() => onOpenChild(card.jiraKey as string)}
+              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+              title="Work this story out in the Epic Writer"
+            >
+              <PenLine size={11} strokeWidth={1.75} />
+              Open
+            </button>
           )}
 
           {onDeepen && (

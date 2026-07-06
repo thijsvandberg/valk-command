@@ -19,6 +19,8 @@ interface BreakdownBoardProps {
   onReassignSprint?: (jiraKey: string, targetSprintId: string) => void | Promise<unknown>;
   // Ask the AI to produce the first breakdown (empty-board primary action).
   onGenerateBreakdown?: () => void | Promise<unknown>;
+  // Open a created child story in-place in the Epic Writer (BRDG-485).
+  onOpenChild?: (jiraKey: string) => void;
   // True while a workspace task is running: cards disable their deepen action.
   busy?: boolean;
   // When the surrounding region owns the header (BRDG-484 mode toggle), drop the
@@ -40,6 +42,7 @@ export function BreakdownBoard({
   onConfirmLink,
   onReassignSprint,
   onGenerateBreakdown,
+  onOpenChild,
   busy,
   hideHeader,
 }: BreakdownBoardProps) {
@@ -103,6 +106,7 @@ export function BreakdownBoard({
             onCreateInJira={onCreateInJira}
             onConfirmLink={onConfirmLink}
             onReassignSprint={onReassignSprint}
+            onOpenChild={onOpenChild}
             cardTitles={cardTitles}
             createdIndexes={createdIndexes}
             busy={busy}

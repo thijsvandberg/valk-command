@@ -21,4 +21,21 @@ describe("EpicAppsMenu (BRDG-484)", () => {
     // Menu closes after a selection.
     expect(screen.queryByRole("menuitem", { name: /Draft/ })).toBeNull();
   });
+
+  it("lists an open child story as a third view (BRDG-485)", () => {
+    const onSelect = vi.fn();
+    render(<EpicAppsMenu view="child" onSelect={onSelect} childKey="VPL-47292" />);
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /VPL-47292/ }));
+    expect(onSelect).toHaveBeenCalledWith("child");
+  });
+
+  it("omits the child view when no child is open", () => {
+    render(<EpicAppsMenu view="breakdown" onSelect={() => {}} childKey={null} />);
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    expect(screen.getByRole("menuitem", { name: /Breakdown/ })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /Draft/ })).toBeTruthy();
+    // Only the two base views.
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+  });
 });

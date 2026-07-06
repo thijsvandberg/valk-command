@@ -1,14 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { LayoutGrid, ChevronDown, Check, LayoutList, FileText } from "lucide-react";
+import { LayoutGrid, ChevronDown, Check, LayoutList, FileText, PenLine } from "lucide-react";
 import { MenuItem, MenuList } from "@/components/shared/MenuItem";
 import { Button } from "@/components/ui/Button";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 
-export type EpicRightView = "breakdown" | "draft";
+export type EpicRightView = "breakdown" | "draft" | "child";
 
-const VIEWS: Array<{ id: EpicRightView; label: string; icon: React.ReactNode }> = [
+const BASE_VIEWS: Array<{ id: EpicRightView; label: string; icon: React.ReactNode }> = [
   { id: "breakdown", label: "Breakdown", icon: <LayoutList size={13} strokeWidth={1.5} /> },
   { id: "draft", label: "Draft", icon: <FileText size={13} strokeWidth={1.5} /> },
 ];
@@ -24,13 +24,20 @@ const VIEWS: Array<{ id: EpicRightView; label: string; icon: React.ReactNode }> 
 export function EpicAppsMenu({
   view,
   onSelect,
+  childKey,
 }: {
   view: EpicRightView;
   onSelect: (v: EpicRightView) => void;
+  /** When a child story is open in-place (BRDG-485), it is listed as a third view. */
+  childKey?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => setOpen(false), { enabled: open });
+
+  const views = childKey
+    ? [...BASE_VIEWS, { id: "child" as EpicRightView, label: childKey, icon: <PenLine size={13} strokeWidth={1.5} /> }]
+    : BASE_VIEWS;
 
   return (
     <div ref={ref} className="relative">
@@ -52,7 +59,7 @@ export function EpicAppsMenu({
 
       {open && (
         <MenuList className="absolute right-0 top-full z-30 mt-1.5 w-56" aria-label="Views">
-          {VIEWS.map((v) => {
+          {views.map((v) => {
             const active = view === v.id;
             return (
               <MenuItem
