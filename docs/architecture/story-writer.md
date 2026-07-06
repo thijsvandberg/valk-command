@@ -237,15 +237,24 @@ Located in `src/components/story-writer/`:
 | `SplitPaneHeader` | Header for each split pane |
 | `SplitStoryPicker` | Target ticket selector for split mode |
 
-### Reuse by the Epic Writer (BRDG-484 / BRDG-485)
+### Reuse by the Epic Writer (BRDG-484 / BRDG-485 / BRDG-486)
 
 The Epic Writer (`src/components/epic-writer/EpicWriterLayout.tsx`) keeps its own
 chat + breakdown-board layout but reuses the Story Writer's prop-driven building
 blocks rather than forking lookalikes. A header **Apps** dropdown
-(`EpicAppsMenu`, mirroring `AppsMenu`) switches the right region between three
-views:
+(`EpicAppsMenu`, mirroring `AppsMenu`) switches the right region between four
+views (`EpicRightView`):
 
 - **Breakdown** - the `BreakdownBoard` of child-story cards.
+- **Sprints** - the epic's created child stories grouped by sprint for in-place
+  sprint planning (BRDG-486). `EpicSprintPlanning` fetches the epic's **real Jira
+  children** via `useTicketDetail` and renders the epic single view's
+  `EpicChildrenSection` (which hosts `EpicChildrenBySprint`) with a `forceSprintView`
+  prop that locks the by-sprint grouping and hides the list/sprint toggle. Moves
+  persist to Jira through the reused sprint-move plumbing - nothing is forked.
+  DRAFT (uncreated) breakdown cards have no Jira issue, so they are structurally
+  absent; an empty state points back to the Breakdown board. The Sprints phase in
+  the rail maps to this view via `handleSelectPhase`.
 - **Draft** - the epic's own description in an **editable** `RichEditor`
   (`StoryDraftEditor`), bound to the epic `useStoryWriter`'s `localDraft`; Save
   draft / Push to Jira in the header persist it. (BRDG-485 replaced BRDG-484's
@@ -255,7 +264,14 @@ views:
   `ChildStoryView`, an in-place child writer running its own
   `useStoryWriter(childKey)` (normal story mode, separate from the epic session)
   with the same `RichEditor` + `StoryWriterChat`. One child at a time; Save/Push
-  target the child ticket.
+  target the child ticket. Clicking a story in the Sprints view opens it the same way.
+
+Each breakdown card (`ChildStoryCard`) shows a created story's live sprint as a
+badge - brand-tinted when scheduled, muted "To be planned" for the backlog, and a
+"not schedulable until created in Jira" hint on DRAFT cards. The board's cards come
+from the writer session while the Sprints view reads the ticket-detail cache (two
+sources), so a Sprints-view move calls `onChildChanged` -> `writer.refreshSession()`
+to keep the breakdown badge in step without a reload.
 
 No shared pane internals (`PaneContext`, `PaneArea`, `AppsMenu`, the apps) are
 modified, so the single-story Story Writer is unaffected. The chat / right split
