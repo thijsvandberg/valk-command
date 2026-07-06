@@ -262,33 +262,66 @@ views (`EpicRightView`):
   draft / Push to Jira in the header persist it. (BRDG-485 replaced BRDG-484's
   initial read-only `StoryPreviewApp` here; the epic no longer needs the pane
   providers.)
+- **Related stories** (BRDG-490 #10) - the shared `RelatedStoriesPanel`, listed as
+  a base view in `EpicAppsMenu`. `find-related` (the chat's Find Related action,
+  `sendMessage("Find related stories", "find-related")`) emits `<related-stories>`,
+  which the shared `apply-related` route parses into `relatedStoryCandidate` rows
+  (it resolves the epic session by key, no mode filter). The epic session route now
+  returns those `relatedCandidates` so the linkable inline list + panel survive a
+  reload. Replaces the old prose-dump-in-chat experience with the standard,
+  directly-linkable format.
 - **Child** - once a breakdown card is created in Jira, its "Open" action mounts
   `ChildStoryView`, an in-place child writer running its own
   `useStoryWriter(childKey)` (normal story mode, separate from the epic session)
   with the same `RichEditor` + `StoryWriterChat`. One child at a time; Save/Push
   target the child ticket. Clicking a story in the Sprints view opens it the same way.
+  The editor and chat are **toggleable panes** (BRDG-490 #3) - the same check-item
+  model as the main writer's chat toggle (a `Panes` menu in the child header),
+  persisted under `ew:child:{childKey}:editor` / `:chat`, with at least one pane
+  always visible - instead of a forced 50/50 split.
 
 Each breakdown card (`ChildStoryCard`) renders a created story's Jira key as the
 shared `TicketRefPill` and its sprint via Bridge's standard `SprintOrBacklogBadge`
 (sprint name when scheduled, a neutral "Backlog" chip otherwise), matching the
-board (BRDG-487 #9); DRAFT cards show a "not schedulable until created in Jira"
-hint. The board's cards come from the writer session while the Sprints view reads
-the ticket-detail cache (two sources), so a Sprints-view move calls `onChildChanged`
--> `writer.refreshSession()` to keep the badge in step without a reload.
+board (BRDG-487 #9). A single **status badge** (BRDG-490 #2) replaces the old
+separate DRAFT pill and depth badge: a not-yet-created card reads `Draft`,
+`Draft · Bullets`, or `Draft · Full` (state + how worked-out). The card's
+work-out action (BRDG-490 #7) is labelled **Deepen** (outline -> full) or
+**Improve** (adjust an existing full story) - no longer "Refine", which now
+clashes with the phase name. The board's cards come from the writer session while
+the Sprints view reads the ticket-detail cache (two sources), so a Sprints-view
+move calls `onChildChanged` -> `writer.refreshSession()` to keep the badge in step
+without a reload.
 
-The breakdown board also offers (BRDG-487): an **expand/compact toggle** in its
-header that collapses cards to titles only (persisted under `ew:breakdown-compact`),
-and **drag-to-reorder** via `@dnd-kit` - each card carries a grip handle, and a drop
-calls `writer.reorderCards(orderedIds)`, which optimistically reassigns `cardIndex`
-and remaps `suggestedLinks.targetIndex` before persisting through the reorder route
+**DRAFT cards are editable in place (BRDG-490 #5/#6):** title (click to rename),
+bullets (one-per-line textarea, "Edit bullets" / "Add bullets"), and the detail
+body all persist through `writer.updateCard(index, patch)` -> the card PATCH route
+(partial `{ title?, bullets?, body? }`). The detail renders as **formatted
+markdown** (`renderMarkdown`) in the read view and edits in place with the shared
+`RichEditor` (Save/Cancel), not a raw textarea. Created cards stay read-only here -
+they round-trip through the story editor (the Open action).
+
+**Card AI-actions are split buttons (BRDG-490 #8):** Deepen/Improve and the
+empty-board Generate breakdown each have a primary (send now) plus a trailing
+arrow that **stages** the same prompt in the chat compose box (`pendingInput`) so
+the PO can tweak it first. Prompt strings live in `@/lib/epic-writer-prompts`
+(one source of truth for send-now and stage).
+
+**Per-card collapse (BRDG-490 #1)** supersedes BRDG-487 #2's persisted board-wide
+compact boolean: each card has its own collapse chevron, and a header **Collapse
+all / Expand all** drives every card through one session-scoped `Set<cardId>` (no
+longer persisted, since cards are AI-regenerated). **Drag-to-reorder** (BRDG-487
+#10) via `@dnd-kit` - each card carries a grip handle, and a drop calls
+`writer.reorderCards(orderedIds)`, which optimistically reassigns `cardIndex` and
+remaps `suggestedLinks.targetIndex` before persisting through the reorder route
 (same remap server-side).
 
 **Chat as a toggleable app (BRDG-487 #3):** the chat is no longer a permanent left
 column. `EpicAppsMenu` lists **Chat** as a toggle above the mutually-exclusive right
 views; hiding it drops the chat column + resizer so the right region takes the full
-width. The choice persists under `ew:{key}:chat`. The phase rail (`PhaseRail`) aligns
-to the header content inset (`CONTENT_MAX` + `px-8`) so it reads as page chrome, not
-part of the chat (BRDG-487 #4).
+width. The choice persists under `ew:{key}:chat`. The phase rail (`PhaseRail`) is
+folded into the header row after the epic title (BRDG-490 #4, superseding BRDG-487
+#4's left-edge alignment), so it no longer needs its own full-width band.
 
 No shared pane internals (`PaneContext`, `PaneArea`, `AppsMenu`, the apps) are
 modified, so the single-story Story Writer is unaffected. The chat / right split
