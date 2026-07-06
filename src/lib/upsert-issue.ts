@@ -388,8 +388,8 @@ export async function upsertIssue(
     // to fields.updated). Deterministic id keyed on the event time + onConflictDoNothing
     // dedupes against the burnup-seed backfill, which uses the same scheme.
     if (statusChanged) {
-      // BRDG-471: a Jira-origin move into Test arms the auto-test-doc trigger.
-      if (ticketData.status === "TEST") movedToTest = true;
+      // BRDG-471: a Jira-origin move into Test or Done arms the auto-test-doc trigger.
+      if (ticketData.status === "TEST" || ticketData.status === "DONE") movedToTest = true;
       const changedAt = statusChangeMeta?.changedAt ?? fields.updated ?? now;
       tx.insert(ticketStatusChange).values({
         id: `sc-${issue.key}-${new Date(changedAt).getTime()}`,

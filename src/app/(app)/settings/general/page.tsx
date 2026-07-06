@@ -222,16 +222,16 @@ export default function GeneralSettingsPage() {
       <div className="rounded-xl border border-border-default bg-overlay-subtle p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-body-lg font-medium text-text-primary">Auto-generate on move to To Test</p>
+            <p className="text-body-lg font-medium text-text-primary">Auto-generate on move to To Test or Done</p>
             <p className="mt-0.5 text-body-sm leading-relaxed text-text-tertiary">
-              Automatically kick off test doc generation when a pinned-sprint story moves to To Test status. The draft still requires manual review and acceptance before it is written to Jira.
+              Automatically kick off test doc generation when a pinned-sprint story moves to To Test or Done status. The draft still requires manual review and acceptance before it is written to Jira.
             </p>
           </div>
           <div className="shrink-0">
             <ToggleSwitch
               checked={autoGenerateTestDoc}
               onChange={setAutoGenerateTestDoc}
-              ariaLabel="Auto-generate test doc on move to To Test"
+              ariaLabel="Auto-generate test doc on move to To Test or Done"
             />
           </div>
         </div>

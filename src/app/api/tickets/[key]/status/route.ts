@@ -118,10 +118,10 @@ export async function PUT(request: Request, { params }: RouteContext) {
     emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["status"], origin: originFromRequest(request) });
   }
 
-  // BRDG-471: a Bridge-origin move into Test arms the auto-test-doc trigger.
+  // BRDG-471: a Bridge-origin move into Test or Done arms the auto-test-doc trigger.
   // Placed past the `rejected` return so a Jira-refused transition never
   // auto-generates. Request-scoped here, so after() is the right primitive.
-  if (existing.status !== "TEST" && status === "TEST") {
+  if (existing.status !== status && (status === "TEST" || status === "DONE")) {
     after(() => maybeAutoGenerateTestDoc(key));
   }
 
