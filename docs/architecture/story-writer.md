@@ -54,6 +54,8 @@ Ticket Detail -> "Write Story" -> Story Writer Session
 - `DELETE /api/tickets/[key]/story-writer/messages?id=<messageId>` deletes a single pending/failed message (sent messages are never deletable this way).
 - Session discard automatically cleans up orphaned messages.
 
+**Clear chat (BRDG-489):** a "Clear chat" button in the compose footer and a `/clear` compose command (swallowed, never sent or stored) both reset the conversation after a confirmation. They call `writer.clearChat()` -> `DELETE .../messages?all=true` (`clearConversationMessages`), which wipes every message for the session's conversation but keeps the session, its `localDraft`/local-edits, and any breakdown cards; AI suggestion drafts survive too (their `message_id` FK is `ON DELETE SET NULL`). So the next turn still has the full story/epic context, just no chat history. Shared by the Story Writer, Epic Writer, and the in-place child writer via the same `StoryWriterChat`; the clear button is hidden while a turn is streaming and when the chat is already empty.
+
 **Error surfaces (BRDG-459):** the failed-message bubble is the single surface for send failures. The `streamError` banner is reserved for errors with no message to attach to (stream timeout, task failure, draft-save failure, duplicate warning). Failed `story-writer` activity-log entries never toast (they stay in the Activity Log page). The chat toolbar shows a problem-only workspace badge (`WorkspaceStatusBadge`): hidden while healthy, red dot + "Workspace offline" with hover detail when unreachable; a failed send triggers an immediate health re-check via `triggerWorkspaceHealthCheck`.
 
 ### Draft Extraction
