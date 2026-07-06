@@ -42,6 +42,26 @@ describe("extractEpicBreakdown", () => {
 
     expect(cards![1].title).toBe("Coupon flow");
     expect(cards![1].body).toBe("Full body text");
+    // No re-parent marker on ordinary generated cards.
+    expect(cards![0].existingKey).toBeNull();
+    expect(cards![1].existingKey).toBeNull();
+  });
+
+  it("captures a valid existingKey for re-parenting and upper-cases it (BRDG-487)", () => {
+    const output =
+      `<epic-breakdown>[` +
+      `{"title":"Existing story","bullets":[],"existingKey":"vpl-47191"},` +
+      `{"title":"Brand new","bullets":["x"]}` +
+      `]</epic-breakdown>`;
+    const cards = extractEpicBreakdown(output)!;
+    expect(cards[0].existingKey).toBe("VPL-47191");
+    expect(cards[1].existingKey).toBeNull();
+  });
+
+  it("ignores a malformed existingKey (BRDG-487)", () => {
+    const output = `<epic-breakdown>[{"title":"T","bullets":[],"existingKey":"not a key"}]</epic-breakdown>`;
+    const cards = extractEpicBreakdown(output)!;
+    expect(cards[0].existingKey).toBeNull();
   });
 
   it("returns null when the block is absent (leave existing cards untouched)", () => {

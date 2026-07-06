@@ -12,6 +12,20 @@ export interface ParsedChildCard {
   body: string | null;
   suggestedSprintId: string | null;
   suggestedLinks: { targetIndex: number; relation: string; confirmed: boolean }[];
+  /**
+   * When set, this card is an EXISTING story the skill wants re-parented into the
+   * epic (not a new one to create). apply-output re-parents it in Jira (BRDG-487
+   * Part B). Only a well-formed Jira key is accepted.
+   */
+  existingKey: string | null;
+}
+
+const JIRA_KEY_RE = /^[A-Z][A-Z0-9]+-\d+$/;
+
+function normalizeExistingKey(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim().toUpperCase();
+  return JIRA_KEY_RE.test(trimmed) ? trimmed : null;
 }
 
 /**
@@ -104,6 +118,7 @@ export function extractEpicBreakdown(output: string): ParsedChildCard[] | null {
       body: typeof obj.body === "string" && obj.body.trim().length > 0 ? obj.body : null,
       suggestedSprintId: normalizeSprintId(obj.suggestedSprintId),
       suggestedLinks: normalizeLinks(obj.suggestedLinks),
+      existingKey: normalizeExistingKey(obj.existingKey),
     });
   }
 

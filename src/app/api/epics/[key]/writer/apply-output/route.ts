@@ -3,10 +3,11 @@ import { validatePathParam } from "@/lib/api-validation";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import { db } from "@/db";
-import { storyWriterSession, epicChildDraft } from "@/db/schema";
+import { storyWriterSession, epicChildDraft, ticket } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { extractEpicQuestions, extractEpicBreakdown, extractStoryDetails, extractSprintPlan } from "@/lib/epic-breakdown-parser";
+import { updateTicketFields } from "@/lib/ticket-detail-builder";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -155,11 +156,40 @@ export async function POST(request: Request, { params }: RouteContext) {
       });
     }
 
+    // BRDG-487 Part B: a card carrying an existingKey is an EXISTING story the
+    // skill wants re-parented into the epic (not a new one to create). The PO
+    // asked for this in chat, so re-parent it now (same primitive as the board's
+    // "set epic" / the manual link), then record it as a created card. Guarded:
+    // the ticket must exist, not be an epic; a story already under this epic is
+    // just reflected as created without a redundant re-parent. Failures are
+    // skipped so the card degrades to a normal draft.
+    const reparentedByIndex = new Map<number, string>();
+    for (let idx = 0; idx < cards.length; idx++) {
+      const ek = cards[idx].existingKey;
+      if (!ek || ek === key) continue;
+      try {
+        const childTicket = await db.query.ticket.findFirst({
+          where: eq(ticket.jiraKey, ek),
+        });
+        if (!childTicket || childTicket.type === "epic") continue;
+        if (childTicket.epicKey === key) {
+          reparentedByIndex.set(idx, ek); // already a child; reflect as created
+          continue;
+        }
+        const outcome = await updateTicketFields(ek, { epicKey: key });
+        if (outcome && "error" in outcome) continue;
+        reparentedByIndex.set(idx, ek);
+      } catch (err) {
+        logger.error("epic-writer", `apply-output: re-parent ${ek} failed`, err);
+      }
+    }
+
     // Preserve created cards' Jira state by index across the wholesale replace.
     db.transaction((tx) => {
       tx.delete(epicChildDraft).where(eq(epicChildDraft.sessionId, session.id)).run();
       cards.forEach((card, idx) => {
         const prior = priorByIndex.get(idx);
+        const reparented = reparentedByIndex.get(idx);
         const wasCreated = prior?.status === "created";
         // A detail block in the same turn wins; then a body already on the card
         // (e.g. the skill re-emitted the breakdown without the prior body);
@@ -175,8 +205,11 @@ export async function POST(request: Request, { params }: RouteContext) {
           title: card.title,
           bullets: card.bullets,
           body: detailedBody ?? card.body ?? prior?.body ?? null,
-          status: wasCreated ? "created" : "draft",
-          jiraKey: wasCreated ? prior?.jiraKey ?? null : null,
+          // A re-parented existing story (BRDG-487 Part B) is a created card
+          // keyed by the existing Jira key; otherwise preserve the prior created
+          // state by index.
+          status: wasCreated || reparented ? "created" : "draft",
+          jiraKey: reparented ?? (wasCreated ? prior?.jiraKey ?? null : null),
           suggestedSprintId: plannedSprint ?? card.suggestedSprintId ?? prior?.suggestedSprintId ?? null,
           suggestedLinks: card.suggestedLinks,
           updatedAt: now,

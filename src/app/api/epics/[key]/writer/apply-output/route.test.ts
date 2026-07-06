@@ -19,6 +19,11 @@ vi.mock("@/lib/rate-limiter", () => ({ applyRateLimit: vi.fn().mockResolvedValue
 vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
 vi.mock("@/lib/activity-logger", () => ({ logActivity: vi.fn().mockResolvedValue(undefined) }));
 
+const updateTicketFields = vi.fn().mockResolvedValue({ epicKey: "VPL-E1" });
+vi.mock("@/lib/ticket-detail-builder", () => ({
+  updateTicketFields: (...args: unknown[]) => updateTicketFields(...args),
+}));
+
 import { POST } from "./route";
 
 function makeParams(key: string): { params: Promise<{ key: string }> } {
@@ -49,6 +54,8 @@ function seedEpicSession(key: string, sessionId: string) {
 describe("POST /api/epics/[key]/writer/apply-output", () => {
   beforeEach(() => {
     testDb = createTestDb();
+    vi.clearAllMocks();
+    updateTicketFields.mockResolvedValue({ epicKey: "VPL-E1" });
   });
 
   it("persists parsed breakdown cards into epic_child_draft", async () => {
@@ -80,6 +87,54 @@ describe("POST /api/epics/[key]/writer/apply-output", () => {
     expect(cards[0].status).toBe("draft");
     expect(cards[0].suggestedSprintId).toBe("7");
     expect(cards[1].title).toBe("Coupon flow");
+  });
+
+  it("re-parents an existingKey story and records it as a created card (BRDG-487)", async () => {
+    seedEpicSession("VPL-E1", "sess-1");
+    seedTicket(testDb, { jiraKey: "VPL-100", type: "story", title: "Existing", epicKey: null });
+
+    const output =
+      `<epic-breakdown>[` +
+      `{"title":"Brand new","bullets":["x"]},` +
+      `{"title":"Existing","bullets":[],"existingKey":"VPL-100"}` +
+      `]</epic-breakdown>`;
+    const res = await POST(postReq("VPL-E1", { output, taskId: "t" }), makeParams("VPL-E1"));
+    expect(res.status).toBe(200);
+    expect(updateTicketFields).toHaveBeenCalledWith("VPL-100", { epicKey: "VPL-E1" });
+
+    const cards = testDb
+      .select()
+      .from(epicChildDraft)
+      .where(eq(epicChildDraft.sessionId, "sess-1"))
+      .orderBy(epicChildDraft.cardIndex)
+      .all();
+    expect(cards[0].status).toBe("draft"); // plain generated card
+    expect(cards[1].status).toBe("created"); // re-parented existing story
+    expect(cards[1].jiraKey).toBe("VPL-100");
+  });
+
+  it("does not re-parent an existingKey already under this epic (BRDG-487)", async () => {
+    seedEpicSession("VPL-E1", "sess-1");
+    seedTicket(testDb, { jiraKey: "VPL-100", type: "story", title: "Existing", epicKey: "VPL-E1" });
+
+    const output = `<epic-breakdown>[{"title":"Existing","bullets":[],"existingKey":"VPL-100"}]</epic-breakdown>`;
+    await POST(postReq("VPL-E1", { output, taskId: "t" }), makeParams("VPL-E1"));
+
+    expect(updateTicketFields).not.toHaveBeenCalled();
+    const cards = testDb.select().from(epicChildDraft).where(eq(epicChildDraft.sessionId, "sess-1")).all();
+    expect(cards[0].status).toBe("created");
+    expect(cards[0].jiraKey).toBe("VPL-100");
+  });
+
+  it("leaves an existingKey card as a draft when the ticket does not exist (BRDG-487)", async () => {
+    seedEpicSession("VPL-E1", "sess-1");
+    const output = `<epic-breakdown>[{"title":"Ghost","bullets":[],"existingKey":"VPL-999"}]</epic-breakdown>`;
+    await POST(postReq("VPL-E1", { output, taskId: "t" }), makeParams("VPL-E1"));
+
+    expect(updateTicketFields).not.toHaveBeenCalled();
+    const cards = testDb.select().from(epicChildDraft).where(eq(epicChildDraft.sessionId, "sess-1")).all();
+    expect(cards[0].status).toBe("draft");
+    expect(cards[0].jiraKey).toBeNull();
   });
 
   it("reports questions without persisting cards when only <epic-questions> present", async () => {
