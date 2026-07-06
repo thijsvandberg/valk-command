@@ -80,6 +80,9 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const writer = useStoryWriter(ticketKey);
   const { captureBookmarkNote } = useBookmarkNoteCapture();
   const { data: ticketData, mutate: mutateTicket } = useTicketDetail(ticketKey);
+  // Separate detail fetch keyed on effectiveKey so the bookmark field is always
+  // read from the real ticket once the draft has synced (BRDG-482).
+  const { data: bookmarkTicketData } = useTicketDetail(effectiveKey);
   const { data: reviewData } = useTicketReviews(ticketKey);
   const { sprints: rawSprints } = useJiraSprints();
   const latestReview = reviewData?.reviews?.[0];
@@ -93,27 +96,26 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   }, [rawSprints]);
   const ticketHoverData = ticketData ? buildTicketHoverData(ticketData, sprintNames) : undefined;
 
-  // Bookmark toggle (BRDG-355). Only for a real (non-draft) ticket: a DRAFT key has
-  // no ticket row, so a metadata write would 404, and its detail cache key differs.
-  // Derives state from the detail cache and toggles via patchTicketDetailCache (so the
-  // button re-renders) + the board overlay + a bookmark-list refresh. No local state,
-  // so no reset-effect is needed.
-  const bookmarked = Boolean((ticketData as { bookmarked?: boolean } | undefined)?.bookmarked);
+  // Bookmark toggle (BRDG-355 / BRDG-482). Uses effectiveKey so that once a draft
+  // syncs to Jira the button appears and writes to the real ticket, not the DRAFT key.
+  // bookmarkTicketData is keyed on effectiveKey; before sync effectiveKey === ticketKey
+  // so there is no extra fetch (SWR deduplicates).
+  const bookmarked = Boolean((bookmarkTicketData as { bookmarked?: boolean } | undefined)?.bookmarked);
   const handleBookmarkToggle = useCallback(async () => {
     const next = !bookmarked;
-    registerPendingEdit(ticketKey, "bookmarked", next, Date.now());
-    patchTicketDetailCache(ticketKey, { bookmarked: next });
+    registerPendingEdit(effectiveKey, "bookmarked", next, Date.now());
+    patchTicketDetailCache(effectiveKey, { bookmarked: next });
     try {
-      await tickets.setBookmarked(ticketKey, next);
-      confirmPendingEdit(ticketKey, "bookmarked");
+      await tickets.setBookmarked(effectiveKey, next);
+      confirmPendingEdit(effectiveKey, "bookmarked");
       scopedMutate("/api/bookmarks");
       // Offer the optional quick-note capture only on bookmark-ON (BRDG-475).
-      if (next) captureBookmarkNote(ticketKey);
+      if (next) captureBookmarkNote(effectiveKey);
     } catch {
-      clearPendingEdit(ticketKey, "bookmarked");
-      patchTicketDetailCache(ticketKey, { bookmarked });
+      clearPendingEdit(effectiveKey, "bookmarked");
+      patchTicketDetailCache(effectiveKey, { bookmarked });
     }
-  }, [bookmarked, ticketKey, captureBookmarkNote]);
+  }, [bookmarked, effectiveKey, captureBookmarkNote]);
 
   const { moreMenuRef, wrapUpMenuRef, ...actions } = useStoryWriterActions({
     ticketKey,
@@ -170,9 +172,9 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 </span>
               )}
 
-              {/* Bookmark toggle (BRDG-355): the standard ghost icon button (matches the
-                  "More actions" button beside it); real tickets only (drafts have no row). */}
-              {!isDraft && (
+              {/* Bookmark toggle (BRDG-355 / BRDG-482): appears as soon as the draft has
+                  synced to Jira (isStillDraft=false), matching the Wrap Up gate. */}
+              {!isStillDraft && (
                 <Tooltip content={bookmarked ? "Remove bookmark" : "Bookmark this story for quick reference"}>
                   <Button
                     variant="ghost"

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StoryWriterLayout } from "./StoryWriterLayout";
 
@@ -79,9 +79,31 @@ vi.mock("@/components/shared/ConfirmDialog", () => ({
 }));
 
 vi.mock("@/components/ui/Button", () => ({
-  Button: ({ children, onClick, disabled }: { children?: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
-    <button onClick={onClick} disabled={disabled}>{children}</button>
+  Button: ({ children, onClick, disabled, "aria-label": ariaLabel }: { children?: React.ReactNode; onClick?: () => void; disabled?: boolean; "aria-label"?: string }) => (
+    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel}>{children}</button>
   ),
+}));
+
+vi.mock("@/lib/api-client", () => ({
+  tickets: { setBookmarked: vi.fn().mockResolvedValue({}) },
+}));
+
+vi.mock("@/lib/ticket-cache", () => ({
+  patchTicketDetailCache: vi.fn(),
+}));
+
+vi.mock("@/components/sprint-board/pendingTicketEdits", () => ({
+  registerPendingEdit: vi.fn(),
+  confirmPendingEdit: vi.fn(),
+  clearPendingEdit: vi.fn(),
+}));
+
+vi.mock("@/lib/swr-scoped-mutate", () => ({
+  scopedMutate: vi.fn(),
+}));
+
+vi.mock("@/contexts/BookmarkNoteContext", () => ({
+  useBookmarkNoteCapture: () => ({ captureBookmarkNote: vi.fn() }),
 }));
 
 vi.mock("./SplitStoryPicker", () => ({
@@ -108,6 +130,8 @@ import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSp
 import { useStoryWriterActions } from "./useStoryWriterActions";
 import { useWriterContext } from "./panes/WriterContext";
 import { usePaneContext } from "./panes/PaneContext";
+import { tickets } from "@/lib/api-client";
+import { patchTicketDetailCache } from "@/lib/ticket-cache";
 
 function makeDefaultActions() {
   return {
@@ -393,5 +417,58 @@ describe("StoryWriterLayout", () => {
     render(<StoryWriterLayout ticketKey="DRAFT-1" draftTitle="New Story" draftType="story" />);
 
     expect(screen.getByTestId("issue-type-icon")).toBeInTheDocument();
+  });
+
+  // BRDG-482: bookmark button visibility tied to isStillDraft, not isDraft
+
+  it("renders the bookmark button once a draft has synced to Jira (BRDG-482)", () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter());
+    (useDraftSync as ReturnType<typeof vi.fn>).mockReturnValue({
+      realKey: "VPL-42",
+      syncStatus: "synced",
+      error: null,
+      retry: vi.fn(),
+    });
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
+
+    render(<StoryWriterLayout ticketKey="DRAFT-1" draftTitle="New Story" draftType="story" />);
+
+    expect(screen.getByRole("button", { name: /bookmark/i })).toBeInTheDocument();
+  });
+
+  it("hides the bookmark button while the draft is still syncing (BRDG-482)", () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter());
+    // beforeEach sets useDraftSync to { realKey: null }, so isStillDraft stays true
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
+
+    render(<StoryWriterLayout ticketKey="DRAFT-1" draftTitle="New Story" draftType="story" />);
+
+    expect(screen.queryByRole("button", { name: /bookmark/i })).not.toBeInTheDocument();
+  });
+
+  it("calls tickets.setBookmarked with effectiveKey, not the DRAFT key (BRDG-482)", async () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter());
+    (useDraftSync as ReturnType<typeof vi.fn>).mockReturnValue({
+      realKey: "VPL-42",
+      syncStatus: "synced",
+      error: null,
+      retry: vi.fn(),
+    });
+    // Both useTicketDetail calls return the same mock; bookmarkTicketData.bookmarked=false
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: { bookmarked: false },
+      mutate: vi.fn(),
+    });
+
+    render(<StoryWriterLayout ticketKey="DRAFT-1" draftTitle="New Story" draftType="story" />);
+
+    screen.getByRole("button", { name: /bookmark this story/i }).click();
+
+    await waitFor(() => {
+      expect(tickets.setBookmarked).toHaveBeenCalledWith("VPL-42", true);
+    });
+    expect(tickets.setBookmarked).not.toHaveBeenCalledWith("DRAFT-1", expect.anything());
+    expect(patchTicketDetailCache).toHaveBeenCalledWith("VPL-42", { bookmarked: true });
+    expect(patchTicketDetailCache).not.toHaveBeenCalledWith("DRAFT-1", expect.anything());
   });
 });

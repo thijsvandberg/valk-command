@@ -1,6 +1,6 @@
 # BRDG-482: Show bookmark button in story writer as soon as draft syncs to Jira
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Low
 **Type:** Bugfix
 
@@ -30,19 +30,29 @@ Three targeted changes, all in `src/components/story-writer/StoryWriterLayout.ts
 
 Out of scope: showing the bookmark button before the draft has synced (i.e., while `isStillDraft` is still `true` and there is no real Jira key yet) — there is nothing to bookmark at that point.
 
+## Implementation Plan
+
+All changes in `src/components/story-writer/StoryWriterLayout.tsx` (production) and `StoryWriterLayout.test.tsx` (tests).
+
+1. **Add `useTicketDetail(effectiveKey)` for bookmark state** (after line 82): `effectiveKey` equals `ticketKey` before sync so no extra fetch; after sync it's the real key with bookmark data.
+2. **Derive `bookmarked` from `bookmarkTicketData`** (line 101): switch from `ticketData` to the new call.
+3. **Update `handleBookmarkToggle`** (lines 102-116): replace all `ticketKey` usages with `effectiveKey`; update deps array to `[bookmarked, effectiveKey, captureBookmarkNote]`.
+4. **Gate change** (line 175): `{!isDraft && (` → `{!isStillDraft && (`.
+5. **Tests**: update Button mock to forward `aria-label`; add mocks for `tickets`, `patchTicketDetailCache`, `pendingTicketEdits`, `scopedMutate`, `BookmarkNoteContext`; handle two `useTicketDetail` calls per render; add three new test cases.
+
 ## Acceptance Criteria
 
-- [ ] After creating a new story and waiting for the "Wrap Up" button to appear (draft synced), the bookmark button is also visible. <!-- StoryWriterLayout.tsx: gate condition line 175 -->
-- [ ] Clicking the bookmark button at that point correctly bookmarks the story (no 404, icon toggles, story appears in bookmarks list). <!-- handleBookmarkToggle: all API calls use effectiveKey -->
-- [ ] Reopening a story that was bookmarked before wrap-up shows the bookmark as active. <!-- useTicketDetail(effectiveKey) for bookmarked state -->
-- [ ] Bookmark button is still absent while the draft is syncing (before the real key is known). <!-- isStillDraft guard -->
-- [ ] No regression: bookmark button behaviour on already-saved stories (opened directly by real key) is unchanged. <!-- isDraft=false path untouched -->
+- [x] After creating a new story and waiting for the "Wrap Up" button to appear (draft synced), the bookmark button is also visible. <!-- StoryWriterLayout.tsx: gate condition line 175 -->
+- [x] Clicking the bookmark button at that point correctly bookmarks the story (no 404, icon toggles, story appears in bookmarks list). <!-- handleBookmarkToggle: all API calls use effectiveKey -->
+- [x] Reopening a story that was bookmarked before wrap-up shows the bookmark as active. <!-- useTicketDetail(effectiveKey) for bookmarked state -->
+- [x] Bookmark button is still absent while the draft is syncing (before the real key is known). <!-- isStillDraft guard -->
+- [x] No regression: bookmark button behaviour on already-saved stories (opened directly by real key) is unchanged. <!-- isDraft=false path untouched -->
 
 ## Tests
 
-- [ ] Unit test: `StoryWriterLayout` with a synced draft (`draftSync.realKey` set) renders the bookmark button. <!-- src/components/story-writer/StoryWriterLayout.test.tsx -->
-- [ ] Unit test: `StoryWriterLayout` with `isStillDraft=true` does not render the bookmark button. <!-- src/components/story-writer/StoryWriterLayout.test.tsx -->
-- [ ] Unit test: `handleBookmarkToggle` calls `tickets.setBookmarked` with `effectiveKey`, not the DRAFT key. <!-- src/components/story-writer/StoryWriterLayout.test.tsx -->
+- [x] Unit test: `StoryWriterLayout` with a synced draft (`draftSync.realKey` set) renders the bookmark button. <!-- src/components/story-writer/StoryWriterLayout.test.tsx -->
+- [x] Unit test: `StoryWriterLayout` with `isStillDraft=true` does not render the bookmark button. <!-- src/components/story-writer/StoryWriterLayout.test.tsx -->
+- [x] Unit test: `handleBookmarkToggle` calls `tickets.setBookmarked` with `effectiveKey`, not the DRAFT key. <!-- src/components/story-writer/StoryWriterLayout.test.tsx -->
 
 ## Related
 
