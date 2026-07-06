@@ -10,6 +10,7 @@ import { triggerWorkspaceHealthCheck } from "./useWorkspaceHealth";
 import { friendlyAgentError } from "@/lib/agent-errors";
 import { storyWriter as storyWriterApi, epicWriter as epicWriterApi, jira as jiraApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
 import type { EpicWriterPhase, EpicChildCardWithSprint } from "@/types/epic-writer";
+import { deepenCardPrompt, GENERATE_BREAKDOWN_PROMPT } from "@/lib/epic-writer-prompts";
 
 export type { WorkspaceUsage } from "./useTaskMonitoring";
 
@@ -497,10 +498,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
         await epicWriterApi.setPhase(ticketKey, { phase: "refine" });
       } catch { /* the message still carries [phase: refine] guidance */ }
     }
-    const label = title.trim() ? ` ("${title.trim()}")` : "";
-    return sendMessage(
-      `Deepen story ${index + 1}${label} into a full description and acceptance criteria.`,
-    );
+    return sendMessage(deepenCardPrompt(index, title));
   }, [isEpicMode, session, ticketKey, setSession, sendMessage]);
 
   // Kick off the first breakdown from the empty board. Moves the session into the
@@ -516,9 +514,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
         await epicWriterApi.setPhase(ticketKey, { phase: "breakdown" });
       } catch { /* the turn still runs; the skill just degrades without the phase bump */ }
     }
-    return sendMessage(
-      "Break this epic down into child stories. Propose a first set of story titles, each with a few bullets, as an epic breakdown.",
-    );
+    return sendMessage(GENERATE_BREAKDOWN_PROMPT);
   }, [isEpicMode, session, ticketKey, setSession, sendMessage]);
 
   // Persist a PO hand-edit of a card in place (BRDG-490 #5): any of title,

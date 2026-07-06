@@ -20,6 +20,7 @@ import { LinkExistingStoryModal } from "./LinkExistingStoryModal";
 import { useHorizontalSplit } from "./useHorizontalSplit";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { isEpicWriterPhase, type EpicWriterPhase } from "@/types/epic-writer";
+import { deepenCardPrompt, GENERATE_BREAKDOWN_PROMPT } from "@/lib/epic-writer-prompts";
 
 interface EpicWriterLayoutProps {
   epicKey: string;
@@ -45,6 +46,17 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
   // Chat is a toggleable pane (BRDG-487 #3): hiding it gives the right region full
   // width. Persisted per-epic like the split ratio.
   const [chatVisible, setChatVisible] = useLocalStorage(`ew:${epicKey}:chat`, true);
+  // Staged chat input (BRDG-490 #8): a card AI-action can drop its prompt into the
+  // compose box (instead of sending it) so the PO can tweak it first. Reveal the
+  // chat if it is hidden, else the staged prompt would land in an invisible box.
+  const [pendingChatInput, setPendingChatInput] = useState<string | null>(null);
+  const stageInChat = useCallback(
+    (text: string) => {
+      setChatVisible(true);
+      setPendingChatInput(text);
+    },
+    [setChatVisible],
+  );
 
   const { messageDraftMap, draftContentMap } = useMemo(() => {
     const msgMap: Record<string, string> = {};
@@ -272,6 +284,8 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
               draftContentMap={draftContentMap}
               acceptedDraftIds={acceptedDraftIds}
               onAcceptDraft={writer.acceptDraft}
+              pendingInput={pendingChatInput}
+              onPendingInputConsumed={() => setPendingChatInput(null)}
             />
           </div>
         )}
@@ -300,6 +314,8 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             <BreakdownBoard
               cards={writer.cards}
               onDeepen={writer.deepenCard}
+              onStageDeepen={(index, title) => stageInChat(deepenCardPrompt(index, title))}
+              onStageGenerate={() => stageInChat(GENERATE_BREAKDOWN_PROMPT)}
               onEditCard={writer.updateCard}
               onCreateInJira={writer.createCardInJira}
               onConfirmLink={writer.confirmCardLink}

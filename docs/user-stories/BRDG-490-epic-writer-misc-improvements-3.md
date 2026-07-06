@@ -66,7 +66,7 @@ The card work-out button is one action (`onDeepen`) labeled by state: `hasBody ?
 
 ### 8. Card AI-action buttons: send-now vs stage-in-chat (split button)
 The quick-prompt chips in the chat already offer two modes (send immediately, or drop the prompt into the compose box via the small arrow so the PO can edit it first - see the "Investigate" chip). The card actions (Deepen/Refine, and the empty-board "Generate breakdown") only send immediately.
-- [ ] Give the card AI-action buttons the same two-option affordance: primary = send now; secondary (arrow) = prefill the chat compose box with the prompt so the PO can tweak it before sending. Reuse the existing chip send/stage pattern in `StoryWriterChat` (`handleDirectSend` vs prefilling the input), don't reinvent it.
+- [x] Give the card AI-action buttons the same two-option affordance: primary = send now; secondary (arrow) = prefill the chat compose box with the prompt so the PO can tweak it before sending. Reuse the existing chip send/stage pattern in `StoryWriterChat` (`handleDirectSend` vs prefilling the input), don't reinvent it.
 
 ### 9. BUG: quick-suggestions popover (bottom-left) does not fill the prompt
 Clicking a quick suggestion in the bottom-left `QuickActionsPopover` puts nothing in the compose box. Shared chat, so it affects both the Story Writer and the Epic Writer.

@@ -14,6 +14,10 @@ interface ChildStoryCardProps {
   // Deepen the card into a full body + AC (refine phase). Omitted when the board
   // is read-only (e.g. no active deepen path available).
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
+  // Stage the deepen prompt in the chat compose box instead of sending it
+  // (BRDG-490 #8), so the PO can tweak it first. Renders the split-button arrow
+  // next to Deepen/Improve. Omitted keeps the action send-only.
+  onStageDeepen?: (index: number, title: string) => void;
   // Persist a PO hand-edit of the card in place (BRDG-490 #5): any of title,
   // bullets, or body. Only wired for DRAFT cards; created cards edit through the
   // story editor (the Open action), so their title/bullets/body stay read-only
@@ -85,6 +89,7 @@ const DEPTH_META: Record<Depth, { label: string; icon: typeof Layers }> = {
 export function ChildStoryCard({
   card,
   onDeepen,
+  onStageDeepen,
   onEditCard,
   onCreateInJira,
   onConfirmLink,
@@ -482,27 +487,44 @@ export function ChildStoryCard({
           )}
 
           {onDeepen && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void onDeepen(card.cardIndex, card.title)}
-              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-              // Distinct, non-colliding labels (BRDG-490 #7): the old "Refine" label
-              // clashed with the Refine phase name (BRDG-488). "Deepen" fleshes an
-              // outline out to a full story; "Improve" adjusts an already-full one.
-              title={
-                hasBody
-                  ? "Improve the worked-out story (adjust the full description and acceptance criteria)"
-                  : "Work this story out into a full description and acceptance criteria"
-              }
-            >
-              {busy ? (
-                <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
-              ) : (
-                <Sparkles size={11} strokeWidth={1.75} />
+            // Split action (BRDG-490 #8): primary sends the work-out prompt now;
+            // the trailing segment stages it in the chat so the PO can tweak it
+            // first (mirrors the chat quick-prompt chips' send/stage split).
+            // Distinct, non-colliding labels (BRDG-490 #7): the old "Refine" label
+            // clashed with the Refine phase name (BRDG-488). "Deepen" fleshes an
+            // outline out to a full story; "Improve" adjusts an already-full one.
+            <div className="group flex items-stretch overflow-hidden rounded-md border border-border-default bg-overlay-subtle">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void onDeepen(card.cardIndex, card.title)}
+                className="flex items-center gap-1 px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-50"
+                title={
+                  hasBody
+                    ? "Improve the worked-out story (adjust the full description and acceptance criteria)"
+                    : "Work this story out into a full description and acceptance criteria"
+                }
+              >
+                {busy ? (
+                  <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+                ) : (
+                  <Sparkles size={11} strokeWidth={1.75} />
+                )}
+                {hasBody ? "Improve" : "Deepen"}
+              </button>
+              {onStageDeepen && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onStageDeepen(card.cardIndex, card.title)}
+                  className="flex items-center justify-center border-l border-border-default px-1.5 text-text-muted cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40"
+                  title="Edit this prompt in chat before sending"
+                  aria-label={`Edit the ${hasBody ? "improve" : "deepen"} prompt in chat`}
+                >
+                  <PenLine size={11} strokeWidth={1.75} />
+                </button>
               )}
-              {hasBody ? "Improve" : "Deepen"}
-            </button>
+            </div>
           )}
 
           {onCreateInJira && !isCreated && (

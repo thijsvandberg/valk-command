@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { LayoutList, Loader2, Sparkles, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { LayoutList, Loader2, Sparkles, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown, PenLine } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -25,6 +25,10 @@ interface BreakdownBoardProps {
   cards: EpicChildCardWithSprint[];
   // Deepen a card into a full body + AC (refine phase).
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
+  // Stage the deepen prompt in the chat compose box instead of sending (BRDG-490 #8).
+  onStageDeepen?: (index: number, title: string) => void;
+  // Stage the "generate breakdown" prompt in the chat compose box (BRDG-490 #8).
+  onStageGenerate?: () => void;
   // Persist a PO hand-edit of a DRAFT card in place (BRDG-490 #5): title / bullets / body.
   onEditCard?: (
     index: number,
@@ -61,6 +65,8 @@ interface BreakdownBoardProps {
 export function BreakdownBoard({
   cards,
   onDeepen,
+  onStageDeepen,
+  onStageGenerate,
   onEditCard,
   onCreateInJira,
   onConfirmLink,
@@ -123,19 +129,34 @@ export function BreakdownBoard({
           Turn this epic into child stories, then refine, split, and add more.
         </p>
         {onGenerateBreakdown && (
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={busy}
-            icon={
-              busy
-                ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
-                : <Sparkles size={13} strokeWidth={1.5} />
-            }
-            onClick={() => void onGenerateBreakdown()}
-          >
-            {busy ? "Generating breakdown…" : "Generate breakdown"}
-          </Button>
+          // Split action (BRDG-490 #8): primary generates now; the trailing
+          // segment stages the prompt in the chat so the PO can tweak it first.
+          <div className="inline-flex items-stretch overflow-hidden rounded-md shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-500)_30%,transparent)]">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onGenerateBreakdown()}
+              className="flex h-6 items-center gap-1 bg-[var(--color-brand-600)] px-2 text-label font-medium text-white cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {busy ? (
+                <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+              ) : (
+                <Sparkles size={13} strokeWidth={1.5} />
+              )}
+              {busy ? "Generating breakdown…" : "Generate breakdown"}
+            </button>
+            {onStageGenerate && !busy && (
+              <button
+                type="button"
+                onClick={onStageGenerate}
+                title="Edit this prompt in chat before sending"
+                aria-label="Edit the breakdown prompt in chat"
+                className="flex items-center justify-center border-l border-white/20 bg-[var(--color-brand-600)] px-1.5 text-white/90 cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)] hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <PenLine size={12} strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
         )}
         <p className="text-caption text-text-muted/80">
           or ask in chat, e.g. &ldquo;split this into stories&rdquo;.
@@ -202,6 +223,7 @@ export function BreakdownBoard({
                   card={card}
                   reorderable={!!onReorder}
                   onDeepen={onDeepen}
+                  onStageDeepen={onStageDeepen}
                   onEditCard={onEditCard}
                   onCreateInJira={onCreateInJira}
                   onConfirmLink={onConfirmLink}

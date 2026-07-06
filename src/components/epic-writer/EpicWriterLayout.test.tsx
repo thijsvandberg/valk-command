@@ -11,13 +11,27 @@ vi.mock("@/hooks/useStoryWriter", () => ({
   useStoryWriter: () => mockWriter,
 }));
 vi.mock("@/components/story-writer/StoryWriterChat", () => ({
-  StoryWriterChat: () => <div data-testid="chat" />,
+  StoryWriterChat: ({ pendingInput }: { pendingInput?: string | null }) => (
+    <div data-testid="chat">{pendingInput}</div>
+  ),
 }));
 vi.mock("./BreakdownBoard", () => ({
-  BreakdownBoard: ({ onOpenChild, onLinkExisting }: { onOpenChild?: (k: string) => void; onLinkExisting?: () => void }) => (
+  BreakdownBoard: ({
+    onOpenChild,
+    onLinkExisting,
+    onStageGenerate,
+    onStageDeepen,
+  }: {
+    onOpenChild?: (k: string) => void;
+    onLinkExisting?: () => void;
+    onStageGenerate?: () => void;
+    onStageDeepen?: (i: number, t: string) => void;
+  }) => (
     <div data-testid="board">
       <button onClick={() => onOpenChild?.("VPL-999")}>mock-open-child</button>
       <button onClick={() => onLinkExisting?.()}>mock-link-existing</button>
+      <button onClick={() => onStageGenerate?.()}>mock-stage-generate</button>
+      <button onClick={() => onStageDeepen?.(2, "Cart summary")}>mock-stage-deepen</button>
     </div>
   ),
 }));
@@ -112,6 +126,7 @@ function setWriter(overrides: Record<string, unknown>) {
     linkCandidate: vi.fn(),
     setPhase: vi.fn(),
     deepenCard: vi.fn(),
+    updateCard: vi.fn(),
     updateCardBody: vi.fn(),
     createCardInJira: vi.fn(),
     confirmCardLink: vi.fn(),
@@ -301,6 +316,19 @@ describe("EpicWriterLayout content views (BRDG-484)", () => {
     // The breakdown board's cards come from the session, so a sprint move in the
     // Sprints view must refresh it to keep the sprint badges in step.
     expect(mockWriter.refreshSession).toHaveBeenCalled();
+  });
+
+  // BRDG-490 #8: a card AI-action can stage its prompt in the chat compose box
+  // (via pendingInput) instead of sending it immediately.
+  it("stages a card AI-action prompt into the chat compose box", () => {
+    setWriter({ session: { localDraft: "Epic body", localTitle: "Room deposit" }, cards: [] });
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+
+    fireEvent.click(screen.getByText("mock-stage-generate"));
+    expect(screen.getByTestId("chat")).toHaveTextContent(/break this epic down/i);
+
+    fireEvent.click(screen.getByText("mock-stage-deepen"));
+    expect(screen.getByTestId("chat")).toHaveTextContent(/deepen story 3 \("Cart summary"\)/i);
   });
 
   it("opens the link-existing picker and links the chosen stories (BRDG-487)", async () => {
