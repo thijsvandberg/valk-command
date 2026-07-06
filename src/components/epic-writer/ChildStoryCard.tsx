@@ -33,10 +33,15 @@ interface ChildStoryCardProps {
   // True while a workspace task is running, so the card disables its deepen
   // action (one turn at a time) and shows a busy affordance.
   busy?: boolean;
-  // Compact mode (BRDG-487 #2): collapse to the title + status/actions row,
-  // hiding bullets, the worked-out body, and suggested links. The board toggles
-  // this for every card at once.
-  compact?: boolean;
+  // Collapsed (BRDG-490 #1): fold the card to its title + status/actions row,
+  // hiding bullets, the worked-out body, and suggested links. Each card collapses
+  // on its own (per-card chevron); the board's "Collapse all / Expand all" drives
+  // every card at once through the same state. Supersedes BRDG-487 #2's board-wide
+  // compact boolean.
+  collapsed?: boolean;
+  // Toggle this card's own collapsed state. When provided, the header shows a
+  // per-card collapse chevron. Omitted on a read-only board.
+  onToggleCollapse?: () => void;
   // Drag handle (BRDG-487 #10): the board injects a grip bound to its sortable
   // context here, rendered at the start of the header. Omitted when reordering
   // is not available (read-only board).
@@ -80,7 +85,8 @@ export function ChildStoryCard({
   cardTitles,
   createdIndexes,
   busy,
-  compact = false,
+  collapsed = false,
+  onToggleCollapse,
   dragHandle,
 }: ChildStoryCardProps) {
   const depth = cardDepth(card);
@@ -132,9 +138,28 @@ export function ChildStoryCard({
             {card.title}
           </h3>
         </div>
+        {/* Per-card collapse toggle (BRDG-490 #1): fold this card to its title
+            independently of the others. The board's Collapse all / Expand all
+            drives the same state for every card. */}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand card" : "Collapse card"}
+            title={collapsed ? "Expand card" : "Collapse to title"}
+            className="-mr-0.5 flex size-5 shrink-0 items-center justify-center rounded text-text-muted cursor-pointer transition-colors duration-150 hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          >
+            {collapsed ? (
+              <ChevronRight size={13} strokeWidth={2} />
+            ) : (
+              <ChevronDown size={13} strokeWidth={2} />
+            )}
+          </button>
+        )}
       </header>
 
-      {!compact && bullets.length > 0 && (
+      {!collapsed && bullets.length > 0 && (
         <ul className="mt-2.5 space-y-1">
           {bullets.map((bullet, i) => (
             <li key={i} className="flex gap-1.5 text-body leading-body text-text-secondary">
@@ -145,7 +170,7 @@ export function ChildStoryCard({
         </ul>
       )}
 
-      {!compact && hasBody && (
+      {!collapsed && hasBody && (
         <div className="mt-2.5">
           <button
             type="button"
@@ -194,7 +219,7 @@ export function ChildStoryCard({
         </div>
       )}
 
-      {!compact && suggestedLinks.length > 0 && (
+      {!collapsed && suggestedLinks.length > 0 && (
         <ul className="mt-2.5 space-y-1">
           {suggestedLinks.map((link, i) => {
             const targetTitle = cardTitles?.[link.targetIndex] ?? `Story ${link.targetIndex + 1}`;

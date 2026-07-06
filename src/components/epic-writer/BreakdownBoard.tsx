@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { LayoutList, Loader2, Sparkles, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import {
   DndContext,
@@ -17,7 +18,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Button } from "@/components/ui/Button";
 import { ChildStoryCard } from "./ChildStoryCard";
 
@@ -69,7 +69,25 @@ export function BreakdownBoard({
   busy,
   hideHeader,
 }: BreakdownBoardProps) {
-  const [compact, setCompact] = useLocalStorage("ew:breakdown-compact", false);
+  // Per-card collapse (BRDG-490 #1), session-scoped: a set of collapsed card ids.
+  // The header's Collapse all / Expand all writes every card at once; each card's
+  // chevron toggles its own membership. Supersedes BRDG-487 #2's persisted
+  // board-wide compact boolean - collapse is now per-card and not remembered
+  // across reloads (the board's cards are AI-regenerated, so a stored per-card
+  // choice would rarely still apply).
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+  const allCollapsed = cards.length > 0 && cards.every((c) => collapsedIds.has(c.id));
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const toggleAll = useCallback(() => {
+    setCollapsedIds(allCollapsed ? new Set() : new Set(cards.map((c) => c.id)));
+  }, [allCollapsed, cards]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -150,21 +168,22 @@ export function BreakdownBoard({
                 Link existing
               </button>
             )}
-            {/* Expand / compact toggle (BRDG-487 #2): collapse cards to just their
-                titles for a bird's-eye view, or expand back to full cards. */}
+            {/* Collapse all / Expand all (BRDG-490 #1): the board-wide master for
+                the per-card collapse. Collapses every card to its title, or expands
+                them all back. Individual cards can still be toggled on their own. */}
             <button
               type="button"
-              onClick={() => setCompact((v) => !v)}
-              aria-pressed={compact}
+              onClick={toggleAll}
+              aria-pressed={allCollapsed}
               className="flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              title={compact ? "Expand cards to show bullets and detail" : "Collapse cards to titles only"}
+              title={allCollapsed ? "Expand every card to show bullets and detail" : "Collapse every card to titles only"}
             >
-              {compact ? (
+              {allCollapsed ? (
                 <ChevronsUpDown size={11} strokeWidth={1.75} />
               ) : (
                 <ChevronsDownUp size={11} strokeWidth={1.75} />
               )}
-              {compact ? "Expand" : "Compact"}
+              {allCollapsed ? "Expand all" : "Collapse all"}
             </button>
             <span className="text-label text-text-muted">{cards.length} stories</span>
           </span>
@@ -188,7 +207,8 @@ export function BreakdownBoard({
                   cardTitles={cardTitles}
                   createdIndexes={createdIndexes}
                   busy={busy}
-                  compact={compact}
+                  collapsed={collapsedIds.has(card.id)}
+                  onToggleCollapse={() => toggleCollapse(card.id)}
                 />
               ))}
             </div>

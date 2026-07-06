@@ -30,7 +30,9 @@ Cross-cutting risk: `StoryWriterChat`, `QuickActionsPopover`, `RelatedStoriesPan
 
 ### 1. Collapse/expand individual breakdown cards
 The PO wants to fold/unfold single stories on the breakdown board, independently.
-- [ ] Each breakdown card can be collapsed (title only) / expanded (full card) on its own, remembered per card during the session.
+- [x] Each breakdown card can be collapsed (title only) / expanded (full card) on its own, remembered per card during the session.
+<!-- Built together with the board-wide toggle: the BRDG-487 #2 persisted "Compact" boolean is superseded by a session Set<cardId> - per-card chevrons + a "Collapse all / Expand all" master button. Collapse is no longer persisted across reloads (cards are AI-regenerated). -->
+
 - Relation: BRDG-487 #2 is a BOARD-WIDE compact/expand toggle; this is PER-CARD. Ideally build them together (a per-card toggle + a "collapse all / expand all").
 
 ### 2. Merge the DRAFT and depth (Title/Bullets/Full) indicators into one status

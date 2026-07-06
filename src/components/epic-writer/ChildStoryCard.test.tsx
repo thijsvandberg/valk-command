@@ -273,25 +273,48 @@ describe("ChildStoryCard", () => {
     expect(screen.queryByRole("button", { name: /confirm/i })).not.toBeInTheDocument();
   });
 
-  // BRDG-487 #2: compact mode collapses a card to its title + actions, hiding the
-  // bullets, worked-out body, and suggested links.
-  it("hides bullets, detail, and links in compact mode but keeps the title", () => {
+  // BRDG-490 #1: a collapsed card folds to its title + actions, hiding the
+  // bullets, worked-out body, and suggested links (supersedes BRDG-487 #2 compact).
+  it("hides bullets, detail, and links when collapsed but keeps the title", () => {
     render(
       <ChildStoryCard
         card={card({
-          title: "Compact card",
+          title: "Collapsed card",
           bullets: ["a hidden bullet"],
           body: "hidden worked-out body",
           suggestedLinks: [{ targetIndex: 1, relation: "blocks", confirmed: false }],
         })}
         cardTitles={{ 0: "A", 1: "B" }}
-        compact
+        collapsed
       />,
     );
-    expect(screen.getByText("Compact card")).toBeInTheDocument();
+    expect(screen.getByText("Collapsed card")).toBeInTheDocument();
     expect(screen.queryByText("a hidden bullet")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /show detail/i })).not.toBeInTheDocument();
     expect(screen.queryByText("blocks")).not.toBeInTheDocument();
+  });
+
+  // BRDG-490 #1: each card carries its own collapse chevron when the board
+  // provides a toggle.
+  it("renders a per-card collapse chevron and calls onToggleCollapse", () => {
+    const onToggleCollapse = vi.fn();
+    render(
+      <ChildStoryCard card={card({ bullets: ["b"] })} onToggleCollapse={onToggleCollapse} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /collapse card/i }));
+    expect(onToggleCollapse).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an expand affordance when a collapsed card has a toggle", () => {
+    render(
+      <ChildStoryCard card={card({ bullets: ["b"] })} collapsed onToggleCollapse={vi.fn()} />,
+    );
+    expect(screen.getByRole("button", { name: /expand card/i })).toBeInTheDocument();
+  });
+
+  it("omits the collapse chevron on a read-only card (no toggle handler)", () => {
+    render(<ChildStoryCard card={card({ bullets: ["b"] })} />);
+    expect(screen.queryByRole("button", { name: /collapse card|expand card/i })).not.toBeInTheDocument();
   });
 
   it("shows bullets and links by default (expanded)", () => {

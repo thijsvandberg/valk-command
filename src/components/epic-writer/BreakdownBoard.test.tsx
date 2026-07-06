@@ -31,7 +31,6 @@ function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSpr
 
 describe("BreakdownBoard", () => {
   beforeEach(() => {
-    // The compact toggle persists to localStorage; reset between tests.
     localStorage.clear();
   });
 
@@ -79,19 +78,20 @@ describe("BreakdownBoard", () => {
     expect(screen.getByText("2 stories")).toBeInTheDocument();
   });
 
-  it("shows the default depth badge (Bullets) for a title+bullets card", () => {
+  // BRDG-490 #2: the depth + draft state are folded into one merged status badge.
+  it("shows a 'Draft · Bullets' status for a title+bullets card", () => {
     render(<BreakdownBoard cards={[card({ bullets: ["one bullet"] })]} />);
-    expect(screen.getByText("Bullets")).toBeInTheDocument();
+    expect(screen.getByText("Draft · Bullets")).toBeInTheDocument();
   });
 
-  it("shows the Title depth badge when a card has no bullets yet", () => {
+  it("shows a plain 'Draft' status when a card has no bullets yet", () => {
     render(<BreakdownBoard cards={[card({ bullets: [] })]} />);
-    expect(screen.getByText("Title")).toBeInTheDocument();
+    expect(screen.getByText("Draft")).toBeInTheDocument();
   });
 
-  it("shows the Full depth badge once a body is filled (detail phase)", () => {
+  it("shows a 'Draft · Full' status once a body is filled (refine phase)", () => {
     render(<BreakdownBoard cards={[card({ bullets: ["b"], body: "Full description" })]} />);
-    expect(screen.getByText("Full")).toBeInTheDocument();
+    expect(screen.getByText("Draft · Full")).toBeInTheDocument();
   });
 
   it("shows a Draft marker for local cards and the Jira key once created", () => {
@@ -107,20 +107,43 @@ describe("BreakdownBoard", () => {
     expect(screen.getByText("VPL-500")).toBeInTheDocument();
   });
 
-  // BRDG-487 #2: an expand/compact toggle collapses cards to titles only.
-  it("toggles between compact and expanded, hiding bullets when compact", () => {
+  // BRDG-490 #1: Collapse all / Expand all is the board-wide master for the
+  // per-card collapse; it hides every card's bullets/detail.
+  it("collapses all cards to titles and expands them back", () => {
     render(
       <BreakdownBoard
         cards={[card({ id: "a", cardIndex: 0, title: "Cart summary", bullets: ["Show items"] })]}
       />,
     );
-    // Expanded by default: bullets visible, button offers "Compact".
+    // Expanded by default: bullets visible, button offers "Collapse all".
     expect(screen.getByText("Show items")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /compact/i }));
+    fireEvent.click(screen.getByRole("button", { name: /collapse all/i }));
 
-    // Now compact: bullets hidden, button offers "Expand".
+    // Now collapsed: bullets hidden, button offers "Expand all".
     expect(screen.queryByText("Show items")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /expand/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /expand all/i }));
+    expect(screen.getByText("Show items")).toBeInTheDocument();
+  });
+
+  // BRDG-490 #1: a single card collapses on its own without affecting the others.
+  it("collapses one card independently, leaving the others expanded", () => {
+    render(
+      <BreakdownBoard
+        cards={[
+          card({ id: "a", cardIndex: 0, title: "One", bullets: ["bullet A"] }),
+          card({ id: "b", cardIndex: 1, title: "Two", bullets: ["bullet B"] }),
+        ]}
+      />,
+    );
+    expect(screen.getByText("bullet A")).toBeInTheDocument();
+    expect(screen.getByText("bullet B")).toBeInTheDocument();
+
+    // Collapse only the first card.
+    const collapseButtons = screen.getAllByRole("button", { name: /collapse card/i });
+    fireEvent.click(collapseButtons[0]);
+
+    expect(screen.queryByText("bullet A")).not.toBeInTheDocument();
+    expect(screen.getByText("bullet B")).toBeInTheDocument();
   });
 
   // BRDG-487 #10: a drag handle per card appears only when reordering is enabled.
