@@ -4,7 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { seedTicket, seedConversation, seedMessage, seedStoryWriterSession, seedSprint } from "@/test/builders";
-import { storyWriterSession, epicChildDraft } from "@/db/schema";
+import { storyWriterSession, epicChildDraft, relatedStoryCandidate } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
@@ -115,6 +115,39 @@ describe("GET /api/epics/[key]/writer/session", () => {
     expect(data.session.phase).toBe("discovery");
     expect(data.messages).toHaveLength(1);
     expect(data.messages[0].content).toBe("Hello epic");
+  });
+
+  // BRDG-490 #10: a prior find-related turn's candidates must survive a reload so
+  // the linkable Related view is populated (not lost until the next turn).
+  it("returns persisted related-story candidates for the session", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-E4R", type: "epic", title: "Related" });
+    const conv = seedConversation(testDb, { id: "conv-e4r" });
+    seedStoryWriterSession(testDb, {
+      id: "sess-e4r",
+      ticketKey: "VPL-E4R",
+      conversationId: conv.id,
+      status: "active",
+      mode: "epic",
+      phase: "discovery",
+    });
+    testDb.insert(relatedStoryCandidate).values({
+      id: randomUUID(),
+      sessionId: "sess-e4r",
+      ticketKey: "VPL-E4R",
+      jiraKey: "VPL-900",
+      score: 82,
+      title: "A related story",
+      issueType: "story",
+      status: "TODO",
+      isLinked: false,
+    }).run();
+
+    const res = await GET(epicReq("VPL-E4R"), makeParams("VPL-E4R"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.relatedCandidates).toHaveLength(1);
+    expect(data.relatedCandidates[0].jiraKey).toBe("VPL-900");
   });
 
   it("ignores a story-mode session on the same key", async () => {

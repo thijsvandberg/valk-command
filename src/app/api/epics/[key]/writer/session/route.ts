@@ -12,12 +12,14 @@ import {
   ticket,
   ticketLocalEdit,
   sprintNameCache,
+  relatedStoryCandidate,
 } from "@/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { enrichCandidatesWithSprintName } from "@/lib/related-candidate-sprint";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -44,7 +46,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       .get();
 
     if (!session) {
-      return NextResponse.json({ session: null, messages: [], aiDrafts: [], cards: [] });
+      return NextResponse.json({ session: null, messages: [], aiDrafts: [], cards: [], relatedCandidates: [] });
     }
 
     // Heal an empty draft from the epic's local edit or live description, the
@@ -75,7 +77,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       }
     }
 
-    const [aiDrafts, messages, cards] = await Promise.all([
+    const [aiDrafts, messages, cards, sessionCandidates] = await Promise.all([
       db
         .select()
         .from(storyWriterDraft)
@@ -94,7 +96,17 @@ export async function GET(_request: Request, { params }: RouteContext) {
         .where(eq(epicChildDraft.sessionId, session.id))
         .orderBy(epicChildDraft.cardIndex)
         .all(),
+      // Related-stories candidates from a prior find-related turn (BRDG-490 #10),
+      // so the linkable inline list + Related panel survive a reload. Persisted by
+      // the shared apply-related route, which resolves the epic session by key.
+      db
+        .select()
+        .from(relatedStoryCandidate)
+        .where(eq(relatedStoryCandidate.sessionId, session.id))
+        .all(),
     ]);
+
+    const relatedCandidates = await enrichCandidatesWithSprintName(sessionCandidates);
 
     // Enrich created cards with their live sprint so the board shows the current
     // placement (the live sprint lives on ticket.sprintName, not duplicated on
@@ -134,7 +146,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       });
     }
 
-    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, cards: cardsWithSprint });
+    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, cards: cardsWithSprint, relatedCandidates });
   } catch (err) {
     logger.error("epic-writer", "GET session failed", err);
     return errorResponse("Failed to load epic writer session", 500);
@@ -251,7 +263,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
       summary: "Started epic writer session",
     });
 
-    return NextResponse.json({ session, messages: [], aiDrafts: [], cards: [] }, { status: 201 });
+    return NextResponse.json({ session, messages: [], aiDrafts: [], cards: [], relatedCandidates: [] }, { status: 201 });
   } catch (err) {
     logger.error("epic-writer", "POST session failed", err);
     return errorResponse("Failed to create epic writer session", 500);
