@@ -489,6 +489,24 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     );
   }, [isEpicMode, session, ticketKey, setSession, sendMessage]);
 
+  // Kick off the first breakdown from the empty board. Moves the session into the
+  // breakdown phase (so the break-down-epic skill emits an <epic-breakdown> block)
+  // and sends the request as one chat turn. This is the discoverable equivalent of
+  // the PO typing "break this epic into stories" (BRDG-479): the empty board offers
+  // it as a primary action instead of relying on the PO knowing the phrase.
+  const generateBreakdown = useCallback(async (): Promise<boolean> => {
+    if (!isEpicMode || !session) return false;
+    if (session.phase !== "breakdown") {
+      setSession((prev) => (prev ? { ...prev, phase: "breakdown" } : prev));
+      try {
+        await epicWriterApi.setPhase(ticketKey, { phase: "breakdown" });
+      } catch { /* the turn still runs; the skill just degrades without the phase bump */ }
+    }
+    return sendMessage(
+      "Break this epic down into child stories. Propose a first set of story titles, each with a few bullets, as an epic breakdown.",
+    );
+  }, [isEpicMode, session, ticketKey, setSession, sendMessage]);
+
   // Persist a PO hand-edit of a card's worked-out body. Optimistically updates
   // the local card so the depth badge and body reflect the edit immediately.
   const updateCardBody = useCallback(async (index: number, body: string | null) => {
@@ -599,6 +617,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     linkCandidate,
     setPhase,
     deepenCard,
+    generateBreakdown,
     updateCardBody,
     createCardInJira,
     confirmCardLink,

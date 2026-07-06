@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import { BreakdownBoard } from "./BreakdownBoard";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 
@@ -26,7 +26,30 @@ function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSpr
 describe("BreakdownBoard", () => {
   it("shows an empty state when there are no cards", () => {
     render(<BreakdownBoard cards={[]} />);
-    expect(screen.getByText("No breakdown yet.")).toBeInTheDocument();
+    expect(screen.getByText("No breakdown yet")).toBeInTheDocument();
+  });
+
+  it("offers a Generate breakdown action on the empty board and calls it on click", () => {
+    const onGenerateBreakdown = vi.fn();
+    render(<BreakdownBoard cards={[]} onGenerateBreakdown={onGenerateBreakdown} />);
+
+    const cta = screen.getByRole("button", { name: /generate breakdown/i });
+    fireEvent.click(cta);
+    expect(onGenerateBreakdown).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables the CTA and shows a generating state while a turn runs", () => {
+    render(<BreakdownBoard cards={[]} onGenerateBreakdown={vi.fn()} busy />);
+
+    const cta = screen.getByRole("button", { name: /generating breakdown/i });
+    expect(cta).toBeDisabled();
+  });
+
+  it("does not render the empty-state CTA once cards exist", () => {
+    render(
+      <BreakdownBoard cards={[card({ title: "Existing" })]} onGenerateBreakdown={vi.fn()} />,
+    );
+    expect(screen.queryByRole("button", { name: /generate breakdown/i })).not.toBeInTheDocument();
   });
 
   it("renders a card per child story with its bullets", () => {

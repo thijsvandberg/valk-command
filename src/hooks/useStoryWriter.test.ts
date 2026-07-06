@@ -444,4 +444,64 @@ describe("useStoryWriter", () => {
       expect(result.current.model).toBe("claude-sonnet-4-6");
     });
   });
+
+  describe("epic mode: generateBreakdown (BRDG-479)", () => {
+    const EPIC_KEY = "VPL-1";
+    const EPIC_BASE = `/api/epics/${EPIC_KEY}/writer`;
+    const epicSession = {
+      ...mockSession,
+      id: "epic-1",
+      ticketKey: EPIC_KEY,
+      mode: "epic",
+      phase: "feed",
+    };
+
+    function mockEpicFetch(calls: { url: string; method: string; body?: unknown }[]) {
+      return vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+        const url = typeof input === "string" ? input : (input as Request).url;
+        const method = init?.method ?? "GET";
+        calls.push({
+          url,
+          method,
+          body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+        });
+        if (url === `${EPIC_BASE}/session` && method === "GET") {
+          return {
+            ok: true,
+            json: async () => ({ session: epicSession, messages: [], aiDrafts: [], cards: [] }),
+          } as Response;
+        }
+        if (url === `${EPIC_BASE}/phase` && method === "PATCH") {
+          return {
+            ok: true,
+            json: async () => ({ session: { ...epicSession, phase: "breakdown" } }),
+          } as Response;
+        }
+        if (url === `${EPIC_BASE}/messages` && method === "POST") {
+          return { ok: true, status: 201, json: async () => ({ messageId: "m1", taskId: "t1" }) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+    }
+
+    it("moves the session into the breakdown phase and sends a breakdown request", async () => {
+      const calls: { url: string; method: string; body?: unknown }[] = [];
+      mockEpicFetch(calls);
+
+      const { result } = renderHook(() => useStoryWriter(EPIC_KEY, { mode: "epic" }));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      let ok: boolean | undefined;
+      await act(async () => { ok = await result.current.generateBreakdown(); });
+      expect(ok).toBe(true);
+
+      const phaseCall = calls.find((c) => c.url === `${EPIC_BASE}/phase` && c.method === "PATCH");
+      expect(phaseCall?.body).toMatchObject({ phase: "breakdown" });
+
+      const msgCall = calls.find((c) => c.url === `${EPIC_BASE}/messages` && c.method === "POST");
+      expect((msgCall?.body as { content: string } | undefined)?.content).toMatch(
+        /break this epic down into child stories/i,
+      );
+    });
+  });
 });

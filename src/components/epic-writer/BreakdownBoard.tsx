@@ -1,7 +1,8 @@
 "use client";
 
-import { LayoutList } from "lucide-react";
+import { LayoutList, Loader2, Sparkles } from "lucide-react";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
+import { Button } from "@/components/ui/Button";
 import { ChildStoryCard } from "./ChildStoryCard";
 
 interface BreakdownBoardProps {
@@ -16,6 +17,8 @@ interface BreakdownBoardProps {
   onConfirmLink?: (sourceIndex: number, targetIndex: number, relation: string) => void | Promise<unknown>;
   // Reassign a created card's sprint after the fact.
   onReassignSprint?: (jiraKey: string, targetSprintId: string) => void | Promise<unknown>;
+  // Ask the AI to produce the first breakdown (empty-board primary action).
+  onGenerateBreakdown?: () => void | Promise<unknown>;
   // True while a workspace task is running: cards disable their deepen action.
   busy?: boolean;
 }
@@ -33,6 +36,7 @@ export function BreakdownBoard({
   onCreateInJira,
   onConfirmLink,
   onReassignSprint,
+  onGenerateBreakdown,
   busy,
 }: BreakdownBoardProps) {
   // Titles + created-state lookups so each card can name its suggested-link
@@ -46,11 +50,33 @@ export function BreakdownBoard({
 
   if (cards.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-        <LayoutList size={20} strokeWidth={1.5} className="text-text-muted" />
-        <p className="text-body-sm text-text-tertiary">No breakdown yet.</p>
-        <p className="max-w-[28ch] text-label text-text-muted">
-          Spar in chat to have the AI propose child stories. The breakdown appears here.
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-brand-500)]/[0.12] bg-[var(--color-brand-500)]/[0.08]">
+          <LayoutList size={20} strokeWidth={1.5} className="text-[var(--color-brand-400)] opacity-70" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-body-sm font-semibold text-text-secondary">No breakdown yet</p>
+          <p className="max-w-[30ch] text-label leading-relaxed text-text-muted">
+            Turn this epic into child stories. You can refine, split, and add stories afterwards.
+          </p>
+        </div>
+        {onGenerateBreakdown && (
+          <Button
+            variant="primary"
+            size="md"
+            disabled={busy}
+            icon={
+              busy
+                ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+                : <Sparkles size={13} strokeWidth={1.5} />
+            }
+            onClick={() => void onGenerateBreakdown()}
+          >
+            {busy ? "Generating breakdown…" : "Generate breakdown"}
+          </Button>
+        )}
+        <p className="max-w-[30ch] text-caption text-text-muted/80">
+          Or ask in chat, e.g. &ldquo;split this into stories&rdquo;.
         </p>
       </div>
     );

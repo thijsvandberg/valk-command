@@ -7,6 +7,7 @@ import {
   seedTicket,
   seedConversation,
   seedStoryWriterSession,
+  seedMessage,
 } from "@/test/builders";
 import { ticketConfluenceLink, ticketAttachment, epicChildDraft } from "@/db/schema";
 import { randomUUID } from "crypto";
@@ -34,6 +35,7 @@ import {
   buildFollowUpContent,
   sendStoryWriterMessage,
   epicPhaseUsesBreakdownSkill,
+  computeContentHash,
 } from "./story-writer-messages";
 
 function seedEpicWithContext(key: string) {
@@ -277,6 +279,97 @@ describe("sendStoryWriterMessage (epic mode, phase-aware breakdown)", () => {
 
     const [, opts] = mockAgentFetch.mock.calls[0] as [string, { body: Record<string, unknown> }];
     expect(opts.body.skill).toBe("write-story-draft");
+  });
+
+  // BRDG-479: a breakdown-phase FOLLOW-UP (the session already has feed-phase
+  // history) must still dispatch break-down-epic as a fresh skill task, not a
+  // plain conversation follow-up that would resume the feed session's
+  // write-story-draft skill and answer in prose.
+  it("dispatches break-down-epic as a fresh skill task for a breakdown follow-up", async () => {
+    seedEpicWithContext("VPL-E1");
+    const conv = seedConversation(testDb, { id: "conv-switch" });
+    seedStoryWriterSession(testDb, {
+      id: "sess-switch",
+      ticketKey: "VPL-E1",
+      conversationId: conv.id,
+      status: "active",
+      mode: "epic",
+      phase: "breakdown",
+    });
+    // Prior feed-phase turn: this makes it a follow-up (not the first message).
+    seedMessage(testDb, { conversationId: conv.id, role: "user", content: "sharpen the epic", timestamp: "2026-07-06T10:00:00.000Z" });
+    seedMessage(testDb, { conversationId: conv.id, role: "assistant", content: "Here is a sharpened epic description.", timestamp: "2026-07-06T10:01:00.000Z" });
+
+    await sendStoryWriterMessage({ key: "VPL-E1", content: "break this epic into stories", codebaseResearch: false });
+
+    expect(mockAgentFetch).toHaveBeenCalledTimes(1);
+    const [url, opts] = mockAgentFetch.mock.calls[0] as [string, { body: Record<string, unknown> }];
+    // Not the plain follow-up endpoint.
+    expect(url).toBe("/api/tasks");
+    expect(opts.body.skill).toBe("break-down-epic");
+    // Fresh VRW conversation so the new skill's session is actually created.
+    expect(opts.body.conversationId).not.toBe(conv.id);
+    // Prior chat is carried in as context.
+    const args = (opts.body.args as { args: string }).args;
+    expect(args).toContain("Previous conversation (for context)");
+    expect(args).toContain("Here is a sharpened epic description.");
+    expect(args).toContain("[phase: breakdown]");
+  });
+});
+
+describe("sendStoryWriterMessage dedup window (BRDG-479)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    mockAgentFetch.mockReset();
+    mockAgentFetch.mockResolvedValue({ ok: true, data: { id: "task-x" }, status: 200 });
+  });
+
+  function seedWithPriorIdentical(content: string, timestamp: string) {
+    seedEpicWithContext("VPL-E1");
+    const conv = seedConversation(testDb, { id: "conv-dedup" });
+    seedStoryWriterSession(testDb, {
+      id: "sess-dedup",
+      ticketKey: "VPL-E1",
+      conversationId: conv.id,
+      status: "active",
+      mode: "epic",
+      phase: "feed",
+    });
+    // Prior assistant turn makes this a follow-up (not the first message).
+    seedMessage(testDb, { conversationId: conv.id, role: "assistant", content: "ok", timestamp: "2026-01-01T00:00:01.000Z" });
+    // The prior identical user message the dedup checks against.
+    seedMessage(testDb, {
+      conversationId: conv.id,
+      role: "user",
+      content,
+      contentHash: computeContentHash(conv.id, content),
+      timestamp,
+    });
+    return conv;
+  }
+
+  // Regression: message.timestamp is ISO ("...T..Z"), datetime('now') is
+  // space-separated; a raw string compare treated every identical message as
+  // "recent" forever, so re-sending a fixed string (the breakdown request) was
+  // always blocked.
+  it("does not block an identical message sent long ago", async () => {
+    const content = "Break this epic down into child stories.";
+    seedWithPriorIdentical(content, "2026-01-01T00:00:00.000Z");
+
+    const result = await sendStoryWriterMessage({ key: "VPL-E1", content, codebaseResearch: false });
+
+    expect(result.messageId).toBeTruthy();
+    expect(mockAgentFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("still blocks an identical message sent within the last 30s", async () => {
+    const content = "Break this epic down into child stories.";
+    seedWithPriorIdentical(content, new Date().toISOString());
+
+    await expect(
+      sendStoryWriterMessage({ key: "VPL-E1", content, codebaseResearch: false }),
+    ).rejects.toMatchObject({ code: "DUPLICATE" });
+    expect(mockAgentFetch).not.toHaveBeenCalled();
   });
 });
 

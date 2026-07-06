@@ -124,6 +124,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             onCreateInJira={writer.createCardInJira}
             onConfirmLink={writer.confirmCardLink}
             onReassignSprint={writer.reassignCardSprint}
+            onGenerateBreakdown={writer.generateBreakdown}
             busy={writer.status === "sending" || writer.status === "streaming"}
           />
         </aside>

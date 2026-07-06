@@ -681,7 +681,11 @@ export async function sendStoryWriterMessage(params: SendMessageParams): Promise
         and(
           eq(message.conversationId, session.conversationId),
           eq(message.contentHash, contentHash),
-          sql`${message.timestamp} > datetime('now', '-30 seconds')`,
+          // message.timestamp is stored ISO-8601 ("...T..Z"); datetime('now') is
+          // space-separated. A raw string compare sorts every ISO timestamp above
+          // the window (T > space at index 10), so identical content was blocked
+          // forever, not for 30s. Normalise both sides with datetime() (BRDG-479).
+          sql`datetime(${message.timestamp}) > datetime('now', '-30 seconds')`,
         ),
       )
       .get();
@@ -729,6 +733,16 @@ export async function sendStoryWriterMessage(params: SendMessageParams): Promise
   const nonCancelledAssistants = allMessages.filter((m) => m.role === "assistant" && !m.cancelled);
   const isFirstMessage = nonCancelledAssistants.length === 0;
   const needsFreshSession = hasCancelledMessages;
+
+  // Epic breakdown-family phases must run the break-down-epic skill so the reply
+  // carries the tagged block (<epic-breakdown> etc.) the board parses. VRW resumes
+  // the existing Claude session for follow-ups, and a resumed session keeps the
+  // skill it was started with - a session opened in the feed phase stays on
+  // write-story-draft forever and only answers in prose. So a breakdown-phase
+  // follow-up must be dispatched as a fresh break-down-epic session, with the prior
+  // chat carried in as context. The skill re-receives the full breakdown state each
+  // turn by design, so a fresh session per turn is correct (BRDG-479).
+  const isEpicBreakdownTurn = session.mode === "epic" && epicPhaseUsesBreakdownSkill(session.phase);
 
   const messageStart = Date.now();
   const messageStartedAt = new Date().toISOString();
@@ -800,11 +814,18 @@ export async function sendStoryWriterMessage(params: SendMessageParams): Promise
     return buildSendResult(messageId, taskId, isFirstMessage);
   }
 
-  // First message or fresh session
-  if (isFirstMessage || needsFreshSession) {
+  // First message, fresh session, or an epic breakdown-family turn: dispatch a
+  // skill task (not a plain conversation follow-up) so the phase-appropriate skill
+  // actually runs.
+  if (isFirstMessage || needsFreshSession || isEpicBreakdownTurn) {
     const taskBody = await buildFirstMessageBody(session, key, content, codebaseResearch, model);
 
-    if (needsFreshSession) {
+    // Start a fresh VRW conversation (so the correct skill is loaded) and carry the
+    // prior chat as context whenever this is not genuinely the first turn: a
+    // cancelled-message recovery, or an epic breakdown follow-up switching off the
+    // feed session's write-story-draft skill.
+    const dispatchFresh = needsFreshSession || (isEpicBreakdownTurn && !isFirstMessage);
+    if (dispatchFresh) {
       (taskBody as Record<string, unknown>).conversationId = randomUUID();
 
       const history = allMessages
