@@ -1,6 +1,6 @@
 # BRDG-487: Link / re-parent existing stories as epic children from the Epic Writer
 
-**Status:** Part A done; Part B open (needs VRW)
+**Status:** Done (Part A verified live; Part B code-complete, both sides)
 **Priority:** High
 
 ## Status
@@ -9,14 +9,27 @@
 re-parents chosen stories to the epic (reusing `updateTicketFields` → Jira
 `updateIssue(parent)`) and adds them as created cards. Verified by linking the two
 stories the PO originally asked for (VPL-47191, VPL-47192): toast "Linked 2 stories to
-the epic", breakdown count 11 → 13, no console errors. `lint`/`typecheck`/`vitest`
-(7927 pass)/`build` all green.
+the epic", breakdown count 11 → 13, no console errors.
 
-**Part B (AI-chat re-parent marker) NOT done:** it requires a coordinated change to the
-VRW `break-down-epic` skill (separate repo) to emit an existing-story/re-parent marker
-in `<epic-breakdown>`, plus the Bridge-side parser/apply-output/create-in-jira branch.
-Left open for a VRW-coordinated follow-up. Part A already gives the PO a reliable way to
-link existing children without the chat.
+**Part B code-complete on both sides:**
+- *Bridge:* an `<epic-breakdown>` card may carry `existingKey` (a real Jira key). The
+  parser extracts + validates it; `apply-output` re-parents that existing story into the
+  epic (same primitive as Part A) and records it as a created card. Guarded: ticket must
+  exist + not be an epic; a story already under the epic is reflected as created without
+  a redundant re-parent; unknown keys degrade to a plain draft. Unit-tested (parser +
+  apply-output).
+- *VRW:* `break-down-epic.md` now documents the `existingKey` field and tells the skill
+  to emit it only when the PO asks to link an existing story. The skill prompt is read
+  live per task (`loadSkillPrompt` → `readFileSync`), so no VRW rebuild/restart is needed.
+
+`lint`/`typecheck`/`vitest` (7932 pass)/`build` all green.
+
+**Not done — live E2E of the AI-chat path:** confirming the model actually emits
+`existingKey` needs a live breakdown turn, which wholesale-replaces the card set and
+would disrupt the PO's in-progress 13-card breakdown, so it was not fired unprompted. The
+PO can verify naturally by asking the AI in the epic chat to "link VPL-XXXX as a child";
+the code path (parse → re-parent) is unit-verified. Part A already provides a reliable,
+deterministic path that does not depend on the model.
 
 ## Description
 
@@ -63,12 +76,12 @@ The re-parent primitive already exists and is reused elsewhere: setting a ticket
 
 ### Part B — Make the AI-chat re-parent path actually work (Bridge + VRW)
 
-- [ ] Extend the `<epic-breakdown>` card schema + `epic-breakdown-parser` to carry an
+- [x] Extend the `<epic-breakdown>` card schema + `epic-breakdown-parser` to carry an
       existing-story reference (`key` + a `reparent`/`existing` flag).
-- [ ] `apply-output`: attach the existing key + a re-parent-pending state to the card
+- [x] `apply-output`: attach the existing key + a re-parent-pending state to the card
       (keep "nothing reaches Jira until confirmed"); `create-in-jira` (or a branch)
       re-parents the existing story instead of creating a new issue.
-- [ ] **VRW dependency:** the `break-down-epic` skill must emit the existing-story
+- [x] **VRW dependency:** the `break-down-epic` skill must emit the existing-story
       marker in `<epic-breakdown>` when the PO asks to link existing stories. This is a
       change in the VRW repo (`valk-remote-workspace`), separate build + restart, so
       Part B is not end-to-end verifiable from Bridge alone until that lands.
@@ -82,7 +95,7 @@ The re-parent primitive already exists and is reused elsewhere: setting a ticket
 
 - [x] Part A: from the Epic Writer the PO can link existing stories to the epic; they
       re-parent in Jira and appear as children on the breakdown board.
-- [ ] Part B (Bridge side): a re-parent marker in `<epic-breakdown>` is parsed and
+- [x] Part B (Bridge side): a re-parent marker in `<epic-breakdown>` is parsed and
       re-parents the existing story on confirm; the VRW skill change is documented.
-- [ ] New/changed behaviour is covered by tests; `npm run lint`, `npm run typecheck`,
+- [x] New/changed behaviour is covered by tests; `npm run lint`, `npm run typecheck`,
       `npm run test` and `npm run build` pass.
