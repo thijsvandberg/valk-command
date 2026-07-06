@@ -333,7 +333,7 @@ export async function buildEpicContext(key: string): Promise<string> {
  */
 export function epicPhaseUsesBreakdownSkill(phase: string | null | undefined): boolean {
   return phase === "discovery" || phase === "breakdown" || phase === "refine"
-    || phase === "detail" || phase === "sprints";
+    || phase === "sprints";
 }
 
 /**
@@ -363,11 +363,12 @@ export async function buildBreakdownStateForSession(sessionId: string): Promise<
 }
 
 /**
- * Detail-phase guidance for the break-down-epic skill. Naming the exact tag
- * contract here (rather than only in the VRW skill) keeps the parser and the
- * prompt in lock-step: one <story-detail index="N"> block per deepened card,
- * carrying a full description + acceptance criteria as markdown. Cards are
- * referenced by their 0-based index from the current breakdown state.
+ * Refine-phase guidance for the break-down-epic skill (the phase renamed from
+ * "detail" in BRDG-488). Naming the exact tag contract here (rather than only in
+ * the VRW skill) keeps the parser and the prompt in lock-step: one
+ * <story-detail index="N"> block per deepened card, carrying a full description +
+ * acceptance criteria as markdown. Cards are referenced by their 0-based index
+ * from the current breakdown state.
  */
 export const STORY_DETAIL_INSTRUCTION =
   `When you work out (deepen) one or more stories into a full description and acceptance criteria, ` +
@@ -380,7 +381,7 @@ export const STORY_DETAIL_INSTRUCTION =
 /**
  * Builds the break-down-epic invocation for a phase that uses the breakdown
  * skill. Carries the current phase and the existing breakdown so the skill
- * returns the block relevant to that phase. In the detail phase it also carries
+ * returns the block relevant to that phase. In the refine phase it also carries
  * the <story-detail> tag contract so deepened cards land back on the board.
  */
 async function buildEpicBreakdownBody(
@@ -394,7 +395,7 @@ async function buildEpicBreakdownBody(
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
   const phase = session.phase ?? "breakdown";
   const breakdownState = await buildBreakdownStateForSession(session.id);
-  const detailInstruction = phase === "detail" ? `\n\n${STORY_DETAIL_INSTRUCTION}` : "";
+  const detailInstruction = phase === "refine" ? `\n\n${STORY_DETAIL_INSTRUCTION}` : "";
 
   const args =
     `${epicContext}\n\n` +
@@ -550,7 +551,7 @@ export function buildFollowUpContent(
     if (epicPhaseUsesBreakdownSkill(session.phase)) {
       const phase = session.phase ?? "breakdown";
       const state = breakdownState ?? "[Current breakdown state unavailable.]";
-      const detailInstruction = phase === "detail" ? `\n\n${STORY_DETAIL_INSTRUCTION}` : "";
+      const detailInstruction = phase === "refine" ? `\n\n${STORY_DETAIL_INSTRUCTION}` : "";
       return {
         content: `${researchFlag}\n\n[phase: ${phase}]\n\n${state}\n\n${content}${detailInstruction}`,
         // The breakdown itself is the artifact being edited each turn.

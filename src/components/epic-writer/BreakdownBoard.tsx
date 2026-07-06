@@ -7,7 +7,7 @@ import { ChildStoryCard } from "./ChildStoryCard";
 
 interface BreakdownBoardProps {
   cards: EpicChildCardWithSprint[];
-  // Deepen a card into a full body + AC (detail phase).
+  // Deepen a card into a full body + AC (refine phase).
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
   // Persist a PO hand-edit of a card's worked-out body.
   onEditBody?: (index: number, body: string | null) => void | Promise<unknown>;

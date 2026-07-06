@@ -503,5 +503,25 @@ describe("useStoryWriter", () => {
         /break this epic down into child stories/i,
       );
     });
+
+    it("deepenCard moves the session into the refine phase (BRDG-488)", async () => {
+      const calls: { url: string; method: string; body?: unknown }[] = [];
+      mockEpicFetch(calls);
+
+      const { result } = renderHook(() => useStoryWriter(EPIC_KEY, { mode: "epic" }));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      let ok: boolean | undefined;
+      await act(async () => { ok = await result.current.deepenCard(0, "Cart summary"); });
+      expect(ok).toBe(true);
+
+      const phaseCall = calls.find((c) => c.url === `${EPIC_BASE}/phase` && c.method === "PATCH");
+      expect(phaseCall?.body).toMatchObject({ phase: "refine" });
+
+      const msgCall = calls.find((c) => c.url === `${EPIC_BASE}/messages` && c.method === "POST");
+      expect((msgCall?.body as { content: string } | undefined)?.content).toMatch(
+        /deepen story 1 .*full description and acceptance criteria/i,
+      );
+    });
   });
 });

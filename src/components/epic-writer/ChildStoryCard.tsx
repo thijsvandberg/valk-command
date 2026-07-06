@@ -7,7 +7,7 @@ import { SprintPlacementMenu } from "./SprintPlacementMenu";
 
 interface ChildStoryCardProps {
   card: EpicChildCardWithSprint;
-  // Deepen the card into a full body + AC (detail phase). Omitted when the board
+  // Deepen the card into a full body + AC (refine phase). Omitted when the board
   // is read-only (e.g. no active deepen path available).
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
   // Persist a PO hand-edit of the worked-out body.
@@ -35,7 +35,7 @@ interface ChildStoryCardProps {
 
 /**
  * Depth of a card drives the badge: title-only (skeleton), bullets (the default
- * detail level), or full (a worked-out body added in the detail phase). The
+ * detail level), or full (a worked-out body added in the refine phase). The
  * badge tells the PO at a glance how far a story has been taken.
  */
 type Depth = "title" | "bullets" | "full";

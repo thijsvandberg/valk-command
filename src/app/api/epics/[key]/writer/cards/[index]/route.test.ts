@@ -42,7 +42,7 @@ function seedEpicWithCard(key: string, sessionId: string, cardIndex: number, bod
     conversationId: conv.id,
     status: "active",
     mode: "epic",
-    phase: "detail",
+    phase: "refine",
   });
   testDb.insert(epicChildDraft).values({
     id: randomUUID(),

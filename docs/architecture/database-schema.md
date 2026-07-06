@@ -319,7 +319,7 @@ AI-assisted story editing sessions. Also backs the Epic Writer (epic mode).
 | `conversation_id` | text FK -> conversation | Chat for this session |
 | `status` | enum | `active`, `completed`, `discarded` |
 | `mode` | enum | `story` (default) or `epic` (Epic Writer) |
-| `phase` | enum | Epic Writer phase bookmark: `feed`, `discovery`, `breakdown`, `refine`, `detail`, `sprints`. Default `feed`; persisted marker only (no gating) |
+| `phase` | enum | Epic Writer phase bookmark: `feed`, `discovery`, `breakdown`, `refine`, `sprints` (BRDG-488 simplified this to five; `refine` is the full body + AC step, renamed from the old `detail`). Default `feed`; steers the right-hand view |
 | `local_draft` | text | Current working draft |
 | `local_title` | text | Current working title |
 | `base_version_hash` | text | Content hash at session start |
@@ -354,7 +354,7 @@ Epic Writer child-story cards parsed from the `break-down-epic` skill's `<epic-b
 | `card_index` | integer | 0-based AI ordering; unique per session |
 | `title` | text | Story title |
 | `bullets` | text (JSON) | Array of strings; the default detail level (title + bullets) |
-| `body` | text nullable | Full description + AC, filled only in the detail phase |
+| `body` | text nullable | Full description + AC, filled only in the refine phase (renamed from `detail` in BRDG-488) |
 | `status` | enum | `draft` (local) or `created` (live in Jira) |
 | `jira_key` | text nullable | Set after Create-in-Jira; preserved by index across re-parses |
 | `suggested_sprint_id` | text nullable | AI suggestion only; live sprint lives on `ticket.sprint_name` after creation |

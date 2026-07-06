@@ -158,8 +158,8 @@ describe("sendStoryWriterMessage (epic mode, first message)", () => {
 });
 
 describe("epicPhaseUsesBreakdownSkill", () => {
-  it("uses the breakdown skill in discovery/breakdown/refine/detail/sprints", () => {
-    for (const p of ["discovery", "breakdown", "refine", "detail", "sprints"]) {
+  it("uses the breakdown skill in discovery/breakdown/refine/sprints", () => {
+    for (const p of ["discovery", "breakdown", "refine", "sprints"]) {
       expect(epicPhaseUsesBreakdownSkill(p)).toBe(true);
     }
   });
@@ -167,6 +167,10 @@ describe("epicPhaseUsesBreakdownSkill", () => {
   it("keeps the feed phase on the epic draft flow", () => {
     expect(epicPhaseUsesBreakdownSkill("feed")).toBe(false);
     expect(epicPhaseUsesBreakdownSkill(null)).toBe(false);
+  });
+
+  it("no longer recognises the removed 'detail' phase (BRDG-488)", () => {
+    expect(epicPhaseUsesBreakdownSkill("detail")).toBe(false);
   });
 });
 
@@ -210,7 +214,7 @@ describe("sendStoryWriterMessage (epic mode, phase-aware breakdown)", () => {
     expect(args).toContain("split card 1");
   });
 
-  it("carries the <story-detail> tag contract in the detail phase first message", async () => {
+  it("carries the <story-detail> tag contract in the refine phase first message", async () => {
     seedEpicWithContext("VPL-E1");
     const conv = seedConversation(testDb, { id: "conv-detail" });
     seedStoryWriterSession(testDb, {
@@ -219,7 +223,7 @@ describe("sendStoryWriterMessage (epic mode, phase-aware breakdown)", () => {
       conversationId: conv.id,
       status: "active",
       mode: "epic",
-      phase: "detail",
+      phase: "refine",
     });
     testDb.insert(epicChildDraft).values({
       id: randomUUID(),
@@ -238,7 +242,7 @@ describe("sendStoryWriterMessage (epic mode, phase-aware breakdown)", () => {
     const [, opts] = mockAgentFetch.mock.calls[0] as [string, { body: Record<string, unknown> }];
     expect(opts.body.skill).toBe("break-down-epic");
     const args = (opts.body.args as { args: string }).args;
-    expect(args).toContain("[phase: detail]");
+    expect(args).toContain("[phase: refine]");
     expect(args).toContain("<story-detail index=");
   });
 
@@ -388,15 +392,15 @@ describe("buildFollowUpContent (epic breakdown phase)", () => {
     expect(result.isEdit).toBe(true);
   });
 
-  it("adds the <story-detail> instruction on a detail-phase follow-up", () => {
+  it("adds the <story-detail> instruction on a refine-phase follow-up", () => {
     const result = buildFollowUpContent(
-      { localDraft: null, localTitle: null, targetTicketKey: null, mode: "epic", phase: "detail" },
+      { localDraft: null, localTitle: null, targetTicketKey: null, mode: "epic", phase: "refine" },
       "VPL-E1",
       "Deepen story 2",
       false,
       "[Current breakdown (3 cards)]",
     );
-    expect(result.content).toContain("[phase: detail]");
+    expect(result.content).toContain("[phase: refine]");
     expect(result.content).toContain("<story-detail index=");
   });
 });

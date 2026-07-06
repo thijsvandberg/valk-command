@@ -470,18 +470,18 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
   }, [isEpicMode, ticketKey, setSession, refreshSession]);
 
   // Deepen a single card into a full body + AC. This moves the session into the
-  // detail phase (so the break-down-epic skill emits a <story-detail> block) and
+  // refine phase (so the break-down-epic skill emits a <story-detail> block) and
   // sends a targeted message naming the card by its 1-based position and title.
   // The PO can fire this for several cards; each deepen is one chat turn, and the
   // skill can also detail multiple cards in one turn when asked. Returns the
   // sendMessage outcome so callers can reflect failures.
   const deepenCard = useCallback(async (index: number, title: string): Promise<boolean> => {
     if (!isEpicMode || !session) return false;
-    if (session.phase !== "detail") {
-      setSession((prev) => (prev ? { ...prev, phase: "detail" } : prev));
+    if (session.phase !== "refine") {
+      setSession((prev) => (prev ? { ...prev, phase: "refine" } : prev));
       try {
-        await epicWriterApi.setPhase(ticketKey, { phase: "detail" });
-      } catch { /* the message still carries [phase: detail] guidance */ }
+        await epicWriterApi.setPhase(ticketKey, { phase: "refine" });
+      } catch { /* the message still carries [phase: refine] guidance */ }
     }
     const label = title.trim() ? ` ("${title.trim()}")` : "";
     return sendMessage(

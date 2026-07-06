@@ -12,9 +12,9 @@ interface PhaseRailProps {
 }
 
 /**
- * Horizontal rail of the six Epic Writer phases. Movement is free: any phase
- * is selectable from any phase. In BRDG-292 this is a persisted bookmark only;
- * it does not gate behavior. Later stories attach phase-specific affordances.
+ * Horizontal rail of the five Epic Writer phases (BRDG-488). Movement is free:
+ * any phase is selectable from any phase. It bookmarks the session and steers
+ * the right-hand view (BRDG-484); Refine is the full body + AC step.
  */
 export function PhaseRail({ current, onSelect }: PhaseRailProps) {
   return (

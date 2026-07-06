@@ -68,11 +68,11 @@ describe("PATCH /api/epics/[key]/writer/phase", () => {
     expect(getData.session.phase).toBe("discovery");
   });
 
-  it("allows free movement (e.g. feed after detail, with no transition guard)", async () => {
+  it("allows free movement (e.g. feed after refine, with no transition guard)", async () => {
     seedEpicSession("VPL-P2");
 
-    const toDetail = await PATCH(patchReq("VPL-P2", { phase: "detail" }), makeParams("VPL-P2"));
-    expect((await toDetail.json()).session.phase).toBe("detail");
+    const toRefine = await PATCH(patchReq("VPL-P2", { phase: "refine" }), makeParams("VPL-P2"));
+    expect((await toRefine.json()).session.phase).toBe("refine");
 
     const backToFeed = await PATCH(patchReq("VPL-P2", { phase: "feed" }), makeParams("VPL-P2"));
     expect(backToFeed.status).toBe(200);
@@ -82,6 +82,12 @@ describe("PATCH /api/epics/[key]/writer/phase", () => {
   it("rejects an unknown phase value", async () => {
     seedEpicSession("VPL-P3");
     const res = await PATCH(patchReq("VPL-P3", { phase: "nonsense" }), makeParams("VPL-P3"));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects the removed 'detail' phase value (BRDG-488)", async () => {
+    seedEpicSession("VPL-P5");
+    const res = await PATCH(patchReq("VPL-P5", { phase: "detail" }), makeParams("VPL-P5"));
     expect(res.status).toBe(400);
   });
 

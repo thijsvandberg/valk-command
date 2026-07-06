@@ -4,16 +4,18 @@ import type { Message } from "@/types/chat";
 /**
  * Epic Writer is an "epic mode" of the Story Writer: it reuses the same
  * story_writer_session table (with mode="epic") and the same chat plumbing.
- * The phases below are a navigable bookmark on the session; in BRDG-292 they
- * are persisted only and do not gate behavior. Later stories (293-296) build
- * breakdown, detail, and sprint affordances on top of these phases.
+ * The phases below are a navigable bookmark on the session and steer the
+ * right-hand view. BRDG-488 simplified the rail to five phases: the separate
+ * bullets-only "Refine" step was dropped (a breakdown turn already emits titles
+ * AND bullets) and the old full-detail "Detail" step was renamed to "Refine"
+ * (full body + acceptance criteria). The two work-out steps are Breakdown
+ * (titles + bullets) and Refine (full description + AC).
  */
 export const EPIC_WRITER_PHASES = [
   "feed",
   "discovery",
   "breakdown",
   "refine",
-  "detail",
   "sprints",
 ] as const;
 
@@ -24,7 +26,6 @@ export const EPIC_WRITER_PHASE_LABELS: Record<EpicWriterPhase, string> = {
   discovery: "Discovery",
   breakdown: "Breakdown",
   refine: "Refine",
-  detail: "Detail",
   sprints: "Sprints",
 };
 

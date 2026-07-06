@@ -766,7 +766,7 @@ export const storyWriterSession = sqliteTable("story_writer_session", {
   // Epic Writer phase bookmark. Free movement in 292; does not gate behavior.
   // Irrelevant for story-mode sessions, which stay on the default.
   phase: text("phase", {
-    enum: ["feed", "discovery", "breakdown", "refine", "detail", "sprints"],
+    enum: ["feed", "discovery", "breakdown", "refine", "sprints"],
   }).notNull().default("feed"),
   localDraft: text("local_draft"),
   localTitle: text("local_title"),
