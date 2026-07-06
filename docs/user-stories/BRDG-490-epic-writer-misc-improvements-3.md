@@ -87,9 +87,9 @@ In the Epic Writer, "Find related stories" renders its result as prose with inli
 - Re-architecting the writer beyond what each item needs.
 
 ## Acceptance Criteria
-- [ ] Breakdown cards collapse/expand individually.
-- [ ] A single, clear status replaces the separate DRAFT + depth badges.
-- [ ] The child-story edit view no longer forces 50/50; chat/editor can be toggled.
-- [ ] The phase rail lives in the header (no separate row).
-- [ ] DRAFT cards' title/bullets/description are editable in place and persist.
-- [ ] Shared-component changes do not regress the Story Writer or ticket detail; new/changed behaviour is covered by tests; `npm run test` and `npm run build` pass.
+- [x] Breakdown cards collapse/expand individually.
+- [x] A single, clear status replaces the separate DRAFT + depth badges.
+- [x] The child-story edit view no longer forces 50/50; chat/editor can be toggled.
+- [x] The phase rail lives in the header (no separate row).
+- [x] DRAFT cards' title/bullets/description are editable in place and persist.
+- [x] Shared-component changes do not regress the Story Writer or ticket detail; new/changed behaviour is covered by tests; `npm run test` and `npm run build` pass.

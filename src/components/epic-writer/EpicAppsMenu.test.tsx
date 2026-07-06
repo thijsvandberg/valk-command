@@ -39,14 +39,24 @@ describe("EpicAppsMenu (BRDG-484)", () => {
     expect(onSelect).toHaveBeenCalledWith("child");
   });
 
+  // BRDG-490 #10: Related stories is a base view surfacing the linkable panel.
+  it("lists the Related stories view and selects it", () => {
+    const onSelect = vi.fn();
+    render(<EpicAppsMenu view="breakdown" onSelect={onSelect} />);
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Related stories/ }));
+    expect(onSelect).toHaveBeenCalledWith("related");
+  });
+
   it("omits the child view when no child is open", () => {
     render(<EpicAppsMenu view="breakdown" onSelect={() => {}} childKey={null} />);
     fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
     expect(screen.getByRole("menuitem", { name: /Breakdown/ })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: /Sprints/ })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: /Draft/ })).toBeTruthy();
-    // Only the three base views (Breakdown, Sprints, Draft).
-    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
+    expect(screen.getByRole("menuitem", { name: /Related stories/ })).toBeTruthy();
+    // The four base views (Breakdown, Sprints, Draft, Related stories).
+    expect(screen.getAllByRole("menuitem")).toHaveLength(4);
   });
 
   // BRDG-487 #3: chat is a toggleable app, listed only when onToggleChat is given.
