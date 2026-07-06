@@ -82,6 +82,17 @@ describe("BookmarksView", () => {
     expect(await screen.findByText("why I saved this")).toBeInTheDocument();
   });
 
+  it("truncates a long PO note to a snippet in the hover (BRDG-481)", async () => {
+    const longNote = "x".repeat(400);
+    swrState = { data: [entry({ notes: longNote })] };
+    renderView();
+    fireEvent.mouseEnter(screen.getByLabelText("PO note").parentElement!);
+    const tip = await screen.findByText((t) => t.startsWith("xxxx") && t.endsWith("…"));
+    // 180-char cap plus the single ellipsis character; never the full 400-char note.
+    expect(tip.textContent!.length).toBeLessThanOrEqual(181);
+    expect(tip.textContent).not.toBe(longNote);
+  });
+
   it("shows a backlog label when the ticket has no sprint", () => {
     swrState = { data: [entry({ sprintName: null })] };
     renderView();

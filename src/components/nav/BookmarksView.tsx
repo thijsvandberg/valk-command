@@ -11,6 +11,15 @@ import { DataErrorState } from "@/components/shared/DataErrorState";
 import { revealStyle } from "@/components/nav/revealStyle";
 import type { BookmarkEntry } from "@/lib/bookmarks";
 
+// A bookmark's PO note reuses poNotes, which can run to 5000 chars. The launcher hover
+// only teases WHY it was saved (the full note lives on the ticket), so clamp it to a
+// short snippet — otherwise a long note makes an oversized tooltip (BRDG-481).
+const NOTE_SNIPPET_MAX = 180;
+function noteSnippet(note: string): string {
+  const trimmed = note.trim();
+  return trimmed.length > NOTE_SNIPPET_MAX ? `${trimmed.slice(0, NOTE_SNIPPET_MAX).trimEnd()}…` : trimmed;
+}
+
 /**
  * One bookmark row: the loose pill segments (issue type, key, status — the same
  * `variant="list"` anatomy as Recently viewed) then the title, an optional PO-note
@@ -61,7 +70,7 @@ function BookmarkRow({
         {entry.title}
       </span>
       {entry.notes.trim() && (
-        <Tooltip content={entry.notes} className="shrink-0">
+        <Tooltip content={noteSnippet(entry.notes)} className="shrink-0">
           <StickyNote className="h-3.5 w-3.5 text-[var(--meta-bv-fg)]" strokeWidth={1.5} aria-label="PO note" />
         </Tooltip>
       )}

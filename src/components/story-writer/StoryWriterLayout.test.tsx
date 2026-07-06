@@ -471,4 +471,24 @@ describe("StoryWriterLayout", () => {
     expect(patchTicketDetailCache).toHaveBeenCalledWith("VPL-42", { bookmarked: true });
     expect(patchTicketDetailCache).not.toHaveBeenCalledWith("DRAFT-1", expect.anything());
   });
+
+  it("surfaces a failure toast when the bookmark toggle write fails (BRDG-481)", async () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter());
+    (useDraftSync as ReturnType<typeof vi.fn>).mockReturnValue({
+      realKey: "VPL-42",
+      syncStatus: "synced",
+      error: null,
+      retry: vi.fn(),
+    });
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: { bookmarked: false },
+      mutate: vi.fn(),
+    });
+    (tickets.setBookmarked as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("boom"));
+
+    render(<StoryWriterLayout ticketKey="DRAFT-1" draftTitle="New Story" draftType="story" />);
+    screen.getByRole("button", { name: /bookmark this story/i }).click();
+
+    expect(await screen.findByText("Could not bookmark this story")).toBeInTheDocument();
+  });
 });

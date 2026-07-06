@@ -43,6 +43,13 @@ const ROW_TAGS = new Set<InlineTagId>(["poReadiness", "epic", "assignee", "notes
 export default function BookmarksPage() {
   usePageTitle("Bookmarks");
   const { toast, showToast, dismissToast } = useToast();
+  // Hydrate rows from the board's All-view feed. This is the whole-backlog list, but it
+  // shares the SWR cache with the sprint board (the app home, `/` redirects there), so it
+  // is warm on virtually every visit — a cold /bookmarks load reuses it rather than paying
+  // a fresh fetch. A by-keys refactor would swap that one warm, shared list for uncapped,
+  // uncached per-bookmark requests and lose the error/loading/mutate wiring, so it is not a
+  // net win for this single-user app. Accepted deliberately (BRDG-481). Epics, which this
+  // feed excludes, are fetched separately below.
   const { data: allTickets, error, isLoading, mutate: mutateTickets } = useTickets("__all__");
   const { data: order, isLoading: orderLoading } = useSWR<BookmarkEntry[]>(ticketsApi.bookmarksUrl(), swrFetcher, { revalidateOnFocus: false });
   const { sprints: rawSprints } = useJiraSprints();

@@ -35,6 +35,8 @@ import { patchTicketDetailCache } from "@/lib/ticket-cache";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 import { scopedMutate } from "@/lib/swr-scoped-mutate";
 import { useBookmarkNoteCapture } from "@/contexts/BookmarkNoteContext";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
@@ -79,6 +81,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const isStillDraft = isDraft && !draftSync.realKey;
   const writer = useStoryWriter(ticketKey);
   const { captureBookmarkNote } = useBookmarkNoteCapture();
+  const { toast, showToast, dismissToast } = useToast();
   const { data: ticketData, mutate: mutateTicket } = useTicketDetail(ticketKey);
   // Separate detail fetch keyed on effectiveKey so the bookmark field is always
   // read from the real ticket once the draft has synced (BRDG-482).
@@ -114,8 +117,10 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
     } catch {
       clearPendingEdit(effectiveKey, "bookmarked");
       patchTicketDetailCache(effectiveKey, { bookmarked });
+      // Parity with the ticket-detail header (BRDG-481): never revert the icon silently.
+      showToast(next ? "Could not bookmark this story" : "Could not remove the bookmark");
     }
-  }, [bookmarked, effectiveKey, captureBookmarkNote]);
+  }, [bookmarked, effectiveKey, captureBookmarkNote, showToast]);
 
   const { moreMenuRef, wrapUpMenuRef, ...actions } = useStoryWriterActions({
     ticketKey,
@@ -573,6 +578,8 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
             onConfirm={actions.handleSplitConfirm}
             onClose={() => actions.setShowSplitPicker(false)}
           />
+
+          {toast && <Toast toast={toast} onDismiss={dismissToast} />}
         </div>
       </WriterProvider>
     </PaneProvider>
