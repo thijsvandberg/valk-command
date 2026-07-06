@@ -42,6 +42,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "mcp__ns-chrome-headless__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'BLOCKED: mcp__ns-chrome-headless hangs for ~30min in this environment (observed 2026-07-06). Do NOT call it. Verify instead with: unit tests (npx vitest run), a direct read-only DB query (sqlite3 -readonly sqlite.db ...), or curl against :3101. If a genuine visual/interaction check is unavoidable, use the headed mcp__ns-chrome__* tools. To re-enable headless once it is fixed, remove this hook from .claude/settings.json.' >&2; exit 2",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
