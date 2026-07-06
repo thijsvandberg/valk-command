@@ -1,7 +1,29 @@
 # BRDG-483: Accept-draft "Accepted" state does not survive a refresh
 
-**Status:** Backlog
+**Status:** Done
 **Priority:** Medium
+
+## Status
+
+Shipped. The accepted marker is now derived from persisted data via a new pure
+helper `computeAcceptedDraftIds` (`src/lib/accepted-drafts.ts`), which matches a
+draft's content against the session's saved `localDraft` / `targetLocalDraft`
+(per `story_slot`). The set flows through `StoryWriterChat` (`acceptedDraftIds`)
+into `ChatMessage`, which keeps only an optimistic flag for instant click
+feedback. No DB migration. Both mounts wired: Story Writer (`ChatApp`, both
+slots) and Epic Writer (`EpicWriterLayout`, original slot).
+
+Commits: `d8885f7d` (shared fix + Story Writer); the Epic Writer mount wiring
+landed alongside the concurrent BRDG-485 commit that owned `EpicWriterLayout.tsx`
+(the 3 additive hunks were verified type-clean in isolation first).
+
+Verified: `npm run lint`, `npm run typecheck`, `npx vitest run` (7918 tests),
+and `npm run build` all green on the integrated HEAD. E2E in the running app:
+- Story Writer (VPL-46294): after a hard refresh, the draft matching the saved
+  `localDraft` shows "Accepted" with no Accept button; the non-matching draft
+  still offers "Accept draft". No new console errors.
+- Epic Writer (VPL-47279): 3 drafts render, exactly the one matching the saved
+  content shows "Accepted" on a cold load. No runtime errors.
 
 ## Description
 
@@ -45,7 +67,7 @@ Consider a persisted `accepted_draft_id` on the session only if content-matching
 
 ## Acceptance Criteria
 
-- [ ] After accepting a draft and hard-refreshing, that draft shows "Accepted" and does not offer the Accept button again
-- [ ] A not-yet-accepted / superseded draft still shows the Accept button
-- [ ] Behaviour is correct in both Story Writer (incl. target slot) and Epic Writer
-- [ ] Tests cover the derived accepted-state (accepted vs. not, per slot); `npm run test` and `npm run build` pass
+- [x] After accepting a draft and hard-refreshing, that draft shows "Accepted" and does not offer the Accept button again
+- [x] A not-yet-accepted / superseded draft still shows the Accept button
+- [x] Behaviour is correct in both Story Writer (incl. target slot) and Epic Writer
+- [x] Tests cover the derived accepted-state (accepted vs. not, per slot); `npm run test` and `npm run build` pass
