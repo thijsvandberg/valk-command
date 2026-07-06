@@ -4,6 +4,12 @@
 **Priority:** Medium
 **Type:** Feature
 
+## Post-completion enhancements (PO feedback, 2026-07-06)
+
+- **Card polish:** the capture card now shows the bookmark in a brand-tinted rounded chip, a clearer header, and a subtle `↵ save · esc dismiss … optional` hint row.
+- **Auto-grow field:** the single-line input became an auto-growing textarea (`[field-sizing:content]`, capped then scrolls). Enter saves, Shift+Enter adds a line.
+- **Bulk note capture (reverses the original "skip on bulk" decision):** bookmarking multiple stories at once now surfaces the same card and writes **one shared note to every selected story**. `captureBookmarkNote` takes one key or many; `useRowActions.runFieldEdit` fires it for any successful bookmark-ON (single or bulk), passing the full succeeded set. Bulk capture does not pre-fill (the one note is written to all targets).
+
 ## Description
 
 As the Product Owner, when I bookmark a story I want to **optionally** jot a short note (a PO comment — *why* I saved it) **right then**, without leaving what I'm doing. The affordance must be:
