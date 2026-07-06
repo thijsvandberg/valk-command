@@ -254,7 +254,12 @@ export function TicketMetaContent({
       if (on) await tickets.markTestDocNotNeeded(ticket.key);
       else await tickets.unmarkTestDocNotNeeded(ticket.key);
       confirmPendingEdit(ticket.key, "testDocState");
-      patchTicketDetailCache(ticket.key, { testDocState: next });
+      // Patch the LIST cache too, not just the detail: the marker derives from
+      // Bridge's own testDoc column (written synchronously, no Jira read lag),
+      // so the board row can hold the new state directly and the overlay
+      // self-heals at once instead of reverting when its TTL beats the next
+      // list refetch (BRDG-476). Safe exception to the detail-only rule.
+      patchTicketCaches(ticket.key, { testDocState: next });
       invalidateTestDocCache(ticket.key);
       revalidateTestDocViews();
       onMutate?.();
@@ -921,7 +926,12 @@ export function TicketMetaContent({
           {poNoteExpanded && (
             <textarea
               ref={poNoteRef}
-              defaultValue={poNotes}
+              // Controlled (not defaultValue) so a note saved elsewhere — e.g. the
+              // bookmark quick-note card patching the ticket cache (BRDG-475) — appears
+              // here at once via the poNotes sync effect, instead of only after a
+              // remount. Typing stays local (onChange); the write happens on blur.
+              value={poNotes}
+              onChange={(e) => setPoNotes(e.target.value)}
               placeholder="Quick annotation..."
               rows={2}
               onBlur={(e) => handleNotesChange(e.target.value)}
