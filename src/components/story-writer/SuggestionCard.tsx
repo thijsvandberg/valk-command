@@ -47,9 +47,17 @@ export function SuggestionCard({
 
   return (
     <div className={`mt-3 rounded-lg border border-border-default overflow-hidden ${className}`}>
-      <button
-        type="button"
+      {/* div instead of button so headerRight can safely contain interactive elements */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggle();
+          }
+        }}
         className="flex min-h-8 w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         {icon}
@@ -62,7 +70,7 @@ export function SuggestionCard({
           strokeWidth={1.5}
           className={`${headerRight ? "" : "ml-auto "}shrink-0 text-text-muted transition-transform duration-150 ${collapsed ? "-rotate-90" : ""}`}
         />
-      </button>
+      </div>
       {!collapsed && <div className="divide-y divide-border-subtle">{children}</div>}
     </div>
   );
