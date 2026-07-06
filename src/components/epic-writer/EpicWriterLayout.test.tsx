@@ -17,12 +17,23 @@ vi.mock("./BreakdownBoard", () => ({
   BreakdownBoard: () => <div data-testid="board" />,
 }));
 vi.mock("./PhaseRail", () => ({
-  PhaseRail: () => <div data-testid="rail" />,
+  PhaseRail: ({ onSelect }: { onSelect: (p: string) => void }) => (
+    <div data-testid="rail">
+      <button onClick={() => onSelect("feed")}>phase-feed</button>
+      <button onClick={() => onSelect("breakdown")}>phase-breakdown</button>
+    </div>
+  ),
 }));
 vi.mock("@/components/shared/TicketRefPill", () => ({
   TicketRefPill: ({ ticketKey }: { ticketKey: string }) => (
     <span data-testid="issue-pill">{ticketKey}</span>
   ),
+}));
+// The Draft content view reuses the real StoryPreviewApp; stub only renderMarkdown
+// so the reuse (WriterContext -> StoryPreviewApp) is exercised without pulling the
+// full markdown pipeline.
+vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
+  renderMarkdown: (content: string) => <span data-testid="markdown">{content}</span>,
 }));
 // ViewHeader returns null without its portal target + FocusMode provider in a
 // bare test; passthrough so the header actions/children render.
@@ -49,11 +60,20 @@ function setWriter(overrides: Record<string, unknown>) {
     model: "claude-sonnet-4-6",
     setModel: vi.fn(),
     draftSaveState: "idle",
+    outdated: false,
+    targetOutdated: false,
     sendMessage: vi.fn(),
     retryMessage: vi.fn(),
     dismissFailedMessage: vi.fn(),
     cancelCurrentTask: vi.fn(),
     acceptDraft: vi.fn(),
+    dismissDraft: vi.fn(),
+    updateLocalDraft: vi.fn(),
+    updateLocalTitle: vi.fn(),
+    updateTargetLocalDraft: vi.fn(),
+    updateTargetLocalTitle: vi.fn(),
+    createLink: vi.fn(),
+    linkCandidate: vi.fn(),
     setPhase: vi.fn(),
     deepenCard: vi.fn(),
     updateCardBody: vi.fn(),
@@ -128,5 +148,49 @@ describe("EpicWriterLayout header (BRDG-478)", () => {
     render(<EpicWriterLayout epicKey="VPL-1" />);
     fireEvent.click(screen.getByText("Push to Jira"));
     expect(await screen.findByText("Push to Jira failed")).toBeTruthy();
+  });
+});
+
+describe("EpicWriterLayout content views (BRDG-484)", () => {
+  beforeEach(() => {
+    setWriter({});
+  });
+
+  it("shows the breakdown board by default and can switch to the saved draft", () => {
+    setWriter({
+      session: { localDraft: "Worked-out epic body", localTitle: "Room deposit" },
+      cards: [],
+    });
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+
+    // Breakdown board is the default right-region view.
+    expect(screen.getByTestId("board")).toBeTruthy();
+
+    // Toggle to the Draft view -> the real StoryPreviewApp renders the saved
+    // epic draft (reusing the Story Writer pane app, not a bespoke panel).
+    fireEvent.click(screen.getByRole("button", { name: "Draft" }));
+    const markdownNodes = screen.getAllByTestId("markdown");
+    expect(markdownNodes.some((n) => n.textContent === "Worked-out epic body")).toBe(true);
+    // The board is unmounted while the draft view is active.
+    expect(screen.queryByTestId("board")).toBeNull();
+  });
+
+  it("renders a resize separator between the panes", () => {
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+    expect(screen.getByRole("separator", { name: "Resize panels" })).toBeTruthy();
+  });
+
+  it("focuses the right region on the artifact a selected phase is about", () => {
+    setWriter({ session: { localDraft: "Epic body", localTitle: "Room deposit" }, cards: [] });
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+
+    // Selecting an early phase focuses the saved draft view.
+    fireEvent.click(screen.getByText("phase-feed"));
+    expect(screen.queryByTestId("board")).toBeNull();
+    expect(screen.getAllByTestId("markdown").some((n) => n.textContent === "Epic body")).toBe(true);
+
+    // Selecting the breakdown phase switches back to the board.
+    fireEvent.click(screen.getByText("phase-breakdown"));
+    expect(screen.getByTestId("board")).toBeTruthy();
   });
 });
