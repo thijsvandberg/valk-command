@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check, CalendarRange, PenLine } from "lucide-react";
+import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check, PenLine } from "lucide-react";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
+import { TicketRefPill } from "@/components/shared/TicketRefPill";
+import { SprintOrBacklogBadge } from "@/components/shared/IssueMetaBadges";
 import { SprintPlacementMenu } from "./SprintPlacementMenu";
 
 interface ChildStoryCardProps {
@@ -31,6 +33,14 @@ interface ChildStoryCardProps {
   // True while a workspace task is running, so the card disables its deepen
   // action (one turn at a time) and shows a busy affordance.
   busy?: boolean;
+  // Compact mode (BRDG-487 #2): collapse to the title + status/actions row,
+  // hiding bullets, the worked-out body, and suggested links. The board toggles
+  // this for every card at once.
+  compact?: boolean;
+  // Drag handle (BRDG-487 #10): the board injects a grip bound to its sortable
+  // context here, rendered at the start of the header. Omitted when reordering
+  // is not available (read-only board).
+  dragHandle?: React.ReactNode;
 }
 
 /**
@@ -69,6 +79,8 @@ export function ChildStoryCard({
   cardTitles,
   createdIndexes,
   busy,
+  compact = false,
+  dragHandle,
 }: ChildStoryCardProps) {
   const depth = cardDepth(card);
   const meta = DEPTH_META[depth];
@@ -111,10 +123,11 @@ export function ChildStoryCard({
     <article className="rounded-lg border border-border-subtle bg-surface-elevated/60 p-3.5 shadow-sm">
       <header className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="font-mono text-caption tabular-nums text-text-muted">
+          {dragHandle}
+          <span className="font-mono text-label tabular-nums text-text-muted">
             {card.cardIndex + 1}
           </span>
-          <h3 className="min-w-0 truncate text-body-sm font-semibold text-text-primary">
+          <h3 className="min-w-0 truncate text-body-lg font-semibold text-text-primary">
             {card.title}
           </h3>
         </div>
@@ -127,18 +140,18 @@ export function ChildStoryCard({
         </span>
       </header>
 
-      {bullets.length > 0 && (
+      {!compact && bullets.length > 0 && (
         <ul className="mt-2.5 space-y-1">
           {bullets.map((bullet, i) => (
-            <li key={i} className="flex gap-1.5 text-body-sm leading-body text-text-secondary">
-              <span className="mt-[0.45rem] h-1 w-1 shrink-0 rounded-full bg-text-muted" />
+            <li key={i} className="flex gap-1.5 text-body leading-body text-text-secondary">
+              <span className="mt-[0.5rem] h-1 w-1 shrink-0 rounded-full bg-text-muted" />
               <span className="min-w-0">{bullet}</span>
             </li>
           ))}
         </ul>
       )}
 
-      {hasBody && (
+      {!compact && hasBody && (
         <div className="mt-2.5">
           <button
             type="button"
@@ -163,7 +176,7 @@ export function ChildStoryCard({
                   onChange={(e) => setDraft(e.target.value)}
                   onBlur={commitEdit}
                   rows={Math.min(16, Math.max(4, draft.split("\n").length + 1))}
-                  className="w-full resize-y rounded-md border border-border-default bg-surface-base px-2.5 py-2 text-body-sm leading-body text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                  className="w-full resize-y rounded-md border border-border-default bg-surface-base px-2.5 py-2 text-body leading-body text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                 />
               </div>
             ) : (
@@ -178,7 +191,7 @@ export function ChildStoryCard({
                   }
                 }}
                 title={onEditBody ? "Click to edit" : undefined}
-                className={`mt-1.5 whitespace-pre-wrap rounded-md bg-overlay-subtle px-2.5 py-2 text-body-sm leading-body text-text-secondary ${onEditBody ? "cursor-text" : ""}`}
+                className={`mt-1.5 whitespace-pre-wrap rounded-md bg-overlay-subtle px-2.5 py-2 text-body leading-body text-text-secondary ${onEditBody ? "cursor-text" : ""}`}
               >
                 {card.body}
               </div>
@@ -187,7 +200,7 @@ export function ChildStoryCard({
         </div>
       )}
 
-      {suggestedLinks.length > 0 && (
+      {!compact && suggestedLinks.length > 0 && (
         <ul className="mt-2.5 space-y-1">
           {suggestedLinks.map((link, i) => {
             const targetTitle = cardTitles?.[link.targetIndex] ?? `Story ${link.targetIndex + 1}`;
@@ -244,28 +257,16 @@ export function ChildStoryCard({
       <footer className="mt-3 flex items-center justify-between gap-2">
         {isCreated ? (
           <span className="flex min-w-0 items-center gap-2">
-            <span className="font-mono text-caption text-[var(--color-brand-400)]">
-              {card.jiraKey}
-            </span>
-            {/* Sprint badge (BRDG-486): a created story is either scheduled in a
-                sprint (brand-tinted) or still sitting in the backlog (muted), so the
-                PO can see at a glance which stories still need planning. Assign or
-                reassign it via the Move sprint menu, or from the Sprints view. */}
-            <span
-              className={`flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-label font-medium ${
-                card.liveSprintId
-                  ? "bg-[var(--color-brand-500)]/[0.12] text-[var(--color-brand-300)]"
-                  : "bg-overlay-subtle text-text-muted"
-              }`}
-              title={card.liveSprintId ? "Scheduled in this sprint" : "Not scheduled in a sprint yet (backlog)"}
-            >
-              <CalendarRange size={10} strokeWidth={1.75} className="shrink-0" />
-              <span className="min-w-0 truncate">
-                {card.liveSprintId
-                  ? card.liveSprintName ?? card.liveSprintId
-                  : "To be planned"}
-              </span>
-            </span>
+            {/* Standard ticket reference (BRDG-487 #9): the created story's Jira key
+                renders as the shared TicketRefPill (issue-type icon + status + hover),
+                the same chip used everywhere else a ticket key appears. */}
+            <TicketRefPill ticketKey={card.jiraKey as string} />
+            {/* Standard sprint representation (BRDG-487 #9): match how the board shows
+                a sprint (IterationCw pill) or backlog placement, instead of a bespoke
+                badge. Assign or reassign via the Move sprint menu / Sprints view. */}
+            <SprintOrBacklogBadge
+              sprintName={card.liveSprintId ? card.liveSprintName ?? card.liveSprintId : null}
+            />
           </span>
         ) : (
           <span

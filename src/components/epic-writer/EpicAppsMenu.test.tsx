@@ -48,4 +48,23 @@ describe("EpicAppsMenu (BRDG-484)", () => {
     // Only the three base views (Breakdown, Sprints, Draft).
     expect(screen.getAllByRole("menuitem")).toHaveLength(3);
   });
+
+  // BRDG-487 #3: chat is a toggleable app, listed only when onToggleChat is given.
+  it("lists Chat as a toggleable app and calls onToggleChat on click", () => {
+    const onToggleChat = vi.fn();
+    render(
+      <EpicAppsMenu view="breakdown" onSelect={() => {}} chatVisible onToggleChat={onToggleChat} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    const chatItem = screen.getByRole("menuitem", { name: /Chat/ });
+    expect(chatItem).toBeTruthy();
+    fireEvent.click(chatItem);
+    expect(onToggleChat).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not list Chat when onToggleChat is not provided", () => {
+    render(<EpicAppsMenu view="breakdown" onSelect={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    expect(screen.queryByRole("menuitem", { name: /^Chat$/ })).toBeNull();
+  });
 });

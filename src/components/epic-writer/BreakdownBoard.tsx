@@ -1,7 +1,23 @@
 "use client";
 
-import { LayoutList, Loader2, Sparkles, Link2 } from "lucide-react";
+import { LayoutList, Loader2, Sparkles, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Button } from "@/components/ui/Button";
 import { ChildStoryCard } from "./ChildStoryCard";
 
@@ -23,6 +39,9 @@ interface BreakdownBoardProps {
   onOpenChild?: (jiraKey: string) => void;
   // Open the "link existing story" picker to re-parent existing stories (BRDG-487).
   onLinkExisting?: () => void;
+  // Persist a manual drag-reorder of the cards (BRDG-487 #10). Receives the card
+  // ids in their new top-to-bottom order. Omitted makes the board non-reorderable.
+  onReorder?: (orderedIds: string[]) => void | Promise<unknown>;
   // True while a workspace task is running: cards disable their deepen action.
   busy?: boolean;
   // When the surrounding region owns the header (BRDG-484 mode toggle), drop the
@@ -46,9 +65,22 @@ export function BreakdownBoard({
   onGenerateBreakdown,
   onOpenChild,
   onLinkExisting,
+  onReorder,
   busy,
   hideHeader,
 }: BreakdownBoardProps) {
+  const [compact, setCompact] = useLocalStorage("ew:breakdown-compact", false);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorder) return;
+    const ids = cards.map((c) => c.id);
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    if (oldIndex < 0 || newIndex < 0) return;
+    void onReorder(arrayMove(ids, oldIndex, newIndex));
+  };
   // Titles + created-state lookups so each card can name its suggested-link
   // targets and only allow a link once both ends are live in Jira.
   const cardTitles: Record<number, string> = {};
@@ -118,27 +150,99 @@ export function BreakdownBoard({
                 Link existing
               </button>
             )}
+            {/* Expand / compact toggle (BRDG-487 #2): collapse cards to just their
+                titles for a bird's-eye view, or expand back to full cards. */}
+            <button
+              type="button"
+              onClick={() => setCompact((v) => !v)}
+              aria-pressed={compact}
+              className="flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              title={compact ? "Expand cards to show bullets and detail" : "Collapse cards to titles only"}
+            >
+              {compact ? (
+                <ChevronsUpDown size={11} strokeWidth={1.75} />
+              ) : (
+                <ChevronsDownUp size={11} strokeWidth={1.75} />
+              )}
+              {compact ? "Expand" : "Compact"}
+            </button>
             <span className="text-label text-text-muted">{cards.length} stories</span>
           </span>
         </header>
       )}
       <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
-        {cards.map((card) => (
-          <ChildStoryCard
-            key={card.id}
-            card={card}
-            onDeepen={onDeepen}
-            onEditBody={onEditBody}
-            onCreateInJira={onCreateInJira}
-            onConfirmLink={onConfirmLink}
-            onReassignSprint={onReassignSprint}
-            onOpenChild={onOpenChild}
-            cardTitles={cardTitles}
-            createdIndexes={createdIndexes}
-            busy={busy}
-          />
-        ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2.5">
+              {cards.map((card) => (
+                <SortableChildCard
+                  key={card.id}
+                  card={card}
+                  reorderable={!!onReorder}
+                  onDeepen={onDeepen}
+                  onEditBody={onEditBody}
+                  onCreateInJira={onCreateInJira}
+                  onConfirmLink={onConfirmLink}
+                  onReassignSprint={onReassignSprint}
+                  onOpenChild={onOpenChild}
+                  cardTitles={cardTitles}
+                  createdIndexes={createdIndexes}
+                  busy={busy}
+                  compact={compact}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One sortable row on the breakdown board (BRDG-487 #10). The whole card is the
+ * sortable node, but only the grip handle carries the drag listeners, so the
+ * card's own buttons/textarea stay clickable. When the board is not reorderable
+ * the grip is omitted and the card renders exactly as before.
+ */
+function SortableChildCard({
+  card,
+  reorderable,
+  ...cardProps
+}: { card: EpicChildCardWithSprint; reorderable: boolean } & Omit<
+  React.ComponentProps<typeof ChildStoryCard>,
+  "card" | "dragHandle"
+>) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: card.id,
+    disabled: !reorderable,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ChildStoryCard
+        card={card}
+        {...cardProps}
+        dragHandle={
+          reorderable ? (
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              tabIndex={-1}
+              aria-label="Drag to reorder"
+              className="-ml-1 shrink-0 text-text-muted cursor-grab active:cursor-grabbing touch-none transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <GripVertical size={13} strokeWidth={1.5} />
+            </button>
+          ) : undefined
+        }
+      />
     </div>
   );
 }

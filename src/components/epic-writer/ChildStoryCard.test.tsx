@@ -15,6 +15,13 @@ vi.mock("@/lib/api-client", () => ({
   settings: { getDefaultSprint: vi.fn().mockResolvedValue({ sprintId: "" }) },
 }));
 
+// The created-card Jira key now renders as the shared TicketRefPill (BRDG-487 #9),
+// which fetches its own ticket detail via SWR. Stub it to a plain key so the card
+// tests stay isolated from the network but still assert the key is shown.
+vi.mock("@/components/shared/TicketRefPill", () => ({
+  TicketRefPill: ({ ticketKey }: { ticketKey: string }) => <span>{ticketKey}</span>,
+}));
+
 function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSprint {
   return {
     id: overrides.id ?? "c1",
@@ -157,27 +164,23 @@ describe("ChildStoryCard", () => {
     expect(screen.getByText("Sprint 42")).toBeInTheDocument();
   });
 
-  it("shows 'To be planned' for a created card with no sprint", () => {
+  // BRDG-487 #9: created cards now use Bridge's standard sprint representation
+  // (SprintOrBacklogBadge): the sprint name when scheduled, a "Backlog" chip when not.
+  it("shows a 'Backlog' chip for a created card with no sprint", () => {
     render(
       <ChildStoryCard card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: null })} />,
     );
-    expect(screen.getByText(/to be planned/i)).toBeInTheDocument();
+    expect(screen.getByText("Backlog")).toBeInTheDocument();
+    expect(screen.queryByText(/to be planned/i)).not.toBeInTheDocument();
   });
 
-  it("badges the scheduled sprint of a created card as scheduled (BRDG-486)", () => {
+  it("badges the scheduled sprint of a created card with its name (BRDG-486/487)", () => {
     render(
       <ChildStoryCard
         card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: "42", liveSprintName: "Sprint 42" })}
       />,
     );
-    expect(screen.getByTitle("Scheduled in this sprint")).toHaveTextContent("Sprint 42");
-  });
-
-  it("badges an unscheduled created card as backlog (BRDG-486)", () => {
-    render(
-      <ChildStoryCard card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: null })} />,
-    );
-    expect(screen.getByTitle(/not scheduled in a sprint yet/i)).toHaveTextContent(/to be planned/i);
+    expect(screen.getByText("Sprint 42")).toBeInTheDocument();
   });
 
   it("marks a DRAFT card as not schedulable until it is created in Jira (BRDG-486)", () => {
@@ -251,5 +254,46 @@ describe("ChildStoryCard", () => {
     );
     expect(screen.getByText(/linked/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /confirm/i })).not.toBeInTheDocument();
+  });
+
+  // BRDG-487 #2: compact mode collapses a card to its title + actions, hiding the
+  // bullets, worked-out body, and suggested links.
+  it("hides bullets, detail, and links in compact mode but keeps the title", () => {
+    render(
+      <ChildStoryCard
+        card={card({
+          title: "Compact card",
+          bullets: ["a hidden bullet"],
+          body: "hidden worked-out body",
+          suggestedLinks: [{ targetIndex: 1, relation: "blocks", confirmed: false }],
+        })}
+        cardTitles={{ 0: "A", 1: "B" }}
+        compact
+      />,
+    );
+    expect(screen.getByText("Compact card")).toBeInTheDocument();
+    expect(screen.queryByText("a hidden bullet")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /show detail/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("blocks")).not.toBeInTheDocument();
+  });
+
+  it("shows bullets and links by default (expanded)", () => {
+    render(
+      <ChildStoryCard
+        card={card({ bullets: ["a visible bullet"] })}
+      />,
+    );
+    expect(screen.getByText("a visible bullet")).toBeInTheDocument();
+  });
+
+  // BRDG-487 #10: the board injects a drag handle rendered in the card header.
+  it("renders the drag handle when provided", () => {
+    render(
+      <ChildStoryCard
+        card={card({})}
+        dragHandle={<button aria-label="Drag to reorder">grip</button>}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /drag to reorder/i })).toBeInTheDocument();
   });
 });

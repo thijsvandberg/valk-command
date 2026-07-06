@@ -520,6 +520,36 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     }
   }, [isEpicMode, ticketKey, refreshSession]);
 
+  // Persist a manual drag-reorder of the breakdown cards (BRDG-487 #10).
+  // Optimistically reassigns cardIndex to the new positions and remaps every
+  // suggestedLinks.targetIndex through the old->new map, so a link keeps pointing
+  // at the same card after the move (the board renders links by index). The route
+  // does the same remap server-side; on failure we resync from the server.
+  const reorderCards = useCallback(async (orderedIds: string[]) => {
+    if (!isEpicMode) return;
+    setCards((prev) => {
+      const byId = new Map(prev.map((c) => [c.id, c]));
+      if (orderedIds.length !== prev.length || orderedIds.some((id) => !byId.has(id))) return prev;
+      const oldToNew = new Map<number, number>();
+      orderedIds.forEach((id, newIdx) => {
+        oldToNew.set((byId.get(id) as EpicChildCardWithSprint).cardIndex, newIdx);
+      });
+      return orderedIds.map((id, newIdx) => {
+        const c = byId.get(id) as EpicChildCardWithSprint;
+        const suggestedLinks = (c.suggestedLinks ?? []).map((link) => {
+          const mapped = oldToNew.get(link.targetIndex);
+          return mapped === undefined ? link : { ...link, targetIndex: mapped };
+        });
+        return { ...c, cardIndex: newIdx, suggestedLinks };
+      });
+    });
+    try {
+      await epicWriterApi.reorderCards(ticketKey, { orderedIds });
+    } catch {
+      void refreshSession();
+    }
+  }, [isEpicMode, ticketKey, refreshSession]);
+
   // Promote a DRAFT card to a real Jira issue under the epic. The placement
   // (sprint | backlog | default) is applied by the route via the existing
   // move-sprint plumbing, so the card lands in the chosen sprint at creation.
@@ -635,6 +665,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     deepenCard,
     generateBreakdown,
     updateCardBody,
+    reorderCards,
     createCardInJira,
     confirmCardLink,
     reassignCardSprint,

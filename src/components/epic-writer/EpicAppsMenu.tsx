@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { LayoutGrid, ChevronDown, Check, LayoutList, FileText, PenLine, CalendarRange } from "lucide-react";
+import { LayoutGrid, ChevronDown, Check, LayoutList, FileText, PenLine, CalendarRange, MessageSquare } from "lucide-react";
 import { MenuItem, MenuList } from "@/components/shared/MenuItem";
 import { Button } from "@/components/ui/Button";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
@@ -28,11 +28,17 @@ export function EpicAppsMenu({
   view,
   onSelect,
   childKey,
+  chatVisible,
+  onToggleChat,
 }: {
   view: EpicRightView;
   onSelect: (v: EpicRightView) => void;
   /** When a child story is open in-place (BRDG-485), it is listed as a third view. */
   childKey?: string | null;
+  /** Whether the chat pane is currently shown (BRDG-487 #3). */
+  chatVisible?: boolean;
+  /** Toggle the chat pane on/off. When provided, "Chat" is listed as a toggleable app. */
+  onToggleChat?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -62,6 +68,24 @@ export function EpicAppsMenu({
 
       {open && (
         <MenuList className="absolute right-0 top-full z-30 mt-1.5 w-56" aria-label="Views">
+          {/* Chat is a toggleable pane (BRDG-487 #3), not one of the mutually
+              exclusive right-region views: it stays open on toggle so the PO can
+              flip it and watch the layout change, and sits above a divider. */}
+          {onToggleChat && (
+            <>
+              <MenuItem
+                icon={<MessageSquare size={13} strokeWidth={1.5} />}
+                active={!!chatVisible}
+                onClick={onToggleChat}
+              >
+                <span className="min-w-0 flex-1 truncate text-left">Chat</span>
+                {chatVisible && (
+                  <Check size={13} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
+                )}
+              </MenuItem>
+              <div className="my-1 h-px bg-overlay-default" aria-hidden />
+            </>
+          )}
           {views.map((v) => {
             const active = view === v.id;
             return (

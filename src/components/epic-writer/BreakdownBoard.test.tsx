@@ -1,7 +1,13 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BreakdownBoard } from "./BreakdownBoard";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
+
+// Created-card keys render as TicketRefPill (BRDG-487 #9), which fetches via SWR;
+// stub it so the board tests stay off the network but still assert the key.
+vi.mock("@/components/shared/TicketRefPill", () => ({
+  TicketRefPill: ({ ticketKey }: { ticketKey: string }) => <span>{ticketKey}</span>,
+}));
 
 function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSprint {
   return {
@@ -24,6 +30,11 @@ function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSpr
 }
 
 describe("BreakdownBoard", () => {
+  beforeEach(() => {
+    // The compact toggle persists to localStorage; reset between tests.
+    localStorage.clear();
+  });
+
   it("shows an empty state when there are no cards", () => {
     render(<BreakdownBoard cards={[]} />);
     expect(screen.getByText(/Turn this epic into child stories/i)).toBeInTheDocument();
@@ -94,5 +105,40 @@ describe("BreakdownBoard", () => {
     );
     expect(screen.getByText("Draft")).toBeInTheDocument();
     expect(screen.getByText("VPL-500")).toBeInTheDocument();
+  });
+
+  // BRDG-487 #2: an expand/compact toggle collapses cards to titles only.
+  it("toggles between compact and expanded, hiding bullets when compact", () => {
+    render(
+      <BreakdownBoard
+        cards={[card({ id: "a", cardIndex: 0, title: "Cart summary", bullets: ["Show items"] })]}
+      />,
+    );
+    // Expanded by default: bullets visible, button offers "Compact".
+    expect(screen.getByText("Show items")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /compact/i }));
+
+    // Now compact: bullets hidden, button offers "Expand".
+    expect(screen.queryByText("Show items")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /expand/i })).toBeInTheDocument();
+  });
+
+  // BRDG-487 #10: a drag handle per card appears only when reordering is enabled.
+  it("renders a drag handle per card when onReorder is provided", () => {
+    render(
+      <BreakdownBoard
+        cards={[
+          card({ id: "a", cardIndex: 0, title: "One" }),
+          card({ id: "b", cardIndex: 1, title: "Two" }),
+        ]}
+        onReorder={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole("button", { name: /drag to reorder/i })).toHaveLength(2);
+  });
+
+  it("does not render drag handles when the board is not reorderable", () => {
+    render(<BreakdownBoard cards={[card({ id: "a", cardIndex: 0, title: "One" })]} />);
+    expect(screen.queryByRole("button", { name: /drag to reorder/i })).not.toBeInTheDocument();
   });
 });

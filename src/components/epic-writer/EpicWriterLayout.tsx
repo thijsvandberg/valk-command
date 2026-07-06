@@ -18,6 +18,7 @@ import { StoryDraftEditor } from "./StoryDraftEditor";
 import { ChildStoryView } from "./ChildStoryView";
 import { LinkExistingStoryModal } from "./LinkExistingStoryModal";
 import { useHorizontalSplit } from "./useHorizontalSplit";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { isEpicWriterPhase, type EpicWriterPhase } from "@/types/epic-writer";
 
 interface EpicWriterLayoutProps {
@@ -41,6 +42,9 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
   const [openChildKey, setOpenChildKey] = useState<string | null>(null);
   const [showLinkExisting, setShowLinkExisting] = useState(false);
   const split = useHorizontalSplit(`ew:${epicKey}:split`);
+  // Chat is a toggleable pane (BRDG-487 #3): hiding it gives the right region full
+  // width. Persisted per-epic like the split ratio.
+  const [chatVisible, setChatVisible] = useLocalStorage(`ew:${epicKey}:chat`, true);
 
   const { messageDraftMap, draftContentMap } = useMemo(() => {
     const msgMap: Record<string, string> = {};
@@ -182,8 +186,15 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
         hideNotifications
         actions={
           <>
-            {/* Content-view switcher, matching the Story Writer's Apps affordance. */}
-            <EpicAppsMenu view={effectiveMode} onSelect={setRightMode} childKey={openChildKey} />
+            {/* Content-view switcher, matching the Story Writer's Apps affordance.
+                Chat is listed as a toggleable pane (BRDG-487 #3). */}
+            <EpicAppsMenu
+              view={effectiveMode}
+              onSelect={setRightMode}
+              childKey={openChildKey}
+              chatVisible={chatVisible}
+              onToggleChat={() => setChatVisible((v) => !v)}
+            />
 
             {/* Autosave indicator: edits persist on their own; this reports it,
                 and the explicit Save draft below flushes + toasts. */}
@@ -235,46 +246,51 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
       <PhaseRail current={phase} onSelect={handleSelectPhase} />
 
       <div ref={split.containerRef} className="flex min-h-0 flex-1">
-        <div
-          className="flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-border-subtle"
-          style={{ width: `${split.leftPct}%` }}
-        >
-          <StoryWriterChat
-            messages={writer.messages}
-            status={writer.status}
-            streamProgress={writer.streamProgress}
-            streamError={writer.streamError}
-            usage={writer.usage}
-            lastResponseDurationMs={writer.lastResponseDurationMs}
-            localDraft={writer.session?.localDraft ?? null}
-            codebaseResearch={writer.codebaseResearch}
-            onCodebaseResearchChange={writer.setCodbaseResearch}
-            model={writer.model}
-            onModelChange={writer.setModel}
-            onSend={writer.sendMessage}
-            onRetry={writer.retryMessage}
-            onDismissFailed={writer.dismissFailedMessage}
-            onCancel={writer.cancelCurrentTask}
-            messageDraftMap={messageDraftMap}
-            draftContentMap={draftContentMap}
-            acceptedDraftIds={acceptedDraftIds}
-            onAcceptDraft={writer.acceptDraft}
-          />
-        </div>
+        {chatVisible && (
+          <div
+            className="flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-border-subtle"
+            style={{ width: `${split.leftPct}%` }}
+          >
+            <StoryWriterChat
+              messages={writer.messages}
+              status={writer.status}
+              streamProgress={writer.streamProgress}
+              streamError={writer.streamError}
+              usage={writer.usage}
+              lastResponseDurationMs={writer.lastResponseDurationMs}
+              localDraft={writer.session?.localDraft ?? null}
+              codebaseResearch={writer.codebaseResearch}
+              onCodebaseResearchChange={writer.setCodbaseResearch}
+              model={writer.model}
+              onModelChange={writer.setModel}
+              onSend={writer.sendMessage}
+              onRetry={writer.retryMessage}
+              onDismissFailed={writer.dismissFailedMessage}
+              onCancel={writer.cancelCurrentTask}
+              messageDraftMap={messageDraftMap}
+              draftContentMap={draftContentMap}
+              acceptedDraftIds={acceptedDraftIds}
+              onAcceptDraft={writer.acceptDraft}
+            />
+          </div>
+        )}
 
         {/* Resizable divider (BRDG-484): drag to rebalance chat vs. right region;
-            the ratio persists in localStorage like other layout prefs. */}
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize panels"
-          onMouseDown={split.onHandleMouseDown}
-          className={`group relative z-10 flex w-1 shrink-0 cursor-col-resize items-center justify-center transition-colors duration-150 hover:bg-[var(--color-brand-500)]/20 ${
-            split.dragging ? "bg-[var(--color-brand-500)]/30" : ""
-          }`}
-        >
-          <div className="h-8 w-0.5 rounded-full bg-overlay-strong transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/40" />
-        </div>
+            the ratio persists in localStorage like other layout prefs. Hidden when
+            the chat pane is toggled off (BRDG-487 #3) - nothing to resize. */}
+        {chatVisible && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize panels"
+            onMouseDown={split.onHandleMouseDown}
+            className={`group relative z-10 flex w-1 shrink-0 cursor-col-resize items-center justify-center transition-colors duration-150 hover:bg-[var(--color-brand-500)]/20 ${
+              split.dragging ? "bg-[var(--color-brand-500)]/30" : ""
+            }`}
+          >
+            <div className="h-8 w-0.5 rounded-full bg-overlay-strong transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/40" />
+          </div>
+        )}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-base/30">
           {/* Each view owns its own header/chrome; the switcher lives in the
@@ -290,6 +306,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
               onGenerateBreakdown={writer.generateBreakdown}
               onOpenChild={handleOpenChild}
               onLinkExisting={() => setShowLinkExisting(true)}
+              onReorder={writer.reorderCards}
               busy={writer.status === "sending" || writer.status === "streaming"}
             />
           )}

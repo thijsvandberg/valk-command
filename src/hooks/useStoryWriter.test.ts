@@ -523,5 +523,40 @@ describe("useStoryWriter", () => {
         /deepen story 1 .*full description and acceptance criteria/i,
       );
     });
+
+    it("reorderCards reorders locally, remaps link targets, and persists (BRDG-487 #10)", async () => {
+      const calls: { url: string; method: string; body?: unknown }[] = [];
+      const cards = [
+        { id: "c0", sessionId: "epic-1", cardIndex: 0, title: "Zero", bullets: [], body: null, status: "draft", jiraKey: null, suggestedSprintId: null, suggestedLinks: [{ targetIndex: 2, relation: "blocks", confirmed: false }], liveSprintId: null, liveSprintName: null, createdAt: "", updatedAt: "" },
+        { id: "c1", sessionId: "epic-1", cardIndex: 1, title: "One", bullets: [], body: null, status: "draft", jiraKey: null, suggestedSprintId: null, suggestedLinks: [], liveSprintId: null, liveSprintName: null, createdAt: "", updatedAt: "" },
+        { id: "c2", sessionId: "epic-1", cardIndex: 2, title: "Two", bullets: [], body: null, status: "draft", jiraKey: null, suggestedSprintId: null, suggestedLinks: [], liveSprintId: null, liveSprintName: null, createdAt: "", updatedAt: "" },
+      ];
+      vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+        const url = typeof input === "string" ? input : (input as Request).url;
+        const method = init?.method ?? "GET";
+        calls.push({ url, method, body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined });
+        if (url === `${EPIC_BASE}/session` && method === "GET") {
+          return { ok: true, json: async () => ({ session: epicSession, messages: [], aiDrafts: [], cards }) } as Response;
+        }
+        return { ok: true, json: async () => ({ ok: true }) } as Response;
+      });
+
+      const { result } = renderHook(() => useStoryWriter(EPIC_KEY, { mode: "epic" }));
+      await waitFor(() => expect(result.current.cards).toHaveLength(3));
+
+      // Move c2 to the front: new order [c2, c0, c1].
+      await act(async () => { await result.current.reorderCards(["c2", "c0", "c1"]); });
+
+      // Optimistic local state: reassigned indices and remapped link. c0 links to
+      // c2, which moves to index 0, so its target index remaps 2 -> 0.
+      expect(result.current.cards.map((c) => c.id)).toEqual(["c2", "c0", "c1"]);
+      expect(result.current.cards.map((c) => c.cardIndex)).toEqual([0, 1, 2]);
+      const c0 = result.current.cards.find((c) => c.id === "c0");
+      expect(c0?.suggestedLinks).toEqual([{ targetIndex: 0, relation: "blocks", confirmed: false }]);
+
+      // Persisted via the reorder endpoint.
+      const reorderCall = calls.find((c) => c.url === `${EPIC_BASE}/cards/reorder` && c.method === "PUT");
+      expect(reorderCall?.body).toEqual({ orderedIds: ["c2", "c0", "c1"] });
+    });
   });
 });

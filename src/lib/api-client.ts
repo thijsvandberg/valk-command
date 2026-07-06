@@ -453,6 +453,11 @@ export const epicWriter = {
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/apply-output`, { method: "POST", body: data, signal }),
   updateCard: (key: string, index: number, data: { body: string | null }, signal?: AbortSignal) =>
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/cards/${index}`, { method: "PATCH", body: data, signal }),
+  // Persist a manual drag-reorder of the breakdown cards (BRDG-487 #10).
+  reorderCards: (key: string, data: { orderedIds: string[] }, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean; orderedIds: string[] }>(
+      `/api/epics/${enc(key)}/writer/cards/reorder`, { method: "PUT", body: data, signal },
+    ),
   createInJira: (key: string, data: { cardIndex: number; placement?: string }, signal?: AbortSignal) =>
     apiFetch<{ ok: boolean; cardIndex: number; jiraKey: string; alreadyCreated?: boolean }>(
       `/api/epics/${enc(key)}/writer/create-in-jira`, { method: "POST", body: data, signal },

@@ -81,9 +81,16 @@
 /* .md-paragraph: read-only markdown paragraphs render as <div> so inline
    ticket-ref pills (which expand to <div>s) don't nest illegally inside <p>. */
 .description-content p,
-.description-content .md-paragraph,
-.rich-editor-wrapper .tiptap p {
+.description-content .md-paragraph {
   margin: 0 0 1.1rem;
+}
+
+/* Editor paragraphs sit tighter than the read view (BRDG-487 #6): the airy
+   1.1rem read spacing looked too loose while actively composing in the WYSIWYG
+   editor. Scoped to .rich-editor-wrapper only so the chat, ticket detail, and
+   draft previews (.description-content) keep their reading rhythm unchanged. */
+.rich-editor-wrapper .tiptap p {
+  margin: 0 0 0.75rem;
 }
 
 .description-content p:last-child,
