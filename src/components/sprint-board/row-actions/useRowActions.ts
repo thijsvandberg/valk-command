@@ -133,10 +133,11 @@ export function useRowActions(opts: UseRowActionsOpts) {
       // Refresh the cross-sprint bookmark list (launcher quick-list + /bookmarks) so a
       // toggle from any surface reflects there without a manual refresh (BRDG-355).
       if (field === "bookmarked" && ok.length) scopedMutate("/api/bookmarks");
-      // Offer the optional quick-note capture only on a single-item bookmark-ON that
-      // actually succeeded (BRDG-475). ok.length === 1 skips bulk / multi-target menus;
-      // value === true skips removals; ok[0] (not keys[0]) means the write landed.
-      if (field === "bookmarked" && value === true && ok.length === 1) captureBookmarkNote(ok[0]);
+      // Offer the optional quick-note capture on any bookmark-ON that succeeded
+      // (BRDG-475). value === true skips removals; a bulk bookmark passes the whole
+      // succeeded set so one shared note can be written to every target. `ok` (not
+      // `keys`) so only the writes that actually landed get the note.
+      if (field === "bookmarked" && value === true && ok.length >= 1) captureBookmarkNote(ok);
       if (failed.length) {
         const updated = keys.length - failed.length;
         showToast(`Failed for ${failed.length} issue${failed.length === 1 ? "" : "s"}${updated > 0 ? ` (${updated} updated)` : ""}`);

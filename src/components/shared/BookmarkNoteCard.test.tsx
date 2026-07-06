@@ -31,13 +31,13 @@ beforeEach(() => {
 
 describe("BookmarkNoteCard (BRDG-475)", () => {
   it("does not autofocus and renders the ticket key + optional-note placeholder", async () => {
-    render(<BookmarkNoteCard ticketKey="VPL-42" onClose={vi.fn()} />);
+    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={vi.fn()} />);
 
     const input = screen.getByRole("textbox");
     expect(input).toBeInTheDocument();
     // No focus stealing: the card must not trap/steal focus on appear.
     expect(document.activeElement).not.toBe(input);
-    expect(input).toHaveAttribute("placeholder", "Add an optional note…");
+    expect(input).toHaveAttribute("placeholder", "Add a note — why you saved it");
     expect(screen.getByText("VPL-42")).toBeInTheDocument();
     await flush();
   });
@@ -46,7 +46,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     vi.useFakeTimers();
     try {
       const onClose = vi.fn();
-      render(<BookmarkNoteCard ticketKey="VPL-42" onClose={onClose} />);
+      render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
 
       expect(onClose).not.toHaveBeenCalled();
       act(() => { vi.advanceTimersByTime(AUTO_DISMISS_MS); });
@@ -62,7 +62,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     vi.useFakeTimers();
     try {
       const onClose = vi.fn();
-      render(<BookmarkNoteCard ticketKey="VPL-42" onClose={onClose} />);
+      render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
 
       fireEvent.focus(screen.getByRole("textbox"));
       act(() => { vi.advanceTimersByTime(AUTO_DISMISS_MS * 3); });
@@ -78,7 +78,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     vi.useFakeTimers();
     try {
       const onClose = vi.fn();
-      render(<BookmarkNoteCard ticketKey="VPL-42" onClose={onClose} />);
+      render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
 
       fireEvent.change(screen.getByRole("textbox"), { target: { value: "w" } });
       act(() => { vi.advanceTimersByTime(AUTO_DISMISS_MS * 3); });
@@ -91,7 +91,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
 
   it("saves on Enter: writes poNotes, patches the detail cache, revalidates bookmarks", async () => {
     const onClose = vi.fn();
-    render(<BookmarkNoteCard ticketKey="VPL-42" onClose={onClose} />);
+    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
 
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "  why I saved it  " } });
@@ -107,7 +107,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
 
   it("saves on blur when there is text", async () => {
     const onClose = vi.fn();
-    render(<BookmarkNoteCard ticketKey="VPL-42" onClose={onClose} />);
+    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
 
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "note" } });
@@ -120,7 +120,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
 
   it("makes no metadata write when dismissed with Escape and no text", () => {
     const onClose = vi.fn();
-    render(<BookmarkNoteCard ticketKey="VPL-42" onClose={onClose} />);
+    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
 
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
 
@@ -132,7 +132,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     vi.useFakeTimers();
     try {
       const onClose = vi.fn();
-      render(<BookmarkNoteCard ticketKey="VPL-42" onClose={onClose} />);
+      render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
       act(() => { vi.advanceTimersByTime(AUTO_DISMISS_MS); });
       expect(updateMetadata).not.toHaveBeenCalled();
     } finally {
@@ -142,7 +142,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
 
   it("pre-fills the existing note so the PO edits in place", async () => {
     getMetadata.mockResolvedValue({ poNotes: "existing reason" });
-    render(<BookmarkNoteCard ticketKey="VPL-42" onClose={vi.fn()} />);
+    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={vi.fn()} />);
 
     await flush();
     expect(screen.getByRole("textbox")).toHaveValue("existing reason");
@@ -151,7 +151,7 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
   it("a late-resolving pre-fill never clobbers what the PO already typed", async () => {
     let resolveMeta: (v: unknown) => void = () => {};
     getMetadata.mockReturnValue(new Promise((res) => { resolveMeta = res; }));
-    render(<BookmarkNoteCard ticketKey="VPL-42" onClose={vi.fn()} />);
+    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={vi.fn()} />);
 
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "typed by PO" } });
@@ -159,5 +159,38 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     await act(async () => { resolveMeta({ poNotes: "stale note" }); await Promise.resolve(); });
 
     expect(input).toHaveValue("typed by PO");
+  });
+
+  it("bulk: writes one shared note to every target, patches each, and never pre-fills", async () => {
+    const onClose = vi.fn();
+    render(<BookmarkNoteCard ticketKeys={["A-1", "A-2", "A-3"]} onClose={onClose} />);
+
+    // No per-ticket pre-fill fetch for a bulk capture.
+    expect(getMetadata).not.toHaveBeenCalled();
+    expect(screen.getByText("3 stories")).toBeInTheDocument();
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "sprint review batch" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    for (const k of ["A-1", "A-2", "A-3"]) {
+      expect(updateMetadata).toHaveBeenCalledWith(k, { poNotes: "sprint review batch" });
+      expect(patchTicketDetailCache).toHaveBeenCalledWith(k, { notes: "sprint review batch" });
+    }
+    expect(onClose).toHaveBeenCalledTimes(1);
+    await flush();
+    expect(scopedMutate).toHaveBeenCalledWith("/api/bookmarks");
+  });
+
+  it("supports Shift+Enter for a newline without saving", () => {
+    const onClose = vi.fn();
+    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "line one" } });
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    expect(updateMetadata).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

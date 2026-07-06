@@ -10,8 +10,12 @@ const BookmarkNoteCard = dynamic(
 );
 
 interface BookmarkNoteContextValue {
-  /** Opens the optional quick-note capture for a freshly bookmarked ticket. */
-  captureBookmarkNote: (ticketKey: string) => void;
+  /**
+   * Opens the optional quick-note capture for freshly bookmarked ticket(s). Pass one
+   * key for a single bookmark, or several to capture one shared note for a bulk
+   * bookmark (the note is written to every target).
+   */
+  captureBookmarkNote: (ticketKeys: string | string[]) => void;
 }
 
 const NOOP = () => {};
@@ -29,20 +33,22 @@ const BookmarkNoteContext = createContext<BookmarkNoteContextValue>({ captureBoo
  * first (no queue), matching the optional, non-blocking intent.
  */
 export function BookmarkNoteProvider({ children }: { children: ReactNode }) {
-  const [active, setActive] = useState<{ ticketKey: string } | null>(null);
+  const [active, setActive] = useState<{ ticketKeys: string[] } | null>(null);
 
-  const captureBookmarkNote = useCallback((ticketKey: string) => {
-    setActive({ ticketKey });
+  const captureBookmarkNote = useCallback((ticketKeys: string | string[]) => {
+    const keys = Array.isArray(ticketKeys) ? ticketKeys : [ticketKeys];
+    if (keys.length === 0) return;
+    setActive({ ticketKeys: keys });
   }, []);
 
   return (
     <BookmarkNoteContext.Provider value={{ captureBookmarkNote }}>
       {children}
       {active && (
-        // Key on the ticket so re-bookmarking gives a fresh card (fresh timer + input).
+        // Key on the targets so re-bookmarking gives a fresh card (fresh timer + input).
         <BookmarkNoteCard
-          key={active.ticketKey}
-          ticketKey={active.ticketKey}
+          key={active.ticketKeys.join(",")}
+          ticketKeys={active.ticketKeys}
           onClose={() => setActive(null)}
         />
       )}

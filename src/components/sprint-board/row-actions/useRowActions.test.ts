@@ -168,13 +168,14 @@ describe("useRowActions - bulkSetBookmarked note capture (BRDG-475)", () => {
     const { result } = setup([makeTicket("A-1", false)]);
     await act(async () => { await result.current.bulkSetBookmarked(true, new Set(["A-1"])); });
     expect(captureBookmarkNote).toHaveBeenCalledTimes(1);
-    expect(captureBookmarkNote).toHaveBeenCalledWith("A-1");
+    expect(captureBookmarkNote).toHaveBeenCalledWith(["A-1"]);
   });
 
-  it("does not offer capture on a bulk (multi-target) bookmark-ON", async () => {
+  it("offers one shared-note capture for a bulk (multi-target) bookmark-ON", async () => {
     const { result } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
     await act(async () => { await result.current.bulkSetBookmarked(true, new Set(["A-1", "A-2"])); });
-    expect(captureBookmarkNote).not.toHaveBeenCalled();
+    expect(captureBookmarkNote).toHaveBeenCalledTimes(1);
+    expect(captureBookmarkNote).toHaveBeenCalledWith(["A-1", "A-2"]);
   });
 
   it("does not offer capture when removing a bookmark", async () => {
