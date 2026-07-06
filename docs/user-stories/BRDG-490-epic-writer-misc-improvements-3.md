@@ -41,7 +41,7 @@ The PO wants to fold/unfold single stories on the breakdown board, independently
 
 ### 3. Toggle chat vs editor when editing a story in the Epic Writer
 When editing a child story in the writer, the layout is a fixed 50/50 chat|editor split, so each side gets too small.
-- [ ] Let the PO turn the chat or the editor on/off (or heavily favour one) in the child-story edit view, instead of a forced 50/50.
+- [x] Let the PO turn the chat or the editor on/off (or heavily favour one) in the child-story edit view, instead of a forced 50/50.
 - Relation: BRDG-487 #3 makes the chat a toggleable app in the main Epic Writer; this is the same idea applied to the child-story EDIT view (`ChildStoryView`). Build consistently - one toggling model, not two.
 
 ### 4. Fold the phase rail into the header (save vertical space)

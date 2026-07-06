@@ -1,18 +1,75 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
-import { Loader2, CloudUpload, Save, Check, X } from "lucide-react";
+import { useMemo, useRef, useState, useCallback } from "react";
+import { Loader2, CloudUpload, Save, Check, X, LayoutGrid, ChevronDown, FileText, MessageSquare } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { StoryDraftEditor } from "./StoryDraftEditor";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
+import { MenuItem, MenuList } from "@/components/shared/MenuItem";
 import { Button } from "@/components/ui/Button";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { ShowToast } from "@/hooks/useToast";
 
 interface ChildStoryViewProps {
   childKey: string;
   onClose: () => void;
   showToast: ShowToast;
+}
+
+/**
+ * Editor / Chat pane toggles for the child edit view (BRDG-490 #3). Mirrors the
+ * Epic Writer's EpicAppsMenu check-item model (BRDG-487 #3) rather than inventing
+ * a second toggling affordance, so the two views feel consistent. The parent
+ * enforces that at least one pane stays visible.
+ */
+function ChildPanesMenu({
+  editorVisible,
+  chatVisible,
+  onToggleEditor,
+  onToggleChat,
+}: {
+  editorVisible: boolean;
+  chatVisible: boolean;
+  onToggleEditor: () => void;
+  onToggleChat: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
+
+  return (
+    <div ref={ref} className="relative">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<LayoutGrid size={12} strokeWidth={1.5} />}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        Panes
+        <ChevronDown
+          size={11}
+          strokeWidth={1.75}
+          className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+        />
+      </Button>
+      {open && (
+        <MenuList className="absolute right-0 top-full z-30 mt-1.5 w-44" aria-label="Panes">
+          <MenuItem icon={<FileText size={13} strokeWidth={1.5} />} active={editorVisible} onClick={onToggleEditor}>
+            <span className="min-w-0 flex-1 truncate text-left">Editor</span>
+            {editorVisible && <Check size={13} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />}
+          </MenuItem>
+          <MenuItem icon={<MessageSquare size={13} strokeWidth={1.5} />} active={chatVisible} onClick={onToggleChat}>
+            <span className="min-w-0 flex-1 truncate text-left">Chat</span>
+            {chatVisible && <Check size={13} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />}
+          </MenuItem>
+        </MenuList>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -25,6 +82,18 @@ interface ChildStoryViewProps {
 export function ChildStoryView({ childKey, onClose, showToast }: ChildStoryViewProps) {
   const child = useStoryWriter(childKey);
   const [pushing, setPushing] = useState(false);
+
+  // Toggleable panes (BRDG-490 #3): instead of a forced 50/50 split, the PO can
+  // turn the editor or chat off to give the other full height. Persisted per
+  // child; at least one pane must stay visible (hiding the last one is a no-op).
+  const [editorVisible, setEditorVisible] = useLocalStorage(`ew:child:${childKey}:editor`, true);
+  const [chatVisible, setChatVisible] = useLocalStorage(`ew:child:${childKey}:chat`, true);
+  const toggleEditor = useCallback(() => {
+    setEditorVisible((v) => (v && !chatVisible ? v : !v));
+  }, [chatVisible, setEditorVisible]);
+  const toggleChat = useCallback(() => {
+    setChatVisible((v) => (v && !editorVisible ? v : !v));
+  }, [editorVisible, setChatVisible]);
 
   const { messageDraftMap, draftContentMap } = useMemo(() => {
     const msgMap: Record<string, string> = {};
@@ -94,6 +163,12 @@ export function ChildStoryView({ childKey, onClose, showToast }: ChildStoryViewP
             )}
           </span>
         )}
+        <ChildPanesMenu
+          editorVisible={editorVisible}
+          chatVisible={chatVisible}
+          onToggleEditor={toggleEditor}
+          onToggleChat={toggleChat}
+        />
         <button
           type="button"
           onClick={() => void handleSaveDraft()}
@@ -133,15 +208,19 @@ export function ChildStoryView({ childKey, onClose, showToast }: ChildStoryViewP
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          {/* Description editor (top) */}
-          <div className="flex min-h-0 flex-1 flex-col border-b border-border-subtle">
-            <StoryDraftEditor
-              localDraft={child.session?.localDraft ?? ""}
-              onChange={child.updateLocalDraft}
-              placeholder="Work out the story description…"
-            />
-          </div>
-          {/* Refine chat (bottom) */}
+          {/* Description editor (top). Toggleable (BRDG-490 #3): hidden gives the
+              chat full height; the bottom border only shows when both panes are up. */}
+          {editorVisible && (
+            <div className={`flex min-h-0 flex-1 flex-col ${chatVisible ? "border-b border-border-subtle" : ""}`}>
+              <StoryDraftEditor
+                localDraft={child.session?.localDraft ?? ""}
+                onChange={child.updateLocalDraft}
+                placeholder="Work out the story description…"
+              />
+            </div>
+          )}
+          {/* Refine chat (bottom). Toggleable (BRDG-490 #3). */}
+          {chatVisible && (
           <div className="flex min-h-0 flex-1 flex-col">
             <StoryWriterChat
               messages={child.messages}
@@ -165,6 +244,7 @@ export function ChildStoryView({ childKey, onClose, showToast }: ChildStoryViewP
               onAcceptDraft={child.acceptDraft}
             />
           </div>
+          )}
         </div>
       )}
     </div>

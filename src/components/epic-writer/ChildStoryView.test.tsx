@@ -52,7 +52,11 @@ function setChild(overrides: Record<string, unknown>) {
 }
 
 describe("ChildStoryView (BRDG-485)", () => {
-  beforeEach(() => setChild({}));
+  beforeEach(() => {
+    setChild({});
+    // The pane toggles persist per child; reset so each test starts both-visible.
+    localStorage.clear();
+  });
 
   it("renders the child pill, editor and refine chat", () => {
     render(<ChildStoryView childKey="VPL-47292" onClose={() => {}} showToast={() => {}} />);
@@ -82,6 +86,26 @@ describe("ChildStoryView (BRDG-485)", () => {
     render(<ChildStoryView childKey="VPL-47292" onClose={onClose} showToast={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Close child story" }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // BRDG-490 #3: the child edit view is no longer a forced 50/50; editor and chat
+  // can be toggled, and at least one pane always stays visible.
+  it("toggles the editor and chat panes, keeping at least one visible", () => {
+    render(<ChildStoryView childKey="VPL-47292" onClose={() => {}} showToast={() => {}} />);
+
+    // Both panes visible by default.
+    expect(screen.getByTestId("child-editor")).toBeInTheDocument();
+    expect(screen.getByTestId("child-chat")).toBeInTheDocument();
+
+    // Hide the chat via the Panes menu; the editor takes over.
+    fireEvent.click(screen.getByRole("button", { name: /panes/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /chat/i }));
+    expect(screen.queryByTestId("child-chat")).toBeNull();
+    expect(screen.getByTestId("child-editor")).toBeInTheDocument();
+
+    // Trying to hide the editor too is a no-op: the last pane stays visible.
+    fireEvent.click(screen.getByRole("menuitem", { name: /editor/i }));
+    expect(screen.getByTestId("child-editor")).toBeInTheDocument();
   });
 
   it("does not save when there is no content", async () => {
