@@ -179,7 +179,7 @@ export function TestDocReviewPane({
             Remove the marker below, or generate a doc anyway.
           </p>
           <Button variant="secondary" size="md" onClick={onGenerate}>
-            Generate test doc anyway
+            Generate test documentation anyway
           </Button>
         </div>
       ) : entry.status === "idle" ? (
@@ -189,7 +189,7 @@ export function TestDocReviewPane({
         >
           <p className="text-body-sm">No test documentation yet.</p>
           <Button variant="primary" size="md" onClick={onGenerate}>
-            Generate test doc
+            Generate test documentation
           </Button>
         </div>
       ) : generating ? (

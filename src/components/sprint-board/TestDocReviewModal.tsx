@@ -227,7 +227,7 @@ export function TestDocReviewModal({ keys, autoGenerate = true, regenerateOnOpen
               className={canDelete ? undefined : "mr-auto"}
               title="Mark this ticket as needing no test documentation — it moves to a separate list in the sprint bundle and is never flagged as missing again"
             >
-              No test doc needed
+              No test documentation needed
             </Button>
           )}
           {canDelete && (

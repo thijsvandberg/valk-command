@@ -25,7 +25,7 @@ export function TestDocMarker({
     state === "accepted"
       ? "Test documentation saved — click to view/edit"
       : state === "draft"
-        ? "Test doc generated, not yet reviewed — click to review"
+        ? "Test documentation generated, not yet reviewed — click to review"
         : state === "not_needed"
           ? "Marked: no test documentation needed — click to revisit"
           : "No test documentation yet — click to open the review (generate from there)";

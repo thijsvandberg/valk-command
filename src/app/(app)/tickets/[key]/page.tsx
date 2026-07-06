@@ -591,7 +591,7 @@ export default function TicketDetailPage({
                         style={{ transition: "background-color 0.1s ease" }}
                       >
                         <FileCheck2 size={13} strokeWidth={1.5} className={hasTestDoc ? "text-[var(--color-brand-400)]" : "text-text-muted"} />
-                        {hasTestDoc ? "View test doc" : "Generate test doc"}
+                        {hasTestDoc ? "View test documentation" : "Generate test documentation"}
                       </button>
                     );
                   })()}

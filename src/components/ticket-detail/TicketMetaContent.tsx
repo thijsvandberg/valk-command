@@ -499,7 +499,7 @@ export function TicketMetaContent({
             <FileCheck2 size={16} strokeWidth={1.75} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-body-sm font-semibold text-text-primary">Test doc draft ready for review</span>
+            <span className="block text-body-sm font-semibold text-text-primary">Test documentation draft ready for review</span>
             <span className="block text-caption text-text-tertiary">A draft is waiting. Review and accept it, or edit it first.</span>
           </span>
           <span className="shrink-0 text-caption font-semibold text-[var(--color-status-warning)] underline-offset-2 group-hover/tdbanner:underline">
@@ -612,7 +612,7 @@ export function TicketMetaContent({
             </DetailRow>
           )}
           {canHaveTestDoc && (
-            <DetailRow label="Test doc">
+            <DetailRow label="Test documentation">
               <div className="flex items-center justify-end gap-0.5 -mr-2">
                 <button
                   type="button"
@@ -647,8 +647,8 @@ export function TicketMetaContent({
                   <>
                     <button
                       type="button"
-                      aria-label="Generate test doc"
-                      title="Generate test doc"
+                      aria-label="Generate test documentation"
+                      title="Generate test documentation"
                       disabled={testDocBusy}
                       onClick={() => setTestDocIntent("generate")}
                       className={TEST_DOC_ACTION_CLASS}
@@ -659,7 +659,7 @@ export function TicketMetaContent({
                     <button
                       type="button"
                       aria-label="Mark as not needing test documentation"
-                      title="No test doc needed"
+                      title="No test documentation needed"
                       disabled={testDocBusy}
                       onClick={() => handleTestDocNotNeeded(true)}
                       className={TEST_DOC_ACTION_CLASS}
@@ -685,8 +685,8 @@ export function TicketMetaContent({
                 {(testDocState === "draft" || testDocState === "accepted") && (
                   <button
                     type="button"
-                    aria-label="Regenerate test doc"
-                    title="Regenerate test doc"
+                    aria-label="Regenerate test documentation"
+                    title="Regenerate test documentation"
                     disabled={testDocBusy}
                     onClick={() => setTestDocIntent("regenerate")}
                     className={TEST_DOC_ACTION_CLASS}

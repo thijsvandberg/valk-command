@@ -216,7 +216,7 @@ export default function GeneralSettingsPage() {
       </p>
 
       <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-label text-text-secondary">
-        Test Docs
+        Test Documentation
       </h2>
 
       <div className="rounded-xl border border-border-default bg-overlay-subtle p-4">
