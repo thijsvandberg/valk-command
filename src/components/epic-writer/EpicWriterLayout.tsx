@@ -5,7 +5,7 @@ import { Loader2, CloudUpload, Save, Check } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { computeAcceptedDraftIds } from "@/lib/accepted-drafts";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
-import { ViewHeader } from "@/components/shared/ViewHeader";
+import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
@@ -253,9 +253,12 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
           {title}
         </span>
+        {/* Phase rail folded into the header row (BRDG-490 #4): the five phases
+            sit inline after the epic title instead of occupying their own
+            full-width band, reclaiming the vertical space. */}
+        <ViewHeaderDivider />
+        <PhaseRail current={phase} onSelect={handleSelectPhase} />
       </ViewHeader>
-
-      <PhaseRail current={phase} onSelect={handleSelectPhase} />
 
       <div ref={split.containerRef} className="flex min-h-0 flex-1">
         {chatVisible && (

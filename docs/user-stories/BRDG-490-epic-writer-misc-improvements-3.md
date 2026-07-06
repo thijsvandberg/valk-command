@@ -46,7 +46,7 @@ When editing a child story in the writer, the layout is a fixed 50/50 chat|edito
 
 ### 4. Fold the phase rail into the header (save vertical space)
 The phase rail is its own full-width row under the header, costing vertical space.
-- [ ] Move the phase steps into the header row in a tidy way, so the rail no longer needs a separate row.
+- [x] Move the phase steps into the header row in a tidy way, so the rail no longer needs a separate row.
 - Relation: this SUPERSEDES BRDG-487 #4 (which only re-aligned the rail's left edge). If 487 #4 is already done, this replaces it; if not, do this instead.
 
 ### 5. Edit DRAFT breakdown cards directly (not yet a Jira story)

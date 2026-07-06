@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { EpicWriterLayout } from "./EpicWriterLayout";
 
@@ -149,6 +149,15 @@ describe("EpicWriterLayout header (BRDG-478)", () => {
   it("renders the epic key through the shared issue pill", () => {
     render(<EpicWriterLayout epicKey="VPL-47279" />);
     expect(screen.getByTestId("issue-pill")).toHaveTextContent("VPL-47279");
+  });
+
+  // BRDG-490 #4: the phase rail is folded into the header row, no longer a
+  // separate full-width band beneath it.
+  it("renders the phase rail inside the header row", () => {
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+    const header = screen.getByTestId("issue-pill").closest("header");
+    expect(header).not.toBeNull();
+    expect(within(header as HTMLElement).getByTestId("rail")).toBeInTheDocument();
   });
 
   it("shows 'Nothing to save yet' when there is no draft content", async () => {
