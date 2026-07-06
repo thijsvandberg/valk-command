@@ -235,17 +235,27 @@ Located in `src/components/story-writer/`:
 | `SplitPaneHeader` | Header for each split pane |
 | `SplitStoryPicker` | Target ticket selector for split mode |
 
-### Reuse by the Epic Writer (BRDG-484)
+### Reuse by the Epic Writer (BRDG-484 / BRDG-485)
 
 The Epic Writer (`src/components/epic-writer/EpicWriterLayout.tsx`) keeps its own
-chat + breakdown-board layout but reuses this pane layer for content views rather
-than forking a lookalike. Its right region toggles between the breakdown board and
-a `Draft` view that mounts the real `panes/apps/StoryPreviewApp` inside genuine
-`PaneProvider` + `WriterProvider`. `useEpicWriterContext` adapts the epic-mode
-`useStoryWriter` into a full `WriterContextValue` (live values for the fields the
-content apps read; safe async no-ops for the ticket-detail handlers the epic flow
-does not expose). No shared pane internals (`PaneContext`, `PaneArea`, `AppsMenu`,
-the apps) are modified, so the single-story Story Writer's pane behaviour is
-unaffected. The chat / right split is resizable via `useHorizontalSplit`
-(persisted under `ew:{key}:split`) and each column is height-bounded so its own
-`overflow-y-auto` scrolls instead of the page.
+chat + breakdown-board layout but reuses the Story Writer's prop-driven building
+blocks rather than forking lookalikes. A header **Apps** dropdown
+(`EpicAppsMenu`, mirroring `AppsMenu`) switches the right region between three
+views:
+
+- **Breakdown** - the `BreakdownBoard` of child-story cards.
+- **Draft** - the epic's own description in an **editable** `RichEditor`
+  (`StoryDraftEditor`), bound to the epic `useStoryWriter`'s `localDraft`; Save
+  draft / Push to Jira in the header persist it. (BRDG-485 replaced BRDG-484's
+  initial read-only `StoryPreviewApp` here; the epic no longer needs the pane
+  providers.)
+- **Child** - once a breakdown card is created in Jira, its "Open" action mounts
+  `ChildStoryView`, an in-place child writer running its own
+  `useStoryWriter(childKey)` (normal story mode, separate from the epic session)
+  with the same `RichEditor` + `StoryWriterChat`. One child at a time; Save/Push
+  target the child ticket.
+
+No shared pane internals (`PaneContext`, `PaneArea`, `AppsMenu`, the apps) are
+modified, so the single-story Story Writer is unaffected. The chat / right split
+is resizable via `useHorizontalSplit` (persisted under `ew:{key}:split`) and each
+column is height-bounded so its own `overflow-y-auto` scrolls instead of the page.
