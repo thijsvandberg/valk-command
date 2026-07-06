@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/useToast";
 import { PhaseRail } from "./PhaseRail";
 import { BreakdownBoard } from "./BreakdownBoard";
 import { EpicAppsMenu, type EpicRightView } from "./EpicAppsMenu";
+import { EpicSprintPlanning } from "./EpicSprintPlanning";
 import { StoryDraftEditor } from "./StoryDraftEditor";
 import { ChildStoryView } from "./ChildStoryView";
 import { LinkExistingStoryModal } from "./LinkExistingStoryModal";
@@ -64,12 +65,15 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
 
   // Selecting a phase is a free bookmark (BRDG-479), but it now has a visible
   // effect (BRDG-484): it focuses the right region on the artifact that phase is
-  // about - the epic draft in the early phases, the breakdown board once the PO
-  // is decomposing. The PO can still switch views manually at any time.
+  // about - the epic draft in the early phases, the breakdown board while
+  // decomposing, and the sprint-planning view once the PO reaches Sprints
+  // (BRDG-486). The PO can still switch views manually at any time.
   const handleSelectPhase = useCallback(
     (p: EpicWriterPhase) => {
       void writer.setPhase(p);
-      setRightMode(p === "feed" || p === "discovery" ? "draft" : "breakdown");
+      setRightMode(
+        p === "feed" || p === "discovery" ? "draft" : p === "sprints" ? "sprints" : "breakdown",
+      );
     },
     [writer],
   );
@@ -287,6 +291,9 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
               onLinkExisting={() => setShowLinkExisting(true)}
               busy={writer.status === "sending" || writer.status === "streaming"}
             />
+          )}
+          {effectiveMode === "sprints" && (
+            <EpicSprintPlanning epicKey={epicKey} onSelectChild={handleOpenChild} />
           )}
           {effectiveMode === "draft" && (
             <StoryDraftEditor

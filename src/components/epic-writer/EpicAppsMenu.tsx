@@ -1,15 +1,18 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { LayoutGrid, ChevronDown, Check, LayoutList, FileText, PenLine } from "lucide-react";
+import { LayoutGrid, ChevronDown, Check, LayoutList, FileText, PenLine, CalendarRange } from "lucide-react";
 import { MenuItem, MenuList } from "@/components/shared/MenuItem";
 import { Button } from "@/components/ui/Button";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 
-export type EpicRightView = "breakdown" | "draft" | "child";
+export type EpicRightView = "breakdown" | "sprints" | "draft" | "child";
 
+// Sprints sits next to Breakdown: the two are the decomposition/planning pair the
+// PO moves between (BRDG-486), with Draft as the reference document after them.
 const BASE_VIEWS: Array<{ id: EpicRightView; label: string; icon: React.ReactNode }> = [
   { id: "breakdown", label: "Breakdown", icon: <LayoutList size={13} strokeWidth={1.5} /> },
+  { id: "sprints", label: "Sprints", icon: <CalendarRange size={13} strokeWidth={1.5} /> },
   { id: "draft", label: "Draft", icon: <FileText size={13} strokeWidth={1.5} /> },
 ];
 

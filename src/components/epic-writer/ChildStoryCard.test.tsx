@@ -164,6 +164,30 @@ describe("ChildStoryCard", () => {
     expect(screen.getByText(/to be planned/i)).toBeInTheDocument();
   });
 
+  it("badges the scheduled sprint of a created card as scheduled (BRDG-486)", () => {
+    render(
+      <ChildStoryCard
+        card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: "42", liveSprintName: "Sprint 42" })}
+      />,
+    );
+    expect(screen.getByTitle("Scheduled in this sprint")).toHaveTextContent("Sprint 42");
+  });
+
+  it("badges an unscheduled created card as backlog (BRDG-486)", () => {
+    render(
+      <ChildStoryCard card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: null })} />,
+    );
+    expect(screen.getByTitle(/not scheduled in a sprint yet/i)).toHaveTextContent(/to be planned/i);
+  });
+
+  it("marks a DRAFT card as not schedulable until it is created in Jira (BRDG-486)", () => {
+    render(<ChildStoryCard card={card({})} />);
+    expect(screen.getByText("Draft")).toHaveAttribute(
+      "title",
+      expect.stringMatching(/create this story in jira/i),
+    );
+  });
+
   it("offers a Move sprint menu on a created card and reassigns to the chosen sprint", async () => {
     const onReassignSprint = vi.fn().mockResolvedValue(undefined);
     render(

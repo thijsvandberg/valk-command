@@ -22,6 +22,15 @@ describe("EpicAppsMenu (BRDG-484)", () => {
     expect(screen.queryByRole("menuitem", { name: /Draft/ })).toBeNull();
   });
 
+  it("lists the Sprints planning view and selects it (BRDG-486)", () => {
+    const onSelect = vi.fn();
+    render(<EpicAppsMenu view="breakdown" onSelect={onSelect} />);
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    expect(screen.getByRole("menuitem", { name: /Sprints/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("menuitem", { name: /Sprints/ }));
+    expect(onSelect).toHaveBeenCalledWith("sprints");
+  });
+
   it("lists an open child story as a third view (BRDG-485)", () => {
     const onSelect = vi.fn();
     render(<EpicAppsMenu view="child" onSelect={onSelect} childKey="VPL-47292" />);
@@ -34,8 +43,9 @@ describe("EpicAppsMenu (BRDG-484)", () => {
     render(<EpicAppsMenu view="breakdown" onSelect={() => {}} childKey={null} />);
     fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
     expect(screen.getByRole("menuitem", { name: /Breakdown/ })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /Sprints/ })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: /Draft/ })).toBeTruthy();
-    // Only the two base views.
-    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+    // Only the three base views (Breakdown, Sprints, Draft).
+    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
   });
 });

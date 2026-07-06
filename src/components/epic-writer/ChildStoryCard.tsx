@@ -247,11 +247,17 @@ export function ChildStoryCard({
             <span className="font-mono text-caption text-[var(--color-brand-400)]">
               {card.jiraKey}
             </span>
-            {/* Live sprint of the created issue (null id = backlog). Shows the
-                current placement so the PO can see and reassign it. */}
+            {/* Sprint badge (BRDG-486): a created story is either scheduled in a
+                sprint (brand-tinted) or still sitting in the backlog (muted), so the
+                PO can see at a glance which stories still need planning. Assign or
+                reassign it via the Move sprint menu, or from the Sprints view. */}
             <span
-              className="flex min-w-0 items-center gap-1 text-label text-text-muted"
-              title={card.liveSprintId ? "Current sprint" : "Not in a sprint"}
+              className={`flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-label font-medium ${
+                card.liveSprintId
+                  ? "bg-[var(--color-brand-500)]/[0.12] text-[var(--color-brand-300)]"
+                  : "bg-overlay-subtle text-text-muted"
+              }`}
+              title={card.liveSprintId ? "Scheduled in this sprint" : "Not scheduled in a sprint yet (backlog)"}
             >
               <CalendarRange size={10} strokeWidth={1.75} className="shrink-0" />
               <span className="min-w-0 truncate">
@@ -262,7 +268,10 @@ export function ChildStoryCard({
             </span>
           </span>
         ) : (
-          <span className="rounded bg-overlay-subtle px-1.5 py-0.5 text-label font-medium uppercase tracking-wide text-text-muted">
+          <span
+            className="rounded bg-overlay-subtle px-1.5 py-0.5 text-label font-medium uppercase tracking-wide text-text-muted"
+            title="Draft - create this story in Jira to schedule it into a sprint"
+          >
             Draft
           </span>
         )}

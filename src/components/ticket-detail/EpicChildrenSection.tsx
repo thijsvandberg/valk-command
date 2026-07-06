@@ -76,6 +76,10 @@ interface EpicChildrenSectionProps {
   /** Render the read-only epic roll-up (count / status distribution / SP progress)
       above the list. Used by the side panel's epic view (BRDG-131). */
   showStatsSummary?: boolean;
+  /** Lock the view to the by-sprint grouping and hide the List / By sprint toggle.
+      Used by the Epic Writer's dedicated Sprints planning view (BRDG-486), which is
+      always a sprint-planning surface. */
+  forceSprintView?: boolean;
 }
 
 export function EpicChildrenSection({
@@ -86,6 +90,7 @@ export function EpicChildrenSection({
   onSelectTicket,
   activeChildKey,
   showStatsSummary = false,
+  forceSprintView = false,
 }: EpicChildrenSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [error, setError] = useState<string | null>(null);
@@ -135,11 +140,15 @@ export function EpicChildrenSection({
 
   const { visible: visibleFields, toggleField } = useSectionVisibility("epic-children", DEFAULT_VISIBLE);
   const [summaryHidden, setSummaryHidden] = useLocalStorage<boolean>("epic-stats-summary-hidden", false);
-  const { value: viewMode, setValue: setViewMode } = useMigratedAccountSetting<ChildIssueViewMode>(
+  const { value: storedViewMode, setValue: setViewMode } = useMigratedAccountSetting<ChildIssueViewMode>(
     "/api/settings/epic-children-view",
     "epic-children-view",
     "list",
   );
+  // The Epic Writer's Sprints view is always a sprint-planning surface, so it locks
+  // the grouping and drops the toggle (BRDG-486); everywhere else the PO's stored
+  // preference wins.
+  const viewMode: ChildIssueViewMode = forceSprintView ? "sprint" : storedViewMode;
   // Forward-planning mode (BRDG-303): per-view toggle, independent from the sprint
   // board's. Off by default; reveals guestimation pickers and the fullness meter.
   const [planningOn, setPlanningOn] = useLocalStorage<boolean>("epic-children-planning-visible", false);
@@ -1075,7 +1084,7 @@ export function EpicChildrenSection({
             onToggleHideDeprecated={setHideDeprecated}
             deprecatedCount={deprecatedCount}
             viewMode={viewMode}
-            onViewModeChange={setViewMode}
+            onViewModeChange={forceSprintView ? undefined : setViewMode}
             summaryHidden={summaryHidden}
             onToggleSummary={showStatsSummary ? () => setSummaryHidden((v) => !v) : undefined}
             onToggleCreate={handleToggleCreate}

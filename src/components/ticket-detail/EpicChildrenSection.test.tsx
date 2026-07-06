@@ -1038,4 +1038,53 @@ describe("EpicChildrenSection", () => {
       expect(screen.queryByText("Flag")).not.toBeInTheDocument();
     });
   });
+
+  // The Epic Writer's Sprints view reuses this section but locks it to sprint planning
+  // (BRDG-486): no list/sprint toggle, grouped-by-sprint from the first render, and the
+  // same sprint-move plumbing.
+  describe("forced sprint view (BRDG-486)", () => {
+    function renderForced(items: EpicChild[]) {
+      const onMutate = vi.fn();
+      const onSelectTicket = vi.fn();
+      render(
+        <EpicChildrenSection
+          items={items}
+          ticketKey="VPL-1"
+          onMutate={onMutate}
+          onSelectTicket={onSelectTicket}
+          forceSprintView
+        />,
+      );
+      return { onMutate, onSelectTicket };
+    }
+
+    it("groups children by sprint immediately, without switching views", async () => {
+      renderForced(SAMPLE_CHILDREN);
+      await waitFor(() => {
+        expect(screen.getByText("Active")).toBeInTheDocument();
+      });
+      // Sprint name renders once, as the group header (not per-row pills).
+      expect(screen.getAllByText("Sprint 1")).toHaveLength(1);
+      // The null-sprint child collects into the Unscheduled bucket.
+      expect(screen.getByText("Unscheduled")).toBeInTheDocument();
+    });
+
+    it("hides the List / By sprint toggle so the view stays locked to sprint planning", () => {
+      renderForced(SAMPLE_CHILDREN);
+      openListMenu();
+      expect(screen.queryByRole("radio", { name: "List" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("radio", { name: "By sprint" })).not.toBeInTheDocument();
+    });
+
+    it("still moves a child to another sprint via the reused sprint-move plumbing", async () => {
+      renderForced(SAMPLE_CHILDREN);
+      await waitFor(() => expect(screen.getByText("Unscheduled")).toBeInTheDocument());
+      fireEvent.contextMenu(screen.getByText("Second task"));
+      fireEvent.click(screen.getByText("Move to other sprint…"));
+      fireEvent.click(screen.getByText("Sprint 3"));
+      await waitFor(() => {
+        expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-11"], targetSprintId: "3", topKeys: ["VPL-11"] });
+      });
+    });
+  });
 });

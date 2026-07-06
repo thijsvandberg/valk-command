@@ -45,11 +45,23 @@ vi.mock("./ChildStoryView", () => ({
     </div>
   ),
 }));
+// The Sprints view (BRDG-486) reuses the epic single view's children section and
+// self-fetches the epic's children; stub it so the layout test stays focused on
+// the view switching and its own onSelectChild wiring.
+vi.mock("./EpicSprintPlanning", () => ({
+  EpicSprintPlanning: ({ epicKey, onSelectChild }: { epicKey: string; onSelectChild?: (k: string) => void }) => (
+    <div data-testid="sprint-planning">
+      {epicKey}
+      <button onClick={() => onSelectChild?.("VPL-555")}>mock-plan-open-child</button>
+    </div>
+  ),
+}));
 vi.mock("./PhaseRail", () => ({
   PhaseRail: ({ onSelect }: { onSelect: (p: string) => void }) => (
     <div data-testid="rail">
       <button onClick={() => onSelect("feed")}>phase-feed</button>
       <button onClick={() => onSelect("breakdown")}>phase-breakdown</button>
+      <button onClick={() => onSelect("sprints")}>phase-sprints</button>
     </div>
   ),
 }));
@@ -233,6 +245,49 @@ describe("EpicWriterLayout content views (BRDG-484)", () => {
     fireEvent.click(screen.getByText("close-child"));
     expect(screen.queryByTestId("child-view")).toBeNull();
     expect(screen.getByTestId("board")).toBeTruthy();
+  });
+
+  it("switches to the Sprints planning view and navigates back to Breakdown freely (BRDG-486)", () => {
+    setWriter({ session: { localDraft: "Epic body", localTitle: "Room deposit" }, cards: [] });
+    render(<EpicWriterLayout epicKey="VPL-47279" />);
+
+    // Breakdown is the default; switch to Sprints via the Apps dropdown.
+    expect(screen.getByTestId("board")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Sprints/ }));
+    expect(screen.getByTestId("sprint-planning")).toHaveTextContent("VPL-47279");
+    expect(screen.queryByTestId("board")).toBeNull();
+
+    // And straight back to Breakdown - the tab bar is freely navigable both ways.
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Breakdown/ }));
+    expect(screen.getByTestId("board")).toBeTruthy();
+    expect(screen.queryByTestId("sprint-planning")).toBeNull();
+  });
+
+  it("focuses the Sprints view when the Sprints phase is selected (BRDG-486)", () => {
+    setWriter({ session: { localDraft: "Epic body", localTitle: "Room deposit" }, cards: [] });
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+
+    fireEvent.click(screen.getByText("phase-sprints"));
+    expect(screen.getByTestId("sprint-planning")).toBeTruthy();
+    expect(screen.queryByTestId("board")).toBeNull();
+
+    // The breakdown phase switches back to the board.
+    fireEvent.click(screen.getByText("phase-breakdown"));
+    expect(screen.getByTestId("board")).toBeTruthy();
+    expect(screen.queryByTestId("sprint-planning")).toBeNull();
+  });
+
+  it("opens a created child in-place from the Sprints view (BRDG-486)", () => {
+    setWriter({ session: { localDraft: "Epic body", localTitle: "Room deposit" }, cards: [] });
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+
+    fireEvent.click(screen.getByText("phase-sprints"));
+    fireEvent.click(screen.getByText("mock-plan-open-child"));
+    // Selecting a story in the Sprints view opens it as the in-place child writer.
+    expect(screen.getByTestId("child-view")).toHaveTextContent("VPL-555");
+    expect(screen.queryByTestId("sprint-planning")).toBeNull();
   });
 
   it("opens the link-existing picker and links the chosen stories (BRDG-487)", async () => {
