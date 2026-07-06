@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 
 // Lazy: the capture card is only needed the first time the PO bookmarks something,
 // so it stays out of the app-shell bundle until then (same as the launcher modal).
@@ -34,12 +36,27 @@ const BookmarkNoteContext = createContext<BookmarkNoteContextValue>({ captureBoo
  */
 export function BookmarkNoteProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<{ ticketKeys: string[] } | null>(null);
+  const { toast, showToast, dismissToast } = useToast();
 
   const captureBookmarkNote = useCallback((ticketKeys: string | string[]) => {
     const keys = Array.isArray(ticketKeys) ? ticketKeys : [ticketKeys];
     if (keys.length === 0) return;
     setActive({ ticketKeys: keys });
   }, []);
+
+  // Confirm the note write. On a partial failure, surface how many landed vs failed so
+  // the PO knows to retry rather than assuming a silent success.
+  const handleSaved = useCallback((succeeded: number, failed: number) => {
+    if (failed > 0) {
+      showToast(
+        succeeded > 0
+          ? `Note added to ${succeeded} of ${succeeded + failed} stories (${failed} failed)`
+          : "Could not save the note, please try again",
+      );
+      return;
+    }
+    showToast(succeeded === 1 ? "Note added" : `Note added to ${succeeded} stories`);
+  }, [showToast]);
 
   return (
     <BookmarkNoteContext.Provider value={{ captureBookmarkNote }}>
@@ -50,8 +67,10 @@ export function BookmarkNoteProvider({ children }: { children: ReactNode }) {
           key={active.ticketKeys.join(",")}
           ticketKeys={active.ticketKeys}
           onClose={() => setActive(null)}
+          onSaved={handleSaved}
         />
       )}
+      <Toast toast={toast} onDismiss={dismissToast} />
     </BookmarkNoteContext.Provider>
   );
 }

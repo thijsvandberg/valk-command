@@ -4,7 +4,8 @@ import { BookmarkNoteCard, AUTO_DISMISS_MS } from "./BookmarkNoteCard";
 
 const getMetadata = vi.fn();
 const updateMetadata = vi.fn();
-const patchTicketDetailCache = vi.fn();
+const patchTicketCaches = vi.fn();
+const revalidateTicketCaches = vi.fn();
 const scopedMutate = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
@@ -14,7 +15,8 @@ vi.mock("@/lib/api-client", () => ({
   },
 }));
 vi.mock("@/lib/ticket-cache", () => ({
-  patchTicketDetailCache: (...args: unknown[]) => patchTicketDetailCache(...args),
+  patchTicketCaches: (...args: unknown[]) => patchTicketCaches(...args),
+  revalidateTicketCaches: (...args: unknown[]) => revalidateTicketCaches(...args),
 }));
 vi.mock("@/lib/swr-scoped-mutate", () => ({
   scopedMutate: (...args: unknown[]) => scopedMutate(...args),
@@ -25,7 +27,8 @@ const flush = () => act(async () => { await Promise.resolve(); });
 beforeEach(() => {
   getMetadata.mockReset().mockResolvedValue({});
   updateMetadata.mockReset().mockResolvedValue({});
-  patchTicketDetailCache.mockReset();
+  patchTicketCaches.mockReset();
+  revalidateTicketCaches.mockReset();
   scopedMutate.mockReset();
 });
 
@@ -89,20 +92,23 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     }
   });
 
-  it("saves on Enter: writes poNotes, patches the detail cache, revalidates bookmarks", async () => {
+  it("saves on Enter: writes poNotes, patches the board+detail caches, revalidates bookmarks, confirms", async () => {
     const onClose = vi.fn();
-    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} />);
+    const onSaved = vi.fn();
+    render(<BookmarkNoteCard ticketKeys={["VPL-42"]} onClose={onClose} onSaved={onSaved} />);
 
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "  why I saved it  " } });
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(updateMetadata).toHaveBeenCalledWith("VPL-42", { poNotes: "why I saved it" });
-    expect(patchTicketDetailCache).toHaveBeenCalledWith("VPL-42", { notes: "why I saved it" });
+    expect(patchTicketCaches).toHaveBeenCalledWith("VPL-42", { notes: "why I saved it" });
     expect(onClose).toHaveBeenCalledTimes(1);
 
     await flush();
     expect(scopedMutate).toHaveBeenCalledWith("/api/bookmarks");
+    expect(onSaved).toHaveBeenCalledWith(1, 0);
+    expect(revalidateTicketCaches).not.toHaveBeenCalled();
   });
 
   it("saves on blur when there is text", async () => {
@@ -161,9 +167,10 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     expect(input).toHaveValue("typed by PO");
   });
 
-  it("bulk: writes one shared note to every target, patches each, and never pre-fills", async () => {
+  it("bulk: writes one shared note to every target, patches each, confirms all, never pre-fills", async () => {
     const onClose = vi.fn();
-    render(<BookmarkNoteCard ticketKeys={["A-1", "A-2", "A-3"]} onClose={onClose} />);
+    const onSaved = vi.fn();
+    render(<BookmarkNoteCard ticketKeys={["A-1", "A-2", "A-3"]} onClose={onClose} onSaved={onSaved} />);
 
     // No per-ticket pre-fill fetch for a bulk capture.
     expect(getMetadata).not.toHaveBeenCalled();
@@ -175,11 +182,28 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
 
     for (const k of ["A-1", "A-2", "A-3"]) {
       expect(updateMetadata).toHaveBeenCalledWith(k, { poNotes: "sprint review batch" });
-      expect(patchTicketDetailCache).toHaveBeenCalledWith(k, { notes: "sprint review batch" });
+      expect(patchTicketCaches).toHaveBeenCalledWith(k, { notes: "sprint review batch" });
     }
     expect(onClose).toHaveBeenCalledTimes(1);
     await flush();
     expect(scopedMutate).toHaveBeenCalledWith("/api/bookmarks");
+    expect(onSaved).toHaveBeenCalledWith(3, 0);
+  });
+
+  it("reports a partial failure and self-heals the board when a write rejects", async () => {
+    updateMetadata.mockImplementation((k: string) =>
+      k === "A-2" ? Promise.reject(new Error("boom")) : Promise.resolve({}),
+    );
+    const onSaved = vi.fn();
+    render(<BookmarkNoteCard ticketKeys={["A-1", "A-2"]} onClose={vi.fn()} onSaved={onSaved} />);
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "batch note" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await flush();
+    expect(onSaved).toHaveBeenCalledWith(1, 1);
+    expect(revalidateTicketCaches).toHaveBeenCalledTimes(1);
   });
 
   it("supports Shift+Enter for a newline without saving", () => {

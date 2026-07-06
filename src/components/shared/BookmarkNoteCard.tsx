@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Bookmark, X } from "lucide-react";
 import { ToastCard } from "@/components/ui/Toast";
 import { tickets as ticketsApi } from "@/lib/api-client";
-import { patchTicketDetailCache } from "@/lib/ticket-cache";
+import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { scopedMutate } from "@/lib/swr-scoped-mutate";
 
 // A comfortable few seconds: long enough to notice and opt in, short enough that an
@@ -17,6 +17,8 @@ interface BookmarkNoteCardProps {
   ticketKeys: string[];
   /** Closes the card. The provider drops the active instance; the card never writes on close. */
   onClose: () => void;
+  /** Fired after the note write settles, so the host can confirm (toast). */
+  onSaved?: (succeeded: number, failed: number) => void;
 }
 
 /**
@@ -38,19 +40,21 @@ interface BookmarkNoteCardProps {
  *   than clobbering it; a late-resolving pre-fill never overwrites what was typed.
  *   Bulk capture never pre-fills (the one note is written to every target).
  */
-export function BookmarkNoteCard({ ticketKeys, onClose }: BookmarkNoteCardProps) {
+export function BookmarkNoteCard({ ticketKeys, onClose, onSaved }: BookmarkNoteCardProps) {
   const [text, setText] = useState("");
 
-  // Async closures (the auto-timer, the pre-fill fetch) capture stale state, so the
-  // load-bearing flags live in refs read at fire time.
+  // Async closures (the auto-timer, the pre-fill fetch, the settled write) capture
+  // stale state/props, so the load-bearing values live in refs read at fire time.
   const textRef = useRef("");
   const engagedRef = useRef(false);
   const savedRef = useRef(false);
   const closingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onCloseRef = useRef(onClose);
+  const onSavedRef = useRef(onSaved);
 
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => { onSavedRef.current = onSaved; }, [onSaved]);
 
   const count = ticketKeys.length;
   const isBulk = count > 1;
@@ -80,13 +84,23 @@ export function BookmarkNoteCard({ ticketKeys, onClose }: BookmarkNoteCardProps)
     const value = textRef.current.trim();
     if (!value) { close(); return; }
     savedRef.current = true;
-    // Optimistic: reflect the note in any open detail/editor immediately, then persist
-    // to every target and revalidate the cross-sprint bookmark list once (launcher +
-    // /bookmarks note-hover).
-    ticketKeys.forEach((k) => patchTicketDetailCache(k, { notes: value }));
-    void Promise.allSettled(
-      ticketKeys.map((k) => ticketsApi.updateMetadata(k, { poNotes: value })),
-    ).then(() => scopedMutate("/api/bookmarks"));
+    const keys = ticketKeys;
+    // Optimistic: reflect the note in the board rows AND any open detail/editor
+    // immediately (patchTicketCaches covers the list + detail + byKeys caches), so the
+    // board's note marker appears at once for every target.
+    keys.forEach((k) => patchTicketCaches(k, { notes: value }));
+    // Persist to every target, then revalidate the cross-sprint bookmark list once
+    // (launcher + /bookmarks note-hover). Report success/failure so the host can
+    // confirm; on any failure, revalidate so the optimistic board note self-heals.
+    void (async () => {
+      const results = await Promise.allSettled(
+        keys.map((k) => ticketsApi.updateMetadata(k, { poNotes: value })),
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      scopedMutate("/api/bookmarks");
+      if (failed) revalidateTicketCaches();
+      onSavedRef.current?.(keys.length - failed, failed);
+    })();
     close();
   };
 
