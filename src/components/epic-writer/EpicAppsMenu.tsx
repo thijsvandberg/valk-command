@@ -1,19 +1,22 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { LayoutGrid, ChevronDown, Check, LayoutList, FileText, PenLine, CalendarRange, MessageSquare } from "lucide-react";
+import { LayoutGrid, ChevronDown, Check, LayoutList, FileText, PenLine, CalendarRange, MessageSquare, Link2 } from "lucide-react";
 import { MenuItem, MenuList } from "@/components/shared/MenuItem";
 import { Button } from "@/components/ui/Button";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 
-export type EpicRightView = "breakdown" | "sprints" | "draft" | "child";
+export type EpicRightView = "breakdown" | "sprints" | "draft" | "related" | "child";
 
 // Sprints sits next to Breakdown: the two are the decomposition/planning pair the
 // PO moves between (BRDG-486), with Draft as the reference document after them.
+// Related (BRDG-490 #10) surfaces the find-related result as the shared, linkable
+// panel rather than a prose dump in the chat.
 const BASE_VIEWS: Array<{ id: EpicRightView; label: string; icon: React.ReactNode }> = [
   { id: "breakdown", label: "Breakdown", icon: <LayoutList size={13} strokeWidth={1.5} /> },
   { id: "sprints", label: "Sprints", icon: <CalendarRange size={13} strokeWidth={1.5} /> },
   { id: "draft", label: "Draft", icon: <FileText size={13} strokeWidth={1.5} /> },
+  { id: "related", label: "Related stories", icon: <Link2 size={13} strokeWidth={1.5} /> },
 ];
 
 /**

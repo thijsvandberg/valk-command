@@ -5,6 +5,7 @@ import { Loader2, CloudUpload, Save, Check } from "lucide-react";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { computeAcceptedDraftIds } from "@/lib/accepted-drafts";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
+import { RelatedStoriesPanel } from "@/components/story-writer/RelatedStoriesPanel";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { Button } from "@/components/ui/Button";
@@ -42,6 +43,9 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
   const [rightMode, setRightMode] = useState<EpicRightView>("breakdown");
   const [openChildKey, setOpenChildKey] = useState<string | null>(null);
   const [showLinkExisting, setShowLinkExisting] = useState(false);
+  // Related-stories view state (BRDG-490 #10): the key selected for in-panel
+  // preview, mirroring the Story Writer's Related app.
+  const [relatedSelectedKey, setRelatedSelectedKey] = useState<string | null>(null);
   const split = useHorizontalSplit(`ew:${epicKey}:split`);
   // Chat is a toggleable pane (BRDG-487 #3): hiding it gives the right region full
   // width. Persisted per-epic like the split ratio.
@@ -105,6 +109,20 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
   const handleCloseChild = useCallback(() => {
     setOpenChildKey(null);
     setRightMode("breakdown");
+  }, []);
+
+  // Find related stories (BRDG-490 #10): run the same find-related turn the Story
+  // Writer uses (the "find-related" skill emits <related-stories>, which the
+  // shared apply-related path parses into linkable candidates). The result lands
+  // inline in the chat and in the Related view; the PO can link from either.
+  const handleFindRelated = useCallback(() => {
+    void writer.sendMessage("Find related stories", "find-related");
+  }, [writer]);
+
+  const handleOpenRelatedPanel = useCallback(() => setRightMode("related"), []);
+  const handleStoryKeyClick = useCallback((key: string) => {
+    setRelatedSelectedKey(key);
+    setRightMode("related");
   }, []);
 
   // Re-parent existing stories into the epic (BRDG-487) and surface the outcome.
@@ -283,6 +301,11 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
               onDismissFailed={writer.dismissFailedMessage}
               onCancel={writer.cancelCurrentTask}
               onClearChat={writer.clearChat}
+              onFindRelated={handleFindRelated}
+              onOpenRelatedPanel={handleOpenRelatedPanel}
+              onStoryKeyClick={handleStoryKeyClick}
+              relatedCandidates={writer.relatedCandidates}
+              onLinkCandidate={writer.linkCandidate}
               messageDraftMap={messageDraftMap}
               draftContentMap={draftContentMap}
               acceptedDraftIds={acceptedDraftIds}
@@ -342,6 +365,17 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
               localDraft={writer.session?.localDraft ?? ""}
               onChange={writer.updateLocalDraft}
               placeholder="Work out the epic description…"
+            />
+          )}
+          {effectiveMode === "related" && (
+            <RelatedStoriesPanel
+              candidates={writer.relatedCandidates}
+              onLink={writer.linkCandidate}
+              onClose={() => setRightMode("breakdown")}
+              selectedKey={relatedSelectedKey}
+              onSelectedKeyChange={setRelatedSelectedKey}
+              onFindRelated={handleFindRelated}
+              onPrefillFindRelated={() => stageInChat("Find related stories")}
             />
           )}
           {effectiveMode === "child" && openChildKey && (

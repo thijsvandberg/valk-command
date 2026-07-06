@@ -11,8 +11,16 @@ vi.mock("@/hooks/useStoryWriter", () => ({
   useStoryWriter: () => mockWriter,
 }));
 vi.mock("@/components/story-writer/StoryWriterChat", () => ({
-  StoryWriterChat: ({ pendingInput }: { pendingInput?: string | null }) => (
-    <div data-testid="chat">{pendingInput}</div>
+  StoryWriterChat: ({ pendingInput, onFindRelated }: { pendingInput?: string | null; onFindRelated?: () => void }) => (
+    <div data-testid="chat">
+      {pendingInput}
+      <button onClick={() => onFindRelated?.()}>mock-find-related</button>
+    </div>
+  ),
+}));
+vi.mock("@/components/story-writer/RelatedStoriesPanel", () => ({
+  RelatedStoriesPanel: ({ candidates }: { candidates: unknown[] }) => (
+    <div data-testid="related-panel">related:{candidates.length}</div>
   ),
 }));
 vi.mock("./BreakdownBoard", () => ({
@@ -101,6 +109,7 @@ function setWriter(overrides: Record<string, unknown>) {
     messages: [],
     aiDrafts: [],
     cards: [],
+    relatedCandidates: [],
     streamProgress: "",
     streamError: null,
     usage: null,
@@ -338,6 +347,26 @@ describe("EpicWriterLayout content views (BRDG-484)", () => {
 
     fireEvent.click(screen.getByText("mock-stage-deepen"));
     expect(screen.getByTestId("chat")).toHaveTextContent(/deepen story 3 \("Cart summary"\)/i);
+  });
+
+  // BRDG-490 #10: Find Related runs the find-related turn, and the result is
+  // surfaced through the shared linkable Related view (not a chat prose dump).
+  it("wires Find Related to a find-related turn and surfaces the linkable Related view", () => {
+    setWriter({
+      session: { localDraft: "Epic body", localTitle: "Room deposit" },
+      cards: [],
+      relatedCandidates: [{ id: "r1" }, { id: "r2" }],
+    });
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+
+    fireEvent.click(screen.getByText("mock-find-related"));
+    expect(mockWriter.sendMessage).toHaveBeenCalledWith("Find related stories", "find-related");
+
+    // The Related view renders the shared linkable panel with the candidates.
+    fireEvent.click(screen.getByRole("button", { name: /Apps/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Related stories/ }));
+    expect(screen.getByTestId("related-panel")).toHaveTextContent("related:2");
+    expect(screen.queryByTestId("board")).toBeNull();
   });
 
   it("opens the link-existing picker and links the chosen stories (BRDG-487)", async () => {

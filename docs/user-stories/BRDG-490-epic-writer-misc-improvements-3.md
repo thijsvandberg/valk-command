@@ -71,15 +71,15 @@ The quick-prompt chips in the chat already offer two modes (send immediately, or
 ### 9. BUG: quick-suggestions popover (bottom-left) does not fill the prompt
 Clicking a quick suggestion in the bottom-left `QuickActionsPopover` puts nothing in the compose box. Shared chat, so it affects both the Story Writer and the Epic Writer.
 - Diagnosis: the wiring looks correct on paper - `QuickActionsPopover` item click -> `onSelect(prompt, id)` -> `fillInput(prompt)` -> `setInputValue(...)` in `StoryWriterChat.tsx`. So the likely causes are (a) the actions arrive `enabled: false` or with an empty `prompt` (so the item click is gated at `action.enabled && onSelect(...)`), or (b) a regression from the recent parallel edits to `StoryWriterChat.tsx` (BRDG-487 chat-as-app + BRDG-489 clear-chat both touched this file).
-- [ ] Reproduce and fix so a quick suggestion fills the compose box (the "stage to edit" path). Verify BOTH the popover (bottom-left) and the chip-row stage buttons, in both writers.
+- [x] Reproduce and fix so a quick suggestion fills the compose box (the "stage to edit" path). Verify BOTH the popover (bottom-left) and the chip-row stage buttons, in both writers.
 - [x] Add a test covering popover select -> input filled.
-<!-- Repro: the ordinary/special-prompt fill path works (new StoryWriterChat.popover.test.tsx: popover select fills the compose box; chip-row stage covered by the BRDG-460 render test). The residual dead affordance is the Epic Writer "Find Related" (popover + chip), which no-ops because onFindRelated was never wired into the epic chat - fixed in Task 10. Reproduce/fix checkbox closed after Task 10 + browser verify. -->
+<!-- Repro: the ordinary/special-prompt fill path was already correct (new StoryWriterChat.popover.test.tsx: popover select fills the compose box; chip-row stage covered by the BRDG-460 render test). The only dead affordance was the Epic Writer "Find Related" (popover + chip), which no-oped because onFindRelated was never wired into the epic chat - now wired in Task 10, so Find Related runs in both writers. -->
 
 - Note: verify AFTER the BRDG-487/489 run lands - it may have introduced (or already fixed) this.
 
 ### 10. "Find related stories" should use the real related-stories (linkable) format
 In the Epic Writer, "Find related stories" renders its result as prose with inline ticket pills + "Show more" (see screenshot) - you cannot act on them. It should use the standard related-stories format so the PO can link them directly.
-- [ ] Surface the epic writer's related-stories result via the shared related-stories UI (`RelatedStoriesPanel` + the `relatedCandidates` the hook already tracks) with direct link actions, instead of a prose dump in the chat bubble.
+- [x] Surface the epic writer's related-stories result via the shared related-stories UI (`RelatedStoriesPanel` + the `relatedCandidates` the hook already tracks) with direct link actions, instead of a prose dump in the chat bubble.
 - Relation: extends BRDG-478 #3 (which noted related-stories were not surfaced in the Epic Writer). Now they appear as prose; this makes them the proper, linkable format.
 
 ## Out of Scope
