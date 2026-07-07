@@ -273,6 +273,11 @@ export const epicMetadata = sqliteTable("epic_metadata", {
   // PO-assigned base color (hex from the curated palette). null = use the
   // deterministic default derived from the epic name/key.
   color: text("color"),
+  // Default placement for newly-created child stories (BRDG-500 #1): the same
+  // value shape SprintPlacementMenu uses ("__backlog__" / "__default__" / a
+  // concrete sprint id). null = not configured, so each card's Create-in-Jira
+  // stays a full placement dropdown (today's behaviour).
+  childPlacement: text("child_placement"),
   updatedAt: text("updated_at")
     .notNull()
     .default(sql`(datetime('now'))`),

@@ -527,6 +527,13 @@ export const epics = {
     apiFetch<{ epicKey: string; color: string | null }>(
       `/api/epics/${enc(key)}/color`, { method: "PUT", body: { color }, signal },
     ),
+
+  // Per-epic default placement for newly-created child stories (BRDG-500 #1):
+  // "__backlog__" / "__default__" / a concrete sprint id, or null to clear.
+  setPlacement: (key: string, placement: string | null, signal?: AbortSignal) =>
+    apiFetch<{ epicKey: string; placement: string | null }>(
+      `/api/epics/${enc(key)}/placement`, { method: "PUT", body: { placement }, signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------

@@ -20,6 +20,7 @@ import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { enrichCandidatesWithSprintName } from "@/lib/related-candidate-sprint";
+import { getEpicChildPlacement } from "@/lib/epic-metadata";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -46,7 +47,14 @@ export async function GET(_request: Request, { params }: RouteContext) {
       .get();
 
     if (!session) {
-      return NextResponse.json({ session: null, messages: [], aiDrafts: [], cards: [], relatedCandidates: [] });
+      return NextResponse.json({
+        session: null,
+        messages: [],
+        aiDrafts: [],
+        cards: [],
+        relatedCandidates: [],
+        childPlacement: getEpicChildPlacement(key),
+      });
     }
 
     // Heal an empty draft from the epic's local edit or live description, the
@@ -146,7 +154,14 @@ export async function GET(_request: Request, { params }: RouteContext) {
       });
     }
 
-    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, cards: cardsWithSprint, relatedCandidates });
+    return NextResponse.json({
+      session: resolvedSession,
+      messages,
+      aiDrafts,
+      cards: cardsWithSprint,
+      relatedCandidates,
+      childPlacement: getEpicChildPlacement(key),
+    });
   } catch (err) {
     logger.error("epic-writer", "GET session failed", err);
     return errorResponse("Failed to load epic writer session", 500);
@@ -263,7 +278,10 @@ export async function POST(_request: Request, { params }: RouteContext) {
       summary: "Started epic writer session",
     });
 
-    return NextResponse.json({ session, messages: [], aiDrafts: [], cards: [], relatedCandidates: [] }, { status: 201 });
+    return NextResponse.json(
+      { session, messages: [], aiDrafts: [], cards: [], relatedCandidates: [], childPlacement: getEpicChildPlacement(key) },
+      { status: 201 },
+    );
   } catch (err) {
     logger.error("epic-writer", "POST session failed", err);
     return errorResponse("Failed to create epic writer session", 500);

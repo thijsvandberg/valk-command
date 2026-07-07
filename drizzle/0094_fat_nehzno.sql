@@ -1,0 +1,1 @@
+ALTER TABLE `epic_metadata` ADD `child_placement` text;

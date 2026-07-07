@@ -58,6 +58,9 @@ export interface EpicWriterSessionResponse {
   messages: Message[];
   aiDrafts: StoryWriterDraftRow[];
   cards: EpicChildCardWithSprint[];
+  // Per-epic default placement for newly-created child stories (BRDG-500 #1):
+  // "__backlog__" / "__default__" / a concrete sprint id, or null when unset.
+  childPlacement: string | null;
 }
 
 export interface EpicWriterPhaseResponse {

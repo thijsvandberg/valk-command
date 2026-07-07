@@ -12,7 +12,12 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { sanitizeColor, getEpicColorMap } from "./epic-metadata";
+import {
+  sanitizeColor,
+  getEpicColorMap,
+  sanitizeChildPlacement,
+  getEpicChildPlacement,
+} from "./epic-metadata";
 import { epicMetadata } from "@/db/schema";
 
 describe("sanitizeColor", () => {
@@ -52,5 +57,51 @@ describe("getEpicColorMap", () => {
     expect(map.get("VPL-A")).toBe("#e05252");
     expect(map.has("VPL-B")).toBe(false);
     expect(map.has("VPL-C")).toBe(false);
+  });
+});
+
+describe("sanitizeChildPlacement", () => {
+  it("accepts the backlog and default-sprint markers", () => {
+    expect(sanitizeChildPlacement("__backlog__")).toBe("__backlog__");
+    expect(sanitizeChildPlacement("__default__")).toBe("__default__");
+  });
+
+  it("accepts a concrete numeric sprint id", () => {
+    expect(sanitizeChildPlacement("42")).toBe("42");
+    expect(sanitizeChildPlacement("0")).toBe("0");
+  });
+
+  it("rejects off-shape and malformed values", () => {
+    expect(sanitizeChildPlacement("sprint-42")).toBeNull();
+    expect(sanitizeChildPlacement("1.5")).toBeNull();
+    expect(sanitizeChildPlacement("-1")).toBeNull();
+    expect(sanitizeChildPlacement("")).toBeNull();
+    expect(sanitizeChildPlacement(42)).toBeNull();
+    expect(sanitizeChildPlacement(null)).toBeNull();
+    expect(sanitizeChildPlacement(undefined)).toBeNull();
+  });
+});
+
+describe("getEpicChildPlacement", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("returns null when the epic has no placement set", () => {
+    expect(getEpicChildPlacement("VPL-A")).toBeNull();
+    testDb.insert(epicMetadata).values({ epicKey: "VPL-A", color: "#e05252" }).run();
+    expect(getEpicChildPlacement("VPL-A")).toBeNull();
+  });
+
+  it("reads back a stored placement", () => {
+    testDb.insert(epicMetadata).values({ epicKey: "VPL-A", childPlacement: "42" }).run();
+    testDb.insert(epicMetadata).values({ epicKey: "VPL-B", childPlacement: "__backlog__" }).run();
+    expect(getEpicChildPlacement("VPL-A")).toBe("42");
+    expect(getEpicChildPlacement("VPL-B")).toBe("__backlog__");
+  });
+
+  it("sanitizes a drifted stored value to null", () => {
+    testDb.insert(epicMetadata).values({ epicKey: "VPL-A", childPlacement: "garbage" }).run();
+    expect(getEpicChildPlacement("VPL-A")).toBeNull();
   });
 });
