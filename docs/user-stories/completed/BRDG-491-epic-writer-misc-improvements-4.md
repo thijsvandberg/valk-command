@@ -1,6 +1,6 @@
 # BRDG-491: Epic Writer miscellaneous improvements (round 4)
 
-**Status:** In progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -29,7 +29,7 @@ The folded-in phase rail (BRDG-490 #4) renders all five steps inline; it is crud
 - Re-architecting the writer beyond what each item needs.
 
 ## Acceptance Criteria
-- [ ] Card AI-action buttons: no Sparkles icon; label = stage, arrow = send now, consistent with the chips/popover.
-- [ ] The phase control fits a narrow header (prev/next + all-steps popover), no overflow.
-- [ ] Typing `/` surfaces the `/clear` command with a distinct style; it still clears on submit.
-- [ ] Shared-component changes do not regress the Story Writer; new/changed behaviour is covered by tests; `npm run test` and `npm run build` pass.
+- [x] Card AI-action buttons: no Sparkles icon; label = stage, arrow = send now, consistent with the chips/popover.
+- [x] The phase control fits a narrow header (prev/next + all-steps popover), no overflow.
+- [x] Typing `/` surfaces the `/clear` command with a distinct style; it still clears on submit.
+- [x] Shared-component changes do not regress the Story Writer; new/changed behaviour is covered by tests; `npm run test` and `npm run build` pass.
