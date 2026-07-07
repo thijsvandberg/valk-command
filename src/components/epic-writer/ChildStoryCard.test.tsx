@@ -275,7 +275,9 @@ describe("ChildStoryCard", () => {
     expect(screen.queryByRole("button", { name: /create in jira/i })).not.toBeInTheDocument();
   });
 
-  it("lists a suggested link and confirms it only when both ends are created", async () => {
+  // BRDG-500 UX pass: links collapse to a summary; the summary "Confirm N" button
+  // creates every ready link for this card at once.
+  it("confirms a ready link from the collapsed summary", async () => {
     const onConfirmLink = vi.fn().mockResolvedValue(undefined);
     render(
       <ChildStoryCard
@@ -291,14 +293,44 @@ describe("ChildStoryCard", () => {
       />,
     );
 
-    expect(screen.getByText("blocks")).toBeInTheDocument();
+    // The summary names the target and offers a single Confirm button.
     expect(screen.getByText("B")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirm 1/i }));
     await waitFor(() => expect(onConfirmLink).toHaveBeenCalledWith(0, 1, "blocks"));
   });
 
-  it("disables link confirmation when the target is still a DRAFT", () => {
+  it("expands the summary to confirm an individual link", async () => {
+    const onConfirmLink = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ChildStoryCard
+        card={card({
+          cardIndex: 0,
+          status: "created",
+          jiraKey: "VPL-301",
+          suggestedLinks: [
+            { targetIndex: 1, relation: "blocks", confirmed: false },
+            { targetIndex: 2, relation: "relates to", confirmed: false },
+          ],
+        })}
+        onConfirmLink={onConfirmLink}
+        cardTitles={{ 0: "A", 1: "B", 2: "C" }}
+        createdIndexes={new Set([0, 1, 2])}
+      />,
+    );
+
+    // Collapsed by default: the relation text is hidden until expanded.
+    expect(screen.getByText(/2 links/i)).toBeInTheDocument();
+    expect(screen.queryByText("blocks")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /2 links/i }));
+    expect(screen.getByText("blocks")).toBeInTheDocument();
+    // Each expanded row has its own Confirm.
+    const confirmButtons = screen.getAllByRole("button", { name: /^confirm$/i });
+    fireEvent.click(confirmButtons[0]);
+    await waitFor(() => expect(onConfirmLink).toHaveBeenCalledWith(0, 1, "blocks"));
+  });
+
+  it("offers no confirm affordance when the target is still a DRAFT", () => {
     render(
       <ChildStoryCard
         card={card({
@@ -312,7 +344,11 @@ describe("ChildStoryCard", () => {
         createdIndexes={new Set([0])}
       />,
     );
-    expect(screen.getByRole("button", { name: /confirm/i })).toBeDisabled();
+    // Target 1 is not created, so nothing is confirmable: no "Confirm N" summary button.
+    expect(screen.queryByRole("button", { name: /confirm 1/i })).not.toBeInTheDocument();
+    // Expanding shows the individual row with its Confirm disabled.
+    fireEvent.click(screen.getByRole("button", { name: /1 link/i }));
+    expect(screen.getByRole("button", { name: /^confirm$/i })).toBeDisabled();
   });
 
   it("shows the current sprint on a created card", () => {

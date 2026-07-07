@@ -127,6 +127,10 @@ export function ChildStoryCard({
   const [creating, setCreating] = useState(false);
   const [reassigning, setReassigning] = useState(false);
   const [linkingKey, setLinkingKey] = useState<string | null>(null);
+  // Suggested links collapse to a one-line summary by default (BRDG-500 UX pass);
+  // expanding reveals the individual rows with their per-link Confirm controls.
+  const [linksExpanded, setLinksExpanded] = useState(false);
+  const [confirmingAll, setConfirmingAll] = useState(false);
 
   // In-place editing (BRDG-490 #5) is offered on DRAFT cards only; created cards
   // round-trip through the story editor (the Open action), so they stay read-only
@@ -385,59 +389,126 @@ export function ChildStoryCard({
         </button>
       ) : null}
 
-      {!collapsed && suggestedLinks.length > 0 && (
-        <ul className="mt-2.5 space-y-1">
-          {suggestedLinks.map((link, i) => {
-            const targetTitle = cardTitles?.[link.targetIndex] ?? `Story ${link.targetIndex + 1}`;
-            const targetCreated = createdIndexes?.has(link.targetIndex) ?? false;
-            // Both ends must be live in Jira before a link can be created.
-            const canConfirm = isCreated && targetCreated && !link.confirmed;
-            const linkId = `${link.targetIndex}:${link.relation}`;
-            return (
-              <li
-                key={i}
-                className="flex items-center justify-between gap-2 rounded-md bg-overlay-subtle px-2 py-1 text-label text-text-tertiary"
+      {/* Suggested links (BRDG-500 UX pass): collapsed to a single summary line so
+          a card with many links stays calm. The line names the targets; a "Confirm
+          N" button creates every ready link for this card at once; expanding shows
+          each link with its own Confirm (and the reason a link is not yet ready). */}
+      {!collapsed && suggestedLinks.length > 0 && (() => {
+        const confirmable = suggestedLinks.filter(
+          (l) => isCreated && (createdIndexes?.has(l.targetIndex) ?? false) && !l.confirmed,
+        );
+        const allLinked = suggestedLinks.every((l) => l.confirmed);
+        const names = suggestedLinks.map(
+          (l) => cardTitles?.[l.targetIndex] ?? `Story ${l.targetIndex + 1}`,
+        );
+        const summary =
+          names.slice(0, 3).join(", ") + (names.length > 3 ? ` +${names.length - 3}` : "");
+        const confirmAllOnCard = async () => {
+          if (!onConfirmLink) return;
+          setConfirmingAll(true);
+          try {
+            for (const l of confirmable) {
+              await onConfirmLink(card.cardIndex, l.targetIndex, l.relation);
+            }
+          } finally {
+            setConfirmingAll(false);
+          }
+        };
+        return (
+          <div className="mt-2.5 rounded-md bg-overlay-subtle px-2 py-1.5 text-label text-text-tertiary">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setLinksExpanded((v) => !v)}
+                aria-expanded={linksExpanded}
+                className="flex min-w-0 items-center gap-1.5 cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                title={linksExpanded ? "Hide links" : "Show each link"}
               >
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <Link2 size={10} strokeWidth={1.75} className="shrink-0 text-text-muted" />
-                  <span className="shrink-0 font-medium text-text-secondary">{link.relation}</span>
-                  <span className="min-w-0 truncate">{targetTitle}</span>
+                <Link2 size={11} strokeWidth={1.75} className="shrink-0 text-text-muted" />
+                <span className="shrink-0 font-medium text-text-secondary">
+                  {suggestedLinks.length} {suggestedLinks.length === 1 ? "link" : "links"}
                 </span>
-                {link.confirmed ? (
-                  <span className="flex shrink-0 items-center gap-0.5 text-[var(--color-brand-400)]">
-                    <Check size={10} strokeWidth={2} />
-                    Linked
-                  </span>
-                ) : onConfirmLink ? (
-                  <button
-                    type="button"
-                    disabled={!canConfirm || linkingKey !== null}
-                    onClick={async () => {
-                      setLinkingKey(linkId);
-                      try {
-                        await onConfirmLink(card.cardIndex, link.targetIndex, link.relation);
-                      } finally {
-                        setLinkingKey(null);
-                      }
-                    }}
-                    className="flex shrink-0 items-center gap-1 rounded border border-border-default bg-surface-base px-1.5 py-0.5 font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-                    title={
-                      canConfirm
-                        ? "Create this link in Jira"
-                        : "Both stories must be created in Jira first"
-                    }
-                  >
-                    {linkingKey === linkId ? (
-                      <Loader2 size={10} strokeWidth={1.75} className="animate-spin" />
-                    ) : null}
-                    Confirm
-                  </button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                <span className="min-w-0 truncate">{summary}</span>
+                {linksExpanded ? (
+                  <ChevronDown size={11} strokeWidth={2} className="shrink-0" />
+                ) : (
+                  <ChevronRight size={11} strokeWidth={2} className="shrink-0" />
+                )}
+              </button>
+              {confirmable.length > 0 && onConfirmLink ? (
+                <button
+                  type="button"
+                  disabled={confirmingAll || linkingKey !== null}
+                  onClick={confirmAllOnCard}
+                  className="flex shrink-0 items-center gap-1 rounded border border-border-default bg-surface-base px-1.5 py-0.5 font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Create every ready link for this story in Jira"
+                >
+                  {confirmingAll ? <Loader2 size={10} strokeWidth={1.75} className="animate-spin" /> : null}
+                  Confirm {confirmable.length}
+                </button>
+              ) : allLinked ? (
+                <span className="flex shrink-0 items-center gap-0.5 text-[var(--color-brand-400)]">
+                  <Check size={10} strokeWidth={2} />
+                  Linked
+                </span>
+              ) : null}
+            </div>
+
+            {linksExpanded && (
+              <ul className="mt-1.5 space-y-1">
+                {suggestedLinks.map((link, i) => {
+                  const targetTitle = cardTitles?.[link.targetIndex] ?? `Story ${link.targetIndex + 1}`;
+                  const targetCreated = createdIndexes?.has(link.targetIndex) ?? false;
+                  // Both ends must be live in Jira before a link can be created.
+                  const canConfirm = isCreated && targetCreated && !link.confirmed;
+                  const linkId = `${link.targetIndex}:${link.relation}`;
+                  return (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between gap-2 rounded bg-surface-base/60 px-2 py-1"
+                    >
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="shrink-0 font-medium text-text-secondary">{link.relation}</span>
+                        <span className="min-w-0 truncate">{targetTitle}</span>
+                      </span>
+                      {link.confirmed ? (
+                        <span className="flex shrink-0 items-center gap-0.5 text-[var(--color-brand-400)]">
+                          <Check size={10} strokeWidth={2} />
+                          Linked
+                        </span>
+                      ) : onConfirmLink ? (
+                        <button
+                          type="button"
+                          disabled={!canConfirm || linkingKey !== null || confirmingAll}
+                          onClick={async () => {
+                            setLinkingKey(linkId);
+                            try {
+                              await onConfirmLink(card.cardIndex, link.targetIndex, link.relation);
+                            } finally {
+                              setLinkingKey(null);
+                            }
+                          }}
+                          className="flex shrink-0 items-center gap-1 rounded border border-border-default bg-surface-base px-1.5 py-0.5 font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                          title={
+                            canConfirm
+                              ? "Create this link in Jira"
+                              : "Both stories must be created in Jira first"
+                          }
+                        >
+                          {linkingKey === linkId ? (
+                            <Loader2 size={10} strokeWidth={1.75} className="animate-spin" />
+                          ) : null}
+                          Confirm
+                        </button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })()}
 
       <footer className="mt-3 flex items-center justify-between gap-2">
         {isCreated ? (

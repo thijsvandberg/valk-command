@@ -199,6 +199,9 @@ describe("BreakdownBoard", () => {
     expect(screen.queryByRole("button", { name: /drag to reorder/i })).not.toBeInTheDocument();
   });
 
+  // BRDG-500 UX pass: the occasional controls live behind one "Actions" menu.
+  const openActions = () => fireEvent.click(screen.getByRole("button", { name: /^actions$/i }));
+
   // BRDG-500 #3: Create all promotes every remaining DRAFT card, skipping ones
   // already created, using the epic's configured placement.
   it("Create all promotes every DRAFT card with the configured placement and skips created ones", async () => {
@@ -215,7 +218,8 @@ describe("BreakdownBoard", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /create all/i }));
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: /create all in jira/i }));
     await waitFor(() => expect(onCreateInJira).toHaveBeenCalledTimes(2));
     expect(onCreateInJira).toHaveBeenCalledWith(0, "42");
     expect(onCreateInJira).toHaveBeenCalledWith(2, "42");
@@ -232,7 +236,8 @@ describe("BreakdownBoard", () => {
         onCreateInJira={onCreateInJira}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /create all/i }));
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: /create all in jira/i }));
     await waitFor(() => expect(onCreateInJira).toHaveBeenCalledWith(0, "__default__"));
   });
 
@@ -241,9 +246,11 @@ describe("BreakdownBoard", () => {
       <BreakdownBoard
         cards={[card({ id: "a", cardIndex: 0, status: "created", jiraKey: "VPL-1" })]}
         onCreateInJira={vi.fn()}
+        onSetChildPlacement={vi.fn()}
       />,
     );
-    expect(screen.queryByRole("button", { name: /create all/i })).not.toBeInTheDocument();
+    openActions();
+    expect(screen.queryByRole("menuitem", { name: /create all in jira/i })).not.toBeInTheDocument();
   });
 
   // BRDG-500 #4: Confirm all confirms only links whose both ends are created.
@@ -272,7 +279,8 @@ describe("BreakdownBoard", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /confirm all/i }));
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: /confirm all links/i }));
     // Only 0 -> 1 is confirmable; 1 -> 2 targets a still-DRAFT card.
     await waitFor(() => expect(onConfirmLink).toHaveBeenCalledTimes(1));
     expect(onConfirmLink).toHaveBeenCalledWith(0, 1, "blocks");
@@ -291,10 +299,12 @@ describe("BreakdownBoard", () => {
           }),
         ]}
         onConfirmLink={vi.fn()}
+        onSetChildPlacement={vi.fn()}
       />,
     );
     // Target index 1 is not a created card, so there is nothing to confirm.
-    expect(screen.queryByRole("button", { name: /confirm all/i })).not.toBeInTheDocument();
+    openActions();
+    expect(screen.queryByRole("menuitem", { name: /confirm all links/i })).not.toBeInTheDocument();
   });
 
   // BRDG-500 #5: Deepen all works out every not-yet-full card in one turn.
@@ -306,7 +316,8 @@ describe("BreakdownBoard", () => {
         onDeepenAll={onDeepenAll}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /deepen all/i }));
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: /deepen all/i }));
     expect(onDeepenAll).toHaveBeenCalledTimes(1);
   });
 
@@ -315,13 +326,15 @@ describe("BreakdownBoard", () => {
       <BreakdownBoard
         cards={[card({ id: "a", cardIndex: 0, bullets: ["b"], body: "Full body" })]}
         onDeepenAll={vi.fn()}
+        onSetChildPlacement={vi.fn()}
       />,
     );
-    expect(screen.queryByRole("button", { name: /deepen all/i })).not.toBeInTheDocument();
+    openActions();
+    expect(screen.queryByRole("menuitem", { name: /deepen all/i })).not.toBeInTheDocument();
   });
 
-  // BRDG-500 #1: the header placement control sets the epic default.
-  it("sets the epic placement from the header control", async () => {
+  // BRDG-500 #1: the placement setting lives in the Actions menu (drill-in).
+  it("sets the epic placement from the Actions menu", async () => {
     const onSetChildPlacement = vi.fn();
     render(
       <BreakdownBoard
@@ -329,12 +342,13 @@ describe("BreakdownBoard", () => {
         onSetChildPlacement={onSetChildPlacement}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /set placement/i }));
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: /new stories/i }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /to be planned/i }));
     expect(onSetChildPlacement).toHaveBeenCalledWith("__backlog__");
   });
 
-  it("resets the epic placement to choose-each-time", async () => {
+  it("resets the epic placement to ask-each-time from the Actions menu", async () => {
     const onSetChildPlacement = vi.fn();
     render(
       <BreakdownBoard
@@ -343,16 +357,14 @@ describe("BreakdownBoard", () => {
         onSetChildPlacement={onSetChildPlacement}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /new in backlog/i }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: /choose each time/i }));
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: /new stories/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /ask each time/i }));
     expect(onSetChildPlacement).toHaveBeenCalledWith(null);
   });
 
-  it("omits the placement control and bulk actions when their handlers are not provided", () => {
+  it("omits the Actions menu entirely when no board handlers are provided", () => {
     render(<BreakdownBoard cards={[card({ id: "a", cardIndex: 0, bullets: ["b"] })]} />);
-    expect(screen.queryByRole("button", { name: /set placement/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /create all/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /deepen all/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /confirm all/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^actions$/i })).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { LayoutList, Loader2, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown, SendHorizontal, CloudUpload, Layers, CheckCheck } from "lucide-react";
+import { LayoutList, Loader2, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown, SendHorizontal } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -20,7 +20,8 @@ import { CSS } from "@dnd-kit/utilities";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { Button } from "@/components/ui/Button";
 import { ChildStoryCard, cardIsFull } from "./ChildStoryCard";
-import { SprintPlacementMenu, DEFAULT_PLACEMENT } from "./SprintPlacementMenu";
+import { DEFAULT_PLACEMENT } from "./SprintPlacementOptions";
+import { BreakdownActionsMenu } from "./BreakdownActionsMenu";
 
 interface BreakdownBoardProps {
   cards: EpicChildCardWithSprint[];
@@ -197,16 +198,14 @@ export function BreakdownBoard({
     // createdIndexes is derived from cards each render, so cards covers it.
   }, [onConfirmLink, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Shared style for the header's text action buttons (matches Link existing /
-  // Collapse all), including a disabled treatment for the in-flight bulk state.
-  const headerActionBtn =
-    "flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-text-tertiary";
-
-  const showCreateAll = !!onCreateInJira && draftCards.length > 0;
-  const showDeepenAll = !!onDeepenAll && hasDeepenable;
-  const showConfirmAll = !!onConfirmLink && confirmableLinks.length > 0;
-  const hasBulkActions = showCreateAll || showDeepenAll || showConfirmAll;
-  const hasNewControls = !!onSetChildPlacement || hasBulkActions;
+  // Whether the single Actions menu (BRDG-500 UX pass) has anything to show:
+  // the placement setting, Link existing, or a currently-actionable bulk action.
+  const hasActionsMenu =
+    !!onSetChildPlacement ||
+    !!onLinkExisting ||
+    (!!onCreateInJira && draftCards.length > 0) ||
+    (!!onDeepenAll && hasDeepenable) ||
+    (!!onConfirmLink && confirmableLinks.length > 0);
 
   if (cards.length === 0) {
     // Compact, top-aligned prompt (BRDG-484): the empty state is the contextual
@@ -279,89 +278,24 @@ export function BreakdownBoard({
         <header className="flex shrink-0 items-center justify-between border-b border-border-subtle px-4 py-2.5">
           <span className="text-body-sm font-semibold text-text-secondary">Breakdown</span>
           <span className="flex items-center gap-3">
-            {/* Epic-level placement setting (BRDG-500 #1): configure once where
-                new child stories are created; each card's Create-in-Jira then
-                creates directly instead of asking every time. */}
-            {onSetChildPlacement && (
-              <SprintPlacementMenu
-                variant="setting"
-                selectedPlacement={childPlacement ?? null}
-                busy={bulkAction !== null}
-                onCreate={(placement) => onSetChildPlacement(placement)}
-                onClear={() => onSetChildPlacement(null)}
+            {/* One Actions menu (BRDG-500 UX pass): folds the occasional controls -
+                epic placement, the Create/Deepen/Confirm-all master actions, and
+                Link existing - behind a single trigger so the header stays calm.
+                The bulk loops still live here; the menu just invokes them. */}
+            {hasActionsMenu && (
+              <BreakdownActionsMenu
+                childPlacement={childPlacement ?? null}
+                onSetChildPlacement={onSetChildPlacement}
+                onCreateAll={onCreateInJira ? createAll : undefined}
+                onDeepenAll={onDeepenAll}
+                onConfirmAll={onConfirmLink ? confirmAll : undefined}
+                onLinkExisting={onLinkExisting}
+                draftCount={draftCards.length}
+                confirmableCount={confirmableLinks.length}
+                hasDeepenable={hasDeepenable}
+                busy={busy}
+                bulkBusy={bulkBusy}
               />
-            )}
-
-            {/* Bulk master actions (BRDG-500 #3-#5), mirroring Collapse all /
-                Expand all: each is hidden when it has nothing to act on. */}
-            {hasBulkActions && (
-              <span className="flex items-center gap-2.5">
-                {showCreateAll && (
-                  <button
-                    type="button"
-                    onClick={() => void createAll()}
-                    disabled={bulkBusy}
-                    className={headerActionBtn}
-                    title="Create every remaining draft story in Jira"
-                  >
-                    {bulkAction === "create" ? (
-                      <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
-                    ) : (
-                      <CloudUpload size={11} strokeWidth={1.75} />
-                    )}
-                    Create all
-                  </button>
-                )}
-                {showDeepenAll && (
-                  <button
-                    type="button"
-                    onClick={() => void onDeepenAll?.()}
-                    disabled={bulkBusy}
-                    className={headerActionBtn}
-                    title="Work out every not-yet-detailed story in one turn"
-                  >
-                    {busy ? (
-                      <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
-                    ) : (
-                      <Layers size={11} strokeWidth={1.75} />
-                    )}
-                    Deepen all
-                  </button>
-                )}
-                {showConfirmAll && (
-                  <button
-                    type="button"
-                    onClick={() => void confirmAll()}
-                    disabled={bulkBusy}
-                    className={headerActionBtn}
-                    title="Confirm every suggested link whose stories are both created"
-                  >
-                    {bulkAction === "confirm" ? (
-                      <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
-                    ) : (
-                      <CheckCheck size={11} strokeWidth={1.75} />
-                    )}
-                    Confirm all
-                  </button>
-                )}
-              </span>
-            )}
-
-            {/* Separates the new-story controls from the view controls below. */}
-            {hasNewControls && (
-              <span aria-hidden className="h-3.5 w-px bg-border-subtle" />
-            )}
-
-            {onLinkExisting && (
-              <button
-                type="button"
-                onClick={onLinkExisting}
-                className="flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                title="Link an existing story into this epic"
-              >
-                <Link2 size={11} strokeWidth={1.75} />
-                Link existing
-              </button>
             )}
             {/* Collapse all / Expand all (BRDG-490 #1): the board-wide master for
                 the per-card collapse. Collapses every card to its title, or expands
