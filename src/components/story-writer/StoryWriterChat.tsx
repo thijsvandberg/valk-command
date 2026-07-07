@@ -280,13 +280,14 @@ export function StoryWriterChat({
   // command (not a message). Currently only `/clear` (gated on onClearChat).
   // Typing `/` surfaces an autocomplete of matching commands above the input,
   // and the input reads as a command (distinct styling); selecting completes it.
-  const COMMANDS = useMemo(
-    () =>
-      onClearChat
-        ? [{ name: "/clear", description: "Clear the conversation — keeps the draft", icon: Eraser }]
-        : [],
-    [onClearChat],
+  // Every known command. `/clear` is always recognised on submit (swallowed, never
+  // sent, per BRDG-489) even when clearing is unavailable; availability only gates
+  // whether it is offered in the autocomplete and opens the confirmation.
+  const ALL_COMMANDS = useMemo(
+    () => [{ name: "/clear", description: "Clear the conversation — keeps the draft", icon: Eraser }],
+    [],
   );
+  const COMMANDS = useMemo(() => (onClearChat ? ALL_COMMANDS : []), [onClearChat, ALL_COMMANDS]);
   const trimmedInput = inputValue.trim();
   const isCommandInput = trimmedInput.startsWith("/");
   const commandMatches = useMemo(
@@ -294,18 +295,19 @@ export function StoryWriterChat({
     [isCommandInput, trimmedInput, COMMANDS],
   );
   const showCommandMenu = isCommandInput && commandMatches.length > 0;
-  // Resolve typed command text to a command name (exact, or a unique prefix like
-  // `/cl` -> `/clear`), so submitting a partially-typed command still runs it.
+  // Resolve typed command text to a command name: an exact match (always), or a
+  // unique prefix of an *available* command (`/cl` -> `/clear`), so submitting a
+  // partially-typed command still runs it.
   const resolveCommand = useCallback(
     (text: string): string | null => {
       const t = text.trim().toLowerCase();
       if (!t.startsWith("/")) return null;
-      const exact = COMMANDS.find((c) => c.name === t);
+      const exact = ALL_COMMANDS.find((c) => c.name === t);
       if (exact) return exact.name;
       const prefix = COMMANDS.filter((c) => c.name.startsWith(t));
       return prefix.length === 1 ? prefix[0].name : null;
     },
-    [COMMANDS],
+    [ALL_COMMANDS, COMMANDS],
   );
 
   // Dropdown lists every quick suggestion unconditionally (relational actions +

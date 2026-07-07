@@ -497,11 +497,10 @@ export function ChildStoryCard({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() =>
-                  onStageDeepen
-                    ? onStageDeepen(card.cardIndex, card.title)
-                    : void onDeepen(card.cardIndex, card.title)
-                }
+                onClick={() => {
+                  if (onStageDeepen) onStageDeepen(card.cardIndex, card.title);
+                  else void onDeepen(card.cardIndex, card.title);
+                }}
                 className="flex items-center gap-1 px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-50"
                 title={
                   onStageDeepen
