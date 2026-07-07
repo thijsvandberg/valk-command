@@ -107,7 +107,15 @@ describe("CommentsSection", () => {
       createdAt: new Date().toISOString(),
     });
     mockDeleteComment.mockResolvedValue({});
-    mockAddJiraComment.mockResolvedValue({});
+    mockAddJiraComment.mockResolvedValue({
+      id: "jc-new",
+      authorName: "Test User",
+      authorAvatar: null,
+      authorInitials: "TU",
+      authorColor: "#336699",
+      content: "New Jira comment",
+      createdAt: new Date().toISOString(),
+    });
   });
 
   it("renders PO comments section header", async () => {
@@ -356,6 +364,53 @@ describe("CommentsSection", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Comment posted to Jira")).toBeInTheDocument();
+    });
+  });
+
+  it("shows Jira comment immediately after posting without waiting for sync", async () => {
+    mockAddJiraComment.mockResolvedValue({
+      id: "jc-optimistic",
+      authorName: "Test User",
+      authorAvatar: null,
+      authorInitials: "TU",
+      authorColor: "#336699",
+      content: "Optimistic Jira comment",
+      createdAt: new Date().toISOString(),
+    });
+    render(<CommentsSection ticketKey="VPL-1" jiraComments={[]} onMutate={vi.fn()} />);
+
+    const textarea = screen.getByPlaceholderText("Post a comment to Jira...");
+    fireEvent.change(textarea, { target: { value: "Optimistic Jira comment" } });
+    fireEvent.keyDown(textarea, { key: "Enter", metaKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByText("Optimistic Jira comment")).toBeInTheDocument();
+    });
+  });
+
+  it("drops optimistic Jira comment once the sync delivers it via the prop", async () => {
+    const optimisticComment = makeJiraComment({ id: "jc-synced", content: "Synced comment" });
+    mockAddJiraComment.mockResolvedValue(optimisticComment);
+
+    const { rerender } = render(
+      <CommentsSection ticketKey="VPL-1" jiraComments={[]} onMutate={vi.fn()} />,
+    );
+
+    const textarea = screen.getByPlaceholderText("Post a comment to Jira...");
+    fireEvent.change(textarea, { target: { value: "Synced comment" } });
+    fireEvent.keyDown(textarea, { key: "Enter", metaKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByText("Synced comment")).toBeInTheDocument();
+    });
+
+    // Sync arrives: the comment is now in the prop — should appear exactly once
+    rerender(
+      <CommentsSection ticketKey="VPL-1" jiraComments={[optimisticComment]} onMutate={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Synced comment")).toHaveLength(1);
     });
   });
 

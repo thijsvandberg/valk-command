@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
-import type { TicketDetail } from "@/types/ticket";
+import type { TicketDetail, JiraComment } from "@/types/ticket";
 import { Trash2, Flag, Send, Check, User } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -183,6 +183,7 @@ function JiraCommentsSection({
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [optimisticJiraComments, setOptimisticJiraComments] = useState<JiraComment[]>([]);
   const postedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { user } = useUser();
   const userInitials = user
@@ -190,13 +191,29 @@ function JiraCommentsSection({
     : "";
   const hasUserImage = !!user?.imageUrl;
 
+  // Drop optimistic entries once the sync confirms them via the prop
+  useEffect(() => {
+    setOptimisticJiraComments(prev =>
+      prev.filter(opt => !jiraComments.some(real => real.id === opt.id))
+    );
+  }, [jiraComments]);
+
+  const allJiraComments = useMemo(
+    () => [
+      ...jiraComments,
+      ...optimisticJiraComments.filter(opt => !jiraComments.some(real => real.id === opt.id)),
+    ],
+    [jiraComments, optimisticJiraComments]
+  );
+
   const handlePostJiraComment = useCallback(async () => {
     if (!newJiraComment.trim() || posting) return;
     setPosting(true);
     setError(null);
     try {
-      await tickets.addJiraComment(ticketKey, { content: newJiraComment.trim() });
+      const created = await tickets.addJiraComment(ticketKey, { content: newJiraComment.trim() });
       setNewJiraComment("");
+      setOptimisticJiraComments(prev => [...prev, created]);
       setPosted(true);
       onMutate?.();
       clearTimeout(postedTimerRef.current);
@@ -210,9 +227,9 @@ function JiraCommentsSection({
 
   return (
     <div>
-      <SectionHeader title="Jira Comments" count={jiraComments.length} sectionKey={SECTION_KEYS.jiraComments}>
+      <SectionHeader title="Jira Comments" count={allJiraComments.length} sectionKey={SECTION_KEYS.jiraComments}>
       <div className="mt-3 space-y-4">
-        {[...jiraComments].reverse().map((comment, idx) => {
+        {[...allJiraComments].reverse().map((comment, idx) => {
           const isFlagComment = /flag_on|Flag added|flag_off|Flag removed/i.test(comment.content);
           // Newest first after the reverse: a live-arrived comment pulses once.
           const pulse = liveHighlight && idx === 0;
@@ -319,7 +336,7 @@ function JiraCommentsSection({
           </div>
         </div>
 
-        {jiraComments.length === 0 && !newJiraComment.trim() && !posted && (
+        {allJiraComments.length === 0 && !newJiraComment.trim() && !posted && (
           <p className="pl-10 text-body-sm text-text-muted">No Jira comments</p>
         )}
       </div>
