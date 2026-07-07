@@ -276,6 +276,38 @@ export function StoryWriterChat({
   const chipOverflow = useScrollOverflow(chipRowRef, mergedChips);
   const chipMask = scrollFadeMask(chipOverflow);
 
+  // Slash commands (BRDG-491 #3): recognise `/`-prefixed input as an in-app
+  // command (not a message). Currently only `/clear` (gated on onClearChat).
+  // Typing `/` surfaces an autocomplete of matching commands above the input,
+  // and the input reads as a command (distinct styling); selecting completes it.
+  const COMMANDS = useMemo(
+    () =>
+      onClearChat
+        ? [{ name: "/clear", description: "Clear the conversation — keeps the draft", icon: Eraser }]
+        : [],
+    [onClearChat],
+  );
+  const trimmedInput = inputValue.trim();
+  const isCommandInput = trimmedInput.startsWith("/");
+  const commandMatches = useMemo(
+    () => (isCommandInput ? COMMANDS.filter((c) => c.name.startsWith(trimmedInput.toLowerCase())) : []),
+    [isCommandInput, trimmedInput, COMMANDS],
+  );
+  const showCommandMenu = isCommandInput && commandMatches.length > 0;
+  // Resolve typed command text to a command name (exact, or a unique prefix like
+  // `/cl` -> `/clear`), so submitting a partially-typed command still runs it.
+  const resolveCommand = useCallback(
+    (text: string): string | null => {
+      const t = text.trim().toLowerCase();
+      if (!t.startsWith("/")) return null;
+      const exact = COMMANDS.find((c) => c.name === t);
+      if (exact) return exact.name;
+      const prefix = COMMANDS.filter((c) => c.name.startsWith(t));
+      return prefix.length === 1 ? prefix[0].name : null;
+    },
+    [COMMANDS],
+  );
+
   // Dropdown lists every quick suggestion unconditionally (relational actions +
   // all editable per-type prompts), so nothing is hidden by context filtering.
   const dropdownActions = useMemo(
@@ -387,8 +419,9 @@ export function StoryWriterChat({
     if (!trimmed || sending || isStreaming) return;
 
     // `/clear` is an in-app command, not a message (BRDG-489): swallow it (never
-    // send or persist it) and open the clear-chat confirmation instead.
-    if (trimmed === "/clear") {
+    // send or persist it) and open the clear-chat confirmation instead. Resolves
+    // a unique prefix too (BRDG-491 #3), so `/cl` + Enter runs `/clear`.
+    if (resolveCommand(trimmed) === "/clear") {
       setInputValue("");
       if (onClearChat) setShowClearConfirm(true);
       return;
@@ -414,7 +447,7 @@ export function StoryWriterChat({
     if (!success) setInputValue(trimmed);
     setSending(false);
     textareaRef.current?.focus();
-  }, [inputValue, sending, isStreaming, messages, onSend, onClearChat]);
+  }, [inputValue, sending, isStreaming, messages, onSend, onClearChat, resolveCommand]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -601,7 +634,37 @@ export function StoryWriterChat({
       )}
 
       <div className="shrink-0 border-t border-border-default">
-        <div className="px-3 pt-2 pb-1">
+        {/* Slash-command autocomplete (BRDG-491 #3): shown while the input is a
+            `/`-prefixed command, in place of the quick-prompt chips. */}
+        {showCommandMenu && (
+          <div className="px-3 pt-2 pb-1">
+            <div
+              role="listbox"
+              aria-label="Commands"
+              className="overflow-hidden rounded-lg border border-[var(--color-brand-500)]/30 bg-surface-floating shadow-lg shadow-black/20"
+            >
+              {commandMatches.map((cmd) => {
+                const Icon = cmd.icon;
+                return (
+                  <button
+                    key={cmd.name}
+                    type="button"
+                    onClick={() => {
+                      setInputValue(cmd.name);
+                      requestAnimationFrame(() => textareaRef.current?.focus());
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  >
+                    <Icon size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-brand-400)]" />
+                    <span className="font-mono text-body-sm font-medium text-[var(--color-brand-400)]">{cmd.name}</span>
+                    <span className="truncate text-caption text-text-tertiary">{cmd.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div className={`px-3 pt-2 pb-1${showCommandMenu ? " hidden" : ""}`}>
           <div
             ref={chipRowRef}
             data-testid="quick-chip-row"
@@ -654,7 +717,13 @@ export function StoryWriterChat({
         </div>
 
         <div className="px-3 pb-2.5 pt-1">
-          <div className="flex flex-col rounded-2xl border border-border-strong bg-surface-elevated focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
+          <div
+            className={`flex flex-col rounded-2xl border transition-colors duration-150 ${
+              isCommandInput
+                ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/[0.04]"
+                : "border-border-strong bg-surface-elevated focus-within:border-[var(--color-brand-500)]/30"
+            }`}
+          >
             <div
               onMouseDown={handleResizeMouseDown}
               className="flex h-2.5 cursor-row-resize items-center justify-center opacity-0 hover:opacity-50 transition-opacity duration-150"

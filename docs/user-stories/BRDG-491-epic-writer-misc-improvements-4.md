@@ -22,7 +22,7 @@ The folded-in phase rail (BRDG-490 #4) renders all five steps inline; it is crud
 
 ### 3. `/clear` command affordance in the compose box
 `/clear` (BRDG-489) is only recognised on submit; there is no hint while typing.
-- [ ] When the compose input starts with `/`, recognise it as a command: show an autocomplete hint (currently just `/clear`) above the input and style the typed command distinctly, so it reads as a command, not a message. Selecting the suggestion completes it; submitting runs it.
+- [x] When the compose input starts with `/`, recognise it as a command: show an autocomplete hint (currently just `/clear`) above the input and style the typed command distinctly, so it reads as a command, not a message. Selecting the suggestion completes it; submitting runs it.
 
 ## Out of Scope
 - The Find Related result format (correct as-is; the long accompanying prose trim is parked per PO).

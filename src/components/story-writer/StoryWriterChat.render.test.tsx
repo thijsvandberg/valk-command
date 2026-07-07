@@ -171,3 +171,39 @@ describe("StoryWriterChat quick-prompt chip row (BRDG-460)", () => {
     expect(onSend).toHaveBeenCalledWith("Investigate this.");
   });
 });
+
+describe("StoryWriterChat slash commands (BRDG-491 #3)", () => {
+  it("surfaces the /clear command autocomplete when typing a slash", () => {
+    renderChat({ onClearChat: vi.fn() });
+    fireEvent.change(screen.getByPlaceholderText("Describe what to improve..."), {
+      target: { value: "/" },
+    });
+    expect(screen.getByRole("listbox", { name: /commands/i })).toBeInTheDocument();
+    expect(screen.getByText("/clear")).toBeInTheDocument();
+  });
+
+  it("completes the command when its suggestion is clicked", () => {
+    renderChat({ onClearChat: vi.fn() });
+    const input = screen.getByPlaceholderText("Describe what to improve...") as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: "/cl" } });
+    fireEvent.click(screen.getByText("/clear"));
+    expect(input.value).toBe("/clear");
+  });
+
+  it("shows no command menu without a clear handler", () => {
+    renderChat();
+    fireEvent.change(screen.getByPlaceholderText("Describe what to improve..."), {
+      target: { value: "/" },
+    });
+    expect(screen.queryByRole("listbox", { name: /commands/i })).not.toBeInTheDocument();
+  });
+
+  it("runs /clear on submit, resolving a unique prefix", () => {
+    renderChat({ onClearChat: vi.fn() });
+    const input = screen.getByPlaceholderText("Describe what to improve...");
+    fireEvent.change(input, { target: { value: "/cl" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    // The clear-chat confirmation opens instead of sending "/cl" as a message.
+    expect(screen.getByText("Clear chat?")).toBeInTheDocument();
+  });
+});
