@@ -7,6 +7,7 @@ import { ToastCard } from "@/components/ui/Toast";
 import { tickets as ticketsApi } from "@/lib/api-client";
 import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { scopedMutate } from "@/lib/swr-scoped-mutate";
+import { isDraftKey } from "@/lib/draft-key";
 
 // A comfortable few seconds: long enough to notice and opt in, short enough that an
 // ignored card fades on its own (BRDG-475). Single const so it stays tunable.
@@ -185,8 +186,8 @@ export function BookmarkNoteCard({ ticketKeys, onClose, onSaved }: BookmarkNoteC
 
   if (typeof document === "undefined") return null;
 
-  const label = isBulk ? `${count} stories` : ticketKeys[0];
-  const ariaTarget = isBulk ? `${count} bookmarked stories` : ticketKeys[0];
+  const label = isBulk || isDraftKey(ticketKeys[0]) ? `${count} stor${count === 1 ? "y" : "ies"}` : ticketKeys[0];
+  const ariaTarget = isBulk || isDraftKey(ticketKeys[0]) ? `${count} bookmarked stor${count === 1 ? "y" : "ies"}` : ticketKeys[0];
 
   // Portal to <body> like the status Toast so a positioned/transformed ancestor cannot
   // trap the card in a lower stacking context. A distinct bottom offset (bottom-24)

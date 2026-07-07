@@ -45,6 +45,13 @@ describe("BookmarkNoteCard (BRDG-475)", () => {
     await flush();
   });
 
+  it("shows '1 story' instead of the raw DRAFT key when the ticket is a draft", async () => {
+    render(<BookmarkNoteCard ticketKeys={["DRAFT-dc6070ef"]} onClose={vi.fn()} />);
+    expect(screen.getByText("1 story")).toBeInTheDocument();
+    expect(screen.queryByText("DRAFT-dc6070ef")).not.toBeInTheDocument();
+    await flush();
+  });
+
   it("auto-dismisses after the delay when untouched and writes no note", () => {
     vi.useFakeTimers();
     try {
