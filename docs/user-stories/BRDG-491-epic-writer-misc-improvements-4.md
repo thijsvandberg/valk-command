@@ -13,8 +13,8 @@ Related: [BRDG-489](completed/BRDG-489-clear-chat-story-and-epic-writer.md) (`/c
 
 ### 1. Consistent send/stage model on card AI-action buttons
 The chat chips and the quick-actions popover follow one model: click the label/row = stage the prompt in the compose box; click the paper-plane arrow = send now. The card AI-action split buttons (BRDG-490 #8) did the opposite (primary = send, pencil = stage) and carried a Sparkles icon.
-- [ ] Remove the Sparkles (✦) icon from the Deepen/Improve buttons and the empty-board Generate breakdown button.
-- [ ] Flip to the shared model: primary label click = stage the prompt in the compose box; trailing paper-plane arrow = send now.
+- [x] Remove the Sparkles (✦) icon from the Deepen/Improve buttons and the empty-board Generate breakdown button.
+- [x] Flip to the shared model: primary label click = stage the prompt in the compose box; trailing paper-plane arrow = send now.
 
 ### 2. Phase control that scales (header)
 The folded-in phase rail (BRDG-490 #4) renders all five steps inline; it is crude and does not scale on smaller screens.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { LayoutList, Loader2, Sparkles, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown, PenLine } from "lucide-react";
+import { LayoutList, Loader2, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown, SendHorizontal } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -129,31 +129,38 @@ export function BreakdownBoard({
           Turn this epic into child stories, then refine, split, and add more.
         </p>
         {onGenerateBreakdown && (
-          // Split action (BRDG-490 #8): primary generates now; the trailing
-          // segment stages the prompt in the chat so the PO can tweak it first.
+          // Split action (BRDG-491 #1): the same send/stage model as the card
+          // buttons and chat chips - the label stages the prompt in the compose
+          // box, the trailing paper-plane arrow generates now. No leading icon.
           <div className="inline-flex items-stretch overflow-hidden rounded-md shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-500)_30%,transparent)]">
             <button
               type="button"
               disabled={busy}
-              onClick={() => void onGenerateBreakdown()}
+              onClick={() => (onStageGenerate ? onStageGenerate() : void onGenerateBreakdown())}
+              title={
+                onStageGenerate
+                  ? "Stage the breakdown prompt in chat to edit before sending"
+                  : "Generate the first breakdown"
+              }
               className="flex h-6 items-center gap-1 bg-[var(--color-brand-600)] px-2 text-label font-medium text-white cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {busy ? (
-                <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
-              ) : (
-                <Sparkles size={13} strokeWidth={1.5} />
-              )}
+              {busy && <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />}
               {busy ? "Generating breakdown…" : "Generate breakdown"}
             </button>
-            {onStageGenerate && !busy && (
+            {onStageGenerate && (
               <button
                 type="button"
-                onClick={onStageGenerate}
-                title="Edit this prompt in chat before sending"
-                aria-label="Edit the breakdown prompt in chat"
-                className="flex items-center justify-center border-l border-white/20 bg-[var(--color-brand-600)] px-1.5 text-white/90 cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)] hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                disabled={busy}
+                onClick={() => void onGenerateBreakdown()}
+                title="Generate now"
+                aria-label="Generate the breakdown now"
+                className="flex items-center justify-center border-l border-white/20 bg-[var(--color-brand-600)] px-1.5 text-white/90 cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)] hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <PenLine size={12} strokeWidth={1.75} />
+                {busy ? (
+                  <Loader2 size={12} strokeWidth={1.5} className="animate-spin" />
+                ) : (
+                  <SendHorizontal size={12} strokeWidth={1.75} />
+                )}
               </button>
             )}
           </div>

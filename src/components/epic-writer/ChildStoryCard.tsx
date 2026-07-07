@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check, PenLine, Plus } from "lucide-react";
+import { Layers, FileText, AlignLeft, SendHorizontal, ChevronDown, ChevronRight, Loader2, Link2, Check, PenLine, Plus } from "lucide-react";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { SprintOrBacklogBadge } from "@/components/shared/IssueMetaBadges";
@@ -487,28 +487,34 @@ export function ChildStoryCard({
           )}
 
           {onDeepen && (
-            // Split action (BRDG-490 #8): primary sends the work-out prompt now;
-            // the trailing segment stages it in the chat so the PO can tweak it
-            // first (mirrors the chat quick-prompt chips' send/stage split).
-            // Distinct, non-colliding labels (BRDG-490 #7): the old "Refine" label
-            // clashed with the Refine phase name (BRDG-488). "Deepen" fleshes an
-            // outline out to a full story; "Improve" adjusts an already-full one.
+            // Split action (BRDG-491 #1): one shared model with the chat chips /
+            // quick-actions popover - the label stages the prompt in the compose
+            // box so the PO can tweak it, the trailing paper-plane arrow sends now.
+            // No leading icon. Distinct, non-colliding labels (BRDG-490 #7):
+            // "Deepen" fleshes an outline out to a full story; "Improve" adjusts an
+            // already-full one (never "Refine", which is a phase name, BRDG-488).
             <div className="group flex items-stretch overflow-hidden rounded-md border border-border-default bg-overlay-subtle">
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void onDeepen(card.cardIndex, card.title)}
+                onClick={() =>
+                  onStageDeepen
+                    ? onStageDeepen(card.cardIndex, card.title)
+                    : void onDeepen(card.cardIndex, card.title)
+                }
                 className="flex items-center gap-1 px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-50"
                 title={
-                  hasBody
-                    ? "Improve the worked-out story (adjust the full description and acceptance criteria)"
-                    : "Work this story out into a full description and acceptance criteria"
+                  onStageDeepen
+                    ? hasBody
+                      ? "Improve: stage the prompt in chat to edit before sending"
+                      : "Deepen: stage the prompt in chat to edit before sending"
+                    : hasBody
+                      ? "Improve the worked-out story"
+                      : "Work this story out into a full description and acceptance criteria"
                 }
               >
-                {busy ? (
+                {busy && !onStageDeepen && (
                   <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
-                ) : (
-                  <Sparkles size={11} strokeWidth={1.75} />
                 )}
                 {hasBody ? "Improve" : "Deepen"}
               </button>
@@ -516,12 +522,16 @@ export function ChildStoryCard({
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => onStageDeepen(card.cardIndex, card.title)}
+                  onClick={() => void onDeepen(card.cardIndex, card.title)}
                   className="flex items-center justify-center border-l border-border-default px-1.5 text-text-muted cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40"
-                  title="Edit this prompt in chat before sending"
-                  aria-label={`Edit the ${hasBody ? "improve" : "deepen"} prompt in chat`}
+                  title="Send now"
+                  aria-label={`Send the ${hasBody ? "improve" : "deepen"} prompt now`}
                 >
-                  <PenLine size={11} strokeWidth={1.75} />
+                  {busy ? (
+                    <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+                  ) : (
+                    <SendHorizontal size={11} strokeWidth={1.75} />
+                  )}
                 </button>
               )}
             </div>

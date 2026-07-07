@@ -48,9 +48,9 @@ describe("BreakdownBoard", () => {
     expect(onGenerateBreakdown).toHaveBeenCalledTimes(1);
   });
 
-  // BRDG-490 #8: the empty-board Generate breakdown is a split button - the arrow
-  // stages the prompt in chat instead of sending it.
-  it("stages the generate-breakdown prompt via the split arrow without generating", () => {
+  // BRDG-491 #1: the empty-board Generate breakdown follows the shared send/stage
+  // model - the label stages the prompt; the paper-plane arrow generates now.
+  it("stages via the label and generates via the split arrow", () => {
     const onGenerateBreakdown = vi.fn();
     const onStageGenerate = vi.fn();
     render(
@@ -60,9 +60,14 @@ describe("BreakdownBoard", () => {
         onStageGenerate={onStageGenerate}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /edit the breakdown prompt in chat/i }));
+    // Label stages, does not generate.
+    fireEvent.click(screen.getByRole("button", { name: /generate breakdown/i }));
     expect(onStageGenerate).toHaveBeenCalledTimes(1);
     expect(onGenerateBreakdown).not.toHaveBeenCalled();
+
+    // Arrow generates now.
+    fireEvent.click(screen.getByRole("button", { name: /generate the breakdown now/i }));
+    expect(onGenerateBreakdown).toHaveBeenCalledTimes(1);
   });
 
   it("disables the CTA and shows a generating state while a turn runs", () => {

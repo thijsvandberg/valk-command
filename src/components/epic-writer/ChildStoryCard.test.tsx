@@ -74,9 +74,9 @@ describe("ChildStoryCard", () => {
 
   // BRDG-490 #7: the action no longer says "Refine" (which collides with the
   // Refine phase name); a worked-out card labels it "Improve".
-  // BRDG-490 #8: the work-out action is a split button - the arrow stages the
-  // prompt in chat instead of sending it immediately.
-  it("stages the deepen prompt via the split arrow without sending", () => {
+  // BRDG-491 #1: the work-out action follows the shared send/stage model - the
+  // label stages the prompt in the compose box; the paper-plane arrow sends now.
+  it("stages via the label and sends via the split arrow", () => {
     const onDeepen = vi.fn();
     const onStageDeepen = vi.fn();
     render(
@@ -86,9 +86,14 @@ describe("ChildStoryCard", () => {
         onStageDeepen={onStageDeepen}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /edit the deepen prompt in chat/i }));
+    // Label click stages, does not send.
+    fireEvent.click(screen.getByRole("button", { name: /^deepen$/i }));
     expect(onStageDeepen).toHaveBeenCalledWith(2, "Cart summary");
     expect(onDeepen).not.toHaveBeenCalled();
+
+    // Arrow click sends now.
+    fireEvent.click(screen.getByRole("button", { name: /send the deepen prompt now/i }));
+    expect(onDeepen).toHaveBeenCalledWith(2, "Cart summary");
   });
 
   it("labels the action Improve once a body exists, never Refine", () => {
