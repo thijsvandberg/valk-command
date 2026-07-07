@@ -18,7 +18,7 @@ The chat chips and the quick-actions popover follow one model: click the label/r
 
 ### 2. Phase control that scales (header)
 The folded-in phase rail (BRDG-490 #4) renders all five steps inline; it is crude and does not scale on smaller screens.
-- [ ] Replace the inline 5-step row with a compact control: previous / next step buttons (icon only) with the current step's name between them, plus a small icon-only button that opens a popover listing all steps for direct jump.
+- [x] Replace the inline 5-step row with a compact control: previous / next step buttons (icon only) with the current step's name between them, plus a small icon-only button that opens a popover listing all steps for direct jump.
 
 ### 3. `/clear` command affordance in the compose box
 `/clear` (BRDG-489) is only recognised on submit; there is no hint while typing.
