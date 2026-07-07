@@ -40,7 +40,14 @@ export function PhaseRail({ current, onSelect }: PhaseRailProps) {
     "flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent";
 
   return (
-    <nav ref={ref} aria-label="Epic phases" className="relative flex shrink-0 items-center gap-0.5">
+    // Bounded container (BRDG-500 #6): a subtle bordered capsule gives the phase
+    // control a deliberate identity of its own instead of bare icon buttons
+    // floating in the header row.
+    <nav
+      ref={ref}
+      aria-label="Epic phases"
+      className="relative flex shrink-0 items-center gap-0.5 rounded-lg border border-border-subtle bg-surface-elevated/70 px-1 py-0.5"
+    >
       <button
         type="button"
         onClick={() => step(idx - 1)}

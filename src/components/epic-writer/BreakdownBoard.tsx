@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { LayoutList, Loader2, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown, SendHorizontal } from "lucide-react";
+import { LayoutList, Loader2, Link2, GripVertical, ChevronsDownUp, ChevronsUpDown, SendHorizontal, CloudUpload, Layers, CheckCheck } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -19,7 +19,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { Button } from "@/components/ui/Button";
-import { ChildStoryCard } from "./ChildStoryCard";
+import { ChildStoryCard, cardIsFull } from "./ChildStoryCard";
+import { SprintPlacementMenu, DEFAULT_PLACEMENT } from "./SprintPlacementMenu";
 
 interface BreakdownBoardProps {
   cards: EpicChildCardWithSprint[];
@@ -36,8 +37,18 @@ interface BreakdownBoardProps {
   ) => void | Promise<unknown>;
   // Promote a DRAFT card to a real Jira issue under the epic.
   onCreateInJira?: (index: number, placement: string) => void | Promise<unknown>;
+  // The epic's configured default child placement (BRDG-500 #1): drives the
+  // header placement control and each card's Create-in-Jira split button. null =
+  // not configured (every Create-in-Jira stays a full dropdown).
+  childPlacement?: string | null;
+  // Persist (or clear with null) the epic's default child placement. When
+  // provided, the header shows the placement control.
+  onSetChildPlacement?: (placement: string | null) => void | Promise<unknown>;
   // Confirm one AI-proposed inter-story link.
   onConfirmLink?: (sourceIndex: number, targetIndex: number, relation: string) => void | Promise<unknown>;
+  // Deepen every not-yet-full card in one chat turn (BRDG-500 #5). When provided
+  // and at least one card is not full, the header shows a "Deepen all" button.
+  onDeepenAll?: () => void | Promise<unknown>;
   // Reassign a created card's sprint after the fact.
   onReassignSprint?: (jiraKey: string, targetSprintId: string) => void | Promise<unknown>;
   // Ask the AI to produce the first breakdown (empty-board primary action).
@@ -69,7 +80,10 @@ export function BreakdownBoard({
   onStageGenerate,
   onEditCard,
   onCreateInJira,
+  childPlacement,
+  onSetChildPlacement,
   onConfirmLink,
+  onDeepenAll,
   onReassignSprint,
   onGenerateBreakdown,
   onOpenChild,
@@ -85,6 +99,11 @@ export function BreakdownBoard({
   // across reloads (the board's cards are AI-regenerated, so a stored per-card
   // choice would rarely still apply).
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+  // A board-wide bulk loop (Create all / Confirm all) is in flight. These are
+  // sequential API loops (not chat turns), so they need their own busy state to
+  // disable the header controls and show progress; Deepen all is a chat turn and
+  // rides the shared `busy` prop instead.
+  const [bulkAction, setBulkAction] = useState<"create" | "confirm" | null>(null);
   const allCollapsed = cards.length > 0 && cards.every((c) => collapsedIds.has(c.id));
   const toggleCollapse = useCallback((id: string) => {
     setCollapsedIds((prev) => {
@@ -116,6 +135,78 @@ export function BreakdownBoard({
     cardTitles[c.cardIndex] = c.title;
     if (c.status === "created" && c.jiraKey) createdIndexes.add(c.cardIndex);
   }
+
+  // Bulk-action inputs (BRDG-500 #3-#5), derived from the current cards:
+  // - DRAFT cards still to promote (skipping ones already live in Jira).
+  // - Confirmable links: pending suggestions whose both ends are already created.
+  // - Deepenable: at least one card is not yet fully worked out.
+  const draftCards = cards.filter((c) => !(c.status === "created" && c.jiraKey));
+  const confirmableLinks: { sourceIndex: number; targetIndex: number; relation: string }[] = [];
+  for (const c of cards) {
+    if (!(c.status === "created" && c.jiraKey)) continue;
+    for (const link of c.suggestedLinks ?? []) {
+      if (!link.confirmed && createdIndexes.has(link.targetIndex)) {
+        confirmableLinks.push({ sourceIndex: c.cardIndex, targetIndex: link.targetIndex, relation: link.relation });
+      }
+    }
+  }
+  const hasDeepenable = cards.some((c) => !cardIsFull(c));
+  const bulkBusy = !!busy || bulkAction !== null;
+
+  // Promote every remaining DRAFT card sequentially with the resolved placement
+  // (the epic's configured one, or the global default when unset so it always
+  // works). Iterates a snapshot of card indexes; the server guard skips any card
+  // already created, keeping re-presses idempotent.
+  const createAll = useCallback(async () => {
+    if (!onCreateInJira) return;
+    const placement = childPlacement ?? DEFAULT_PLACEMENT;
+    const targets = cards.filter((c) => !(c.status === "created" && c.jiraKey));
+    if (targets.length === 0) return;
+    setBulkAction("create");
+    try {
+      for (const c of targets) {
+        await onCreateInJira(c.cardIndex, placement);
+      }
+    } finally {
+      setBulkAction(null);
+    }
+  }, [onCreateInJira, cards, childPlacement]);
+
+  // Confirm every pending inter-story link whose both ends are already created.
+  // Links whose target is not yet in Jira stay pending (this does not create cards).
+  const confirmAll = useCallback(async () => {
+    if (!onConfirmLink) return;
+    const targets: { sourceIndex: number; targetIndex: number; relation: string }[] = [];
+    for (const c of cards) {
+      if (!(c.status === "created" && c.jiraKey)) continue;
+      for (const link of c.suggestedLinks ?? []) {
+        if (!link.confirmed && c.jiraKey && createdIndexes.has(link.targetIndex)) {
+          targets.push({ sourceIndex: c.cardIndex, targetIndex: link.targetIndex, relation: link.relation });
+        }
+      }
+    }
+    if (targets.length === 0) return;
+    setBulkAction("confirm");
+    try {
+      for (const link of targets) {
+        await onConfirmLink(link.sourceIndex, link.targetIndex, link.relation);
+      }
+    } finally {
+      setBulkAction(null);
+    }
+    // createdIndexes is derived from cards each render, so cards covers it.
+  }, [onConfirmLink, cards]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Shared style for the header's text action buttons (matches Link existing /
+  // Collapse all), including a disabled treatment for the in-flight bulk state.
+  const headerActionBtn =
+    "flex items-center gap-1 text-label font-medium text-text-tertiary cursor-pointer transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-text-tertiary";
+
+  const showCreateAll = !!onCreateInJira && draftCards.length > 0;
+  const showDeepenAll = !!onDeepenAll && hasDeepenable;
+  const showConfirmAll = !!onConfirmLink && confirmableLinks.length > 0;
+  const hasBulkActions = showCreateAll || showDeepenAll || showConfirmAll;
+  const hasNewControls = !!onSetChildPlacement || hasBulkActions;
 
   if (cards.length === 0) {
     // Compact, top-aligned prompt (BRDG-484): the empty state is the contextual
@@ -188,6 +279,79 @@ export function BreakdownBoard({
         <header className="flex shrink-0 items-center justify-between border-b border-border-subtle px-4 py-2.5">
           <span className="text-body-sm font-semibold text-text-secondary">Breakdown</span>
           <span className="flex items-center gap-3">
+            {/* Epic-level placement setting (BRDG-500 #1): configure once where
+                new child stories are created; each card's Create-in-Jira then
+                creates directly instead of asking every time. */}
+            {onSetChildPlacement && (
+              <SprintPlacementMenu
+                variant="setting"
+                selectedPlacement={childPlacement ?? null}
+                busy={bulkAction !== null}
+                onCreate={(placement) => onSetChildPlacement(placement)}
+                onClear={() => onSetChildPlacement(null)}
+              />
+            )}
+
+            {/* Bulk master actions (BRDG-500 #3-#5), mirroring Collapse all /
+                Expand all: each is hidden when it has nothing to act on. */}
+            {hasBulkActions && (
+              <span className="flex items-center gap-2.5">
+                {showCreateAll && (
+                  <button
+                    type="button"
+                    onClick={() => void createAll()}
+                    disabled={bulkBusy}
+                    className={headerActionBtn}
+                    title="Create every remaining draft story in Jira"
+                  >
+                    {bulkAction === "create" ? (
+                      <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+                    ) : (
+                      <CloudUpload size={11} strokeWidth={1.75} />
+                    )}
+                    Create all
+                  </button>
+                )}
+                {showDeepenAll && (
+                  <button
+                    type="button"
+                    onClick={() => void onDeepenAll?.()}
+                    disabled={bulkBusy}
+                    className={headerActionBtn}
+                    title="Work out every not-yet-detailed story in one turn"
+                  >
+                    {busy ? (
+                      <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+                    ) : (
+                      <Layers size={11} strokeWidth={1.75} />
+                    )}
+                    Deepen all
+                  </button>
+                )}
+                {showConfirmAll && (
+                  <button
+                    type="button"
+                    onClick={() => void confirmAll()}
+                    disabled={bulkBusy}
+                    className={headerActionBtn}
+                    title="Confirm every suggested link whose stories are both created"
+                  >
+                    {bulkAction === "confirm" ? (
+                      <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+                    ) : (
+                      <CheckCheck size={11} strokeWidth={1.75} />
+                    )}
+                    Confirm all
+                  </button>
+                )}
+              </span>
+            )}
+
+            {/* Separates the new-story controls from the view controls below. */}
+            {hasNewControls && (
+              <span aria-hidden className="h-3.5 w-px bg-border-subtle" />
+            )}
+
             {onLinkExisting && (
               <button
                 type="button"
@@ -233,6 +397,7 @@ export function BreakdownBoard({
                   onStageDeepen={onStageDeepen}
                   onEditCard={onEditCard}
                   onCreateInJira={onCreateInJira}
+                  childPlacement={childPlacement}
                   onConfirmLink={onConfirmLink}
                   onReassignSprint={onReassignSprint}
                   onOpenChild={onOpenChild}

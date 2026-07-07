@@ -96,10 +96,14 @@ vi.mock("@/components/shared/TicketRefPill", () => ({
 // ViewHeader returns null without its portal target + FocusMode provider in a
 // bare test; passthrough so the header actions/children render.
 vi.mock("@/components/shared/ViewHeader", () => ({
-  ViewHeader: ({ children, actions }: { children?: ReactNode; actions?: ReactNode }) => (
-    <header>{children}{actions}</header>
+  ViewHeader: ({ children, actions, centerSlot }: { children?: ReactNode; actions?: ReactNode; centerSlot?: ReactNode }) => (
+    <header>
+      {children}
+      <div data-testid="header-center">{centerSlot}</div>
+      {actions}
+    </header>
   ),
-  ViewHeaderDivider: () => <span />,
+  ViewHeaderDivider: () => <span data-testid="view-header-divider" />,
 }));
 
 function setWriter(overrides: Record<string, unknown>) {
@@ -167,6 +171,15 @@ describe("EpicWriterLayout header (BRDG-478)", () => {
     const header = screen.getByTestId("issue-pill").closest("header");
     expect(header).not.toBeNull();
     expect(within(header as HTMLElement).getByTestId("rail")).toBeInTheDocument();
+  });
+
+  // BRDG-500 #6: the phase rail rides the header's dedicated centered slot
+  // (independent of the title's length) rather than trailing the title behind a
+  // divider, which is dropped.
+  it("routes the phase rail to the centered header slot without a leading divider", () => {
+    render(<EpicWriterLayout epicKey="VPL-1" />);
+    expect(within(screen.getByTestId("header-center")).getByTestId("rail")).toBeInTheDocument();
+    expect(screen.queryByTestId("view-header-divider")).not.toBeInTheDocument();
   });
 
   it("shows 'Nothing to save yet' when there is no draft content", async () => {

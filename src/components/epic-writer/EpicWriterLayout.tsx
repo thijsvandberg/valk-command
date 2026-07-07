@@ -6,7 +6,7 @@ import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { computeAcceptedDraftIds } from "@/lib/accepted-drafts";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { RelatedStoriesPanel } from "@/components/story-writer/RelatedStoriesPanel";
-import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { ViewHeader } from "@/components/shared/ViewHeader";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
@@ -214,6 +214,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
       <ViewHeader
         className="shrink-0"
         hideNotifications
+        centerSlot={<PhaseRail current={phase} onSelect={handleSelectPhase} />}
         actions={
           <>
             {/* Content-view switcher, matching the Story Writer's Apps affordance.
@@ -268,14 +269,13 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
         }
       >
         <TicketRefPill ticketKey={epicKey} />
-        <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
+        {/* Phase rail (BRDG-500 #6) now rides the header's centerSlot, so it no
+            longer trails the title inline (BRDG-490 #4) and its leading divider
+            is gone. The title is capped so it truncates before the centered rail
+            rather than sliding under it. */}
+        <span className="min-w-0 max-w-[22rem] truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
           {title}
         </span>
-        {/* Phase rail folded into the header row (BRDG-490 #4): the five phases
-            sit inline after the epic title instead of occupying their own
-            full-width band, reclaiming the vertical space. */}
-        <ViewHeaderDivider />
-        <PhaseRail current={phase} onSelect={handleSelectPhase} />
       </ViewHeader>
 
       <div ref={split.containerRef} className="flex min-h-0 flex-1">
@@ -344,7 +344,10 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
               onStageGenerate={() => stageInChat(GENERATE_BREAKDOWN_PROMPT)}
               onEditCard={writer.updateCard}
               onCreateInJira={writer.createCardInJira}
+              childPlacement={writer.childPlacement}
+              onSetChildPlacement={writer.setChildPlacement}
               onConfirmLink={writer.confirmCardLink}
+              onDeepenAll={writer.deepenAllCards}
               onReassignSprint={writer.reassignCardSprint}
               onGenerateBreakdown={writer.generateBreakdown}
               onOpenChild={handleOpenChild}

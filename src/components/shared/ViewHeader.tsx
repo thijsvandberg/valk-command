@@ -19,9 +19,17 @@ interface ViewHeaderProps {
   hideContextDivider?: boolean;
   /** Collapses the notification bell + actions into a single rounded ring. */
   groupedActions?: boolean;
+  /**
+   * Content pinned to the horizontal center of the header bar, independent of
+   * the left context / right actions (BRDG-500 #6: the Epic Writer phase rail).
+   * Rendered as an out-of-flow overlay over the capped inner content, so its
+   * position never shifts with the title length. Omitted on every other view,
+   * so their layout is unchanged.
+   */
+  centerSlot?: ReactNode;
 }
 
-export function ViewHeader({ icon, children, actions, className, hideNotifications, hideContextDivider, groupedActions }: ViewHeaderProps) {
+export function ViewHeader({ icon, children, actions, className, hideNotifications, hideContextDivider, groupedActions, centerSlot }: ViewHeaderProps) {
   const { toggleFocusMode } = useFocusModeContext();
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -61,6 +69,15 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
           align with the list/table content below on wide screens; the bar
           background and glow decorations above stay full width. */}
       <div className={`${CONTENT_MAX} relative flex items-center justify-between`}>
+      {/* Centered overlay (BRDG-500 #6): pinned to the middle of the capped
+          content, out of the flex flow so the left context and right actions
+          are untouched. pointer-events-none keeps the empty gutter click-through;
+          the slot content itself stays interactive. */}
+      {centerSlot && (
+        <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center">
+          <div className="pointer-events-auto">{centerSlot}</div>
+        </div>
+      )}
       {/* Command capsule: the wordmark menu trigger + view context grouped into
           one brand-tinted console unit, distinct from the right-side tools. */}
       <div className="relative flex min-w-0 items-center gap-3 py-1.5 pr-3.5">

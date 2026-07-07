@@ -225,6 +225,45 @@ describe("ChildStoryCard", () => {
     await waitFor(() => expect(onCreateInJira).toHaveBeenCalledWith(3, "__backlog__"));
   });
 
+  // BRDG-500 #2: with no epic placement configured, Create-in-Jira stays a full
+  // dropdown - there is no immediate-create split with an override chevron.
+  it("renders a plain Create dropdown (no split) when no epic placement is set", async () => {
+    render(<ChildStoryCard card={card({ cardIndex: 3 })} onCreateInJira={vi.fn()} />);
+    expect(
+      screen.queryByRole("button", { name: /different placement/i }),
+    ).not.toBeInTheDocument();
+    // The single Create trigger opens the placement menu rather than creating.
+    fireEvent.click(screen.getByRole("button", { name: /^create in jira$/i }));
+    expect(await screen.findByRole("menuitem", { name: /to be planned/i })).toBeInTheDocument();
+  });
+
+  // BRDG-500 #2: with an epic placement configured, the main segment creates
+  // immediately with that placement (no dropdown).
+  it("creates immediately with the configured placement when set", async () => {
+    const onCreateInJira = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ChildStoryCard card={card({ cardIndex: 3 })} onCreateInJira={onCreateInJira} childPlacement="42" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^create in jira$/i }));
+    await waitFor(() => expect(onCreateInJira).toHaveBeenCalledWith(3, "42"));
+    // The main segment does not open a menu.
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
+  });
+
+  // BRDG-500 #2: the trailing chevron still allows a one-off per-card override
+  // that does not change the epic setting.
+  it("offers a one-off placement override via the trailing chevron when configured", async () => {
+    const onCreateInJira = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ChildStoryCard card={card({ cardIndex: 3 })} onCreateInJira={onCreateInJira} childPlacement="42" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /different placement/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /to be planned/i }));
+    await waitFor(() => expect(onCreateInJira).toHaveBeenCalledWith(3, "__backlog__"));
+  });
+
   it("shows the Jira key and hides the Create menu once the card is created", () => {
     render(
       <ChildStoryCard

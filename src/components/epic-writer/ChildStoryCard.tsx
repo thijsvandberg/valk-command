@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Layers, FileText, AlignLeft, SendHorizontal, ChevronDown, ChevronRight, Loader2, Link2, Check, PenLine, Plus } from "lucide-react";
+import { Layers, FileText, AlignLeft, SendHorizontal, ChevronDown, ChevronRight, Loader2, Link2, Check, PenLine, Plus, CloudUpload } from "lucide-react";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { SprintOrBacklogBadge } from "@/components/shared/IssueMetaBadges";
@@ -29,6 +29,11 @@ interface ChildStoryCardProps {
   // Promote this DRAFT card to a real Jira issue under the epic with the chosen
   // placement. Omitted on a read-only board.
   onCreateInJira?: (index: number, placement: string) => void | Promise<unknown>;
+  // The epic's configured default placement (BRDG-500 #2). When set, Create-in-
+  // Jira becomes a split button: the label creates immediately with this
+  // placement, a trailing chevron still allows a one-off per-card override. When
+  // null (not configured), Create-in-Jira stays a full placement dropdown.
+  childPlacement?: string | null;
   // Confirm one AI-proposed inter-story link from this card.
   onConfirmLink?: (sourceIndex: number, targetIndex: number, relation: string) => void | Promise<unknown>;
   // Reassign a created card's sprint (jiraKey, target sprint id or "__backlog__").
@@ -74,6 +79,14 @@ function cardDepth(card: EpicChildCardWithSprint): Depth {
   return "title";
 }
 
+/**
+ * Whether a card is already fully worked out (has a body). The board uses this
+ * to hide "Deepen all" once every card is full (bulk Deepen is not bulk Improve).
+ */
+export function cardIsFull(card: EpicChildCardWithSprint): boolean {
+  return cardDepth(card) === "full";
+}
+
 const DEPTH_META: Record<Depth, { label: string; icon: typeof Layers }> = {
   title: { label: "Title", icon: FileText },
   bullets: { label: "Bullets", icon: AlignLeft },
@@ -92,6 +105,7 @@ export function ChildStoryCard({
   onStageDeepen,
   onEditCard,
   onCreateInJira,
+  childPlacement,
   onConfirmLink,
   onReassignSprint,
   onOpenChild,
@@ -537,17 +551,41 @@ export function ChildStoryCard({
           )}
 
           {onCreateInJira && !isCreated && (
-            <SprintPlacementMenu
-              busy={creating}
-              onCreate={async (placement) => {
+            (() => {
+              const create = async (placement: string) => {
                 setCreating(true);
                 try {
                   await onCreateInJira(card.cardIndex, placement);
                 } finally {
                   setCreating(false);
                 }
-              }}
-            />
+              };
+              // Configured epic placement (BRDG-500 #2): a split button that
+              // creates immediately with the epic's placement, plus a chevron for
+              // a one-off per-card override (which does not change the epic
+              // setting). Unset keeps today's full placement dropdown.
+              return childPlacement ? (
+                <div className="group flex items-stretch overflow-hidden rounded-md border border-[var(--color-brand-400)]/40 bg-[var(--color-brand-400)]/10">
+                  <button
+                    type="button"
+                    disabled={creating}
+                    onClick={() => void create(childPlacement)}
+                    className="flex items-center gap-1 px-2 py-0.5 text-label font-medium text-[var(--color-brand-400)] cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-400)]/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Create this story in Jira with the epic's configured placement"
+                  >
+                    {creating ? (
+                      <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+                    ) : (
+                      <CloudUpload size={11} strokeWidth={1.75} />
+                    )}
+                    Create in Jira
+                  </button>
+                  <SprintPlacementMenu chevronOnly busy={creating} onCreate={create} />
+                </div>
+              ) : (
+                <SprintPlacementMenu busy={creating} onCreate={create} />
+              );
+            })()
           )}
         </div>
       </footer>

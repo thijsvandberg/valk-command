@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BreakdownBoard } from "./BreakdownBoard";
 import type { EpicChildCardWithSprint } from "@/types/epic-writer";
@@ -7,6 +7,18 @@ import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 // stub it so the board tests stay off the network but still assert the key.
 vi.mock("@/components/shared/TicketRefPill", () => ({
   TicketRefPill: ({ ticketKey }: { ticketKey: string }) => <span>{ticketKey}</span>,
+}));
+
+// The placement control / card create menus lazy-load sprints + the default-
+// sprint setting when opened (SprintPlacementMenu); stub those so the board
+// tests stay isolated from the network.
+vi.mock("@/lib/api-client", () => ({
+  jira: {
+    getSprints: vi
+      .fn()
+      .mockResolvedValue([{ id: "42", name: "Sprint 42", state: "active" }]),
+  },
+  settings: { getDefaultSprint: vi.fn().mockResolvedValue({ sprintId: "" }) },
 }));
 
 function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSprint {
@@ -185,5 +197,162 @@ describe("BreakdownBoard", () => {
   it("does not render drag handles when the board is not reorderable", () => {
     render(<BreakdownBoard cards={[card({ id: "a", cardIndex: 0, title: "One" })]} />);
     expect(screen.queryByRole("button", { name: /drag to reorder/i })).not.toBeInTheDocument();
+  });
+
+  // BRDG-500 #3: Create all promotes every remaining DRAFT card, skipping ones
+  // already created, using the epic's configured placement.
+  it("Create all promotes every DRAFT card with the configured placement and skips created ones", async () => {
+    const onCreateInJira = vi.fn().mockResolvedValue(undefined);
+    render(
+      <BreakdownBoard
+        cards={[
+          card({ id: "a", cardIndex: 0, title: "One", status: "draft" }),
+          card({ id: "b", cardIndex: 1, title: "Two", status: "created", jiraKey: "VPL-1" }),
+          card({ id: "c", cardIndex: 2, title: "Three", status: "draft" }),
+        ]}
+        onCreateInJira={onCreateInJira}
+        childPlacement="42"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /create all/i }));
+    await waitFor(() => expect(onCreateInJira).toHaveBeenCalledTimes(2));
+    expect(onCreateInJira).toHaveBeenCalledWith(0, "42");
+    expect(onCreateInJira).toHaveBeenCalledWith(2, "42");
+    expect(onCreateInJira).not.toHaveBeenCalledWith(1, expect.anything());
+  });
+
+  // BRDG-500 #3: with no epic placement set, Create all falls back to the global
+  // default so it always works without forcing configuration first.
+  it("Create all falls back to the default placement when the epic setting is unset", async () => {
+    const onCreateInJira = vi.fn().mockResolvedValue(undefined);
+    render(
+      <BreakdownBoard
+        cards={[card({ id: "a", cardIndex: 0, status: "draft" })]}
+        onCreateInJira={onCreateInJira}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /create all/i }));
+    await waitFor(() => expect(onCreateInJira).toHaveBeenCalledWith(0, "__default__"));
+  });
+
+  it("hides Create all when no DRAFT cards remain", () => {
+    render(
+      <BreakdownBoard
+        cards={[card({ id: "a", cardIndex: 0, status: "created", jiraKey: "VPL-1" })]}
+        onCreateInJira={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /create all/i })).not.toBeInTheDocument();
+  });
+
+  // BRDG-500 #4: Confirm all confirms only links whose both ends are created.
+  it("Confirm all confirms every link whose both ends are created and leaves the rest", async () => {
+    const onConfirmLink = vi.fn().mockResolvedValue(undefined);
+    render(
+      <BreakdownBoard
+        cards={[
+          card({
+            id: "a",
+            cardIndex: 0,
+            status: "created",
+            jiraKey: "VPL-1",
+            suggestedLinks: [{ targetIndex: 1, relation: "blocks", confirmed: false }],
+          }),
+          card({
+            id: "b",
+            cardIndex: 1,
+            status: "created",
+            jiraKey: "VPL-2",
+            suggestedLinks: [{ targetIndex: 2, relation: "relates to", confirmed: false }],
+          }),
+          card({ id: "c", cardIndex: 2, status: "draft" }),
+        ]}
+        onConfirmLink={onConfirmLink}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm all/i }));
+    // Only 0 -> 1 is confirmable; 1 -> 2 targets a still-DRAFT card.
+    await waitFor(() => expect(onConfirmLink).toHaveBeenCalledTimes(1));
+    expect(onConfirmLink).toHaveBeenCalledWith(0, 1, "blocks");
+  });
+
+  it("hides Confirm all when nothing is confirmable", () => {
+    render(
+      <BreakdownBoard
+        cards={[
+          card({
+            id: "a",
+            cardIndex: 0,
+            status: "created",
+            jiraKey: "VPL-1",
+            suggestedLinks: [{ targetIndex: 1, relation: "blocks", confirmed: false }],
+          }),
+        ]}
+        onConfirmLink={vi.fn()}
+      />,
+    );
+    // Target index 1 is not a created card, so there is nothing to confirm.
+    expect(screen.queryByRole("button", { name: /confirm all/i })).not.toBeInTheDocument();
+  });
+
+  // BRDG-500 #5: Deepen all works out every not-yet-full card in one turn.
+  it("Deepen all calls onDeepenAll when at least one card is not full", () => {
+    const onDeepenAll = vi.fn();
+    render(
+      <BreakdownBoard
+        cards={[card({ id: "a", cardIndex: 0, bullets: ["b"], body: null })]}
+        onDeepenAll={onDeepenAll}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /deepen all/i }));
+    expect(onDeepenAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides Deepen all when every card is already full", () => {
+    render(
+      <BreakdownBoard
+        cards={[card({ id: "a", cardIndex: 0, bullets: ["b"], body: "Full body" })]}
+        onDeepenAll={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /deepen all/i })).not.toBeInTheDocument();
+  });
+
+  // BRDG-500 #1: the header placement control sets the epic default.
+  it("sets the epic placement from the header control", async () => {
+    const onSetChildPlacement = vi.fn();
+    render(
+      <BreakdownBoard
+        cards={[card({ id: "a", cardIndex: 0 })]}
+        onSetChildPlacement={onSetChildPlacement}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /set placement/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /to be planned/i }));
+    expect(onSetChildPlacement).toHaveBeenCalledWith("__backlog__");
+  });
+
+  it("resets the epic placement to choose-each-time", async () => {
+    const onSetChildPlacement = vi.fn();
+    render(
+      <BreakdownBoard
+        cards={[card({ id: "a", cardIndex: 0 })]}
+        childPlacement="__backlog__"
+        onSetChildPlacement={onSetChildPlacement}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /new in backlog/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /choose each time/i }));
+    expect(onSetChildPlacement).toHaveBeenCalledWith(null);
+  });
+
+  it("omits the placement control and bulk actions when their handlers are not provided", () => {
+    render(<BreakdownBoard cards={[card({ id: "a", cardIndex: 0, bullets: ["b"] })]} />);
+    expect(screen.queryByRole("button", { name: /set placement/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /create all/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /deepen all/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /confirm all/i })).not.toBeInTheDocument();
   });
 });
