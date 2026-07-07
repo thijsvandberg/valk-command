@@ -317,6 +317,28 @@ longer persisted, since cards are AI-regenerated). **Drag-to-reorder** (BRDG-487
 remaps `suggestedLinks.targetIndex` before persisting through the reorder route
 (same remap server-side).
 
+**Epic-level child placement + bulk master actions (BRDG-500):** the epic can
+carry a default placement for newly-created child stories in
+`epicMetadata.childPlacement` (`__backlog__` / `__default__` / a sprint id, or
+`null` = unconfigured), set via `PUT /api/epics/[key]/placement` and returned on
+the writer session so `useStoryWriter` exposes `childPlacement` /
+`setChildPlacement`. The Breakdown header hosts a **placement control** (a
+`SprintPlacementMenu` `setting` variant reusing the same option list, with a
+"Choose each time" reset) next to Collapse all. When configured, each DRAFT card's
+**Create in Jira** becomes a split button - the label creates immediately with the
+epic's placement, a trailing chevron (`SprintPlacementMenu chevronOnly`) still
+allows a one-off per-card override; when unset it stays a full dropdown. Three
+header master actions mirror Collapse all / Expand all, each hidden when it has
+nothing to act on: **Create all** (loops `createCardInJira` over remaining DRAFT
+cards with `childPlacement ?? "__default__"`, idempotent per the create-in-jira
+guard), **Confirm all** (loops `confirmCardLink` over pending `suggestedLinks`
+whose both ends are already created), and **Deepen all** (`deepenAllCards`: one
+`DEEPEN_ALL_PROMPT` chat turn detailing every not-yet-full card). The compact
+**phase rail** (`PhaseRail`) gained a bounded-capsule treatment and is centered in
+the header via an additive optional `ViewHeader` `centerSlot` (renders nothing on
+other views), so its position no longer trails the epic title's length; the epic
+title is capped so it truncates before the centered rail.
+
 **Chat as a toggleable app (BRDG-487 #3):** the chat is no longer a permanent left
 column. `EpicAppsMenu` lists **Chat** as a toggle above the mutually-exclusive right
 views; hiding it drops the chat column + resizer so the right region takes the full
