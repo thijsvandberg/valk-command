@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deepenCardPrompt, GENERATE_BREAKDOWN_PROMPT } from "./epic-writer-prompts";
+import { deepenCardPrompt, DEEPEN_ALL_PROMPT, GENERATE_BREAKDOWN_PROMPT } from "./epic-writer-prompts";
 
 describe("epic-writer-prompts", () => {
   it("builds a 1-based deepen prompt with the card title", () => {
@@ -16,5 +16,9 @@ describe("epic-writer-prompts", () => {
 
   it("exposes a stable generate-breakdown prompt", () => {
     expect(GENERATE_BREAKDOWN_PROMPT).toMatch(/break this epic down into child stories/i);
+  });
+
+  it("exposes a stable deepen-all prompt targeting not-yet-full cards", () => {
+    expect(DEEPEN_ALL_PROMPT).toMatch(/deepen every story that is not yet fully worked out/i);
   });
 });

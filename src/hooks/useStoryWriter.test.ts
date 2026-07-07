@@ -538,6 +538,61 @@ describe("useStoryWriter", () => {
       );
     });
 
+    it("deepenAllCards bumps the session to the refine phase and sends the bulk prompt (BRDG-500 #5)", async () => {
+      const calls: { url: string; method: string; body?: unknown }[] = [];
+      mockEpicFetch(calls);
+
+      const { result } = renderHook(() => useStoryWriter(EPIC_KEY, { mode: "epic" }));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      let ok: boolean | undefined;
+      await act(async () => { ok = await result.current.deepenAllCards(); });
+      expect(ok).toBe(true);
+
+      const phaseCall = calls.find((c) => c.url === `${EPIC_BASE}/phase` && c.method === "PATCH");
+      expect(phaseCall?.body).toMatchObject({ phase: "refine" });
+
+      const msgCall = calls.find((c) => c.url === `${EPIC_BASE}/messages` && c.method === "POST");
+      expect((msgCall?.body as { content: string } | undefined)?.content).toMatch(
+        /deepen every story that is not yet fully worked out/i,
+      );
+    });
+
+    it("setChildPlacement persists via the epic placement route (BRDG-500 #1)", async () => {
+      const calls: { url: string; method: string; body?: unknown }[] = [];
+      vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+        const url = typeof input === "string" ? input : (input as Request).url;
+        const method = init?.method ?? "GET";
+        calls.push({ url, method, body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined });
+        if (url === `${EPIC_BASE}/session` && method === "GET") {
+          return { ok: true, json: async () => ({ session: epicSession, messages: [], aiDrafts: [], cards: [], childPlacement: null }) } as Response;
+        }
+        return { ok: true, json: async () => ({ epicKey: EPIC_KEY, placement: "42" }) } as Response;
+      });
+
+      const { result } = renderHook(() => useStoryWriter(EPIC_KEY, { mode: "epic" }));
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      await act(async () => { await result.current.setChildPlacement("42"); });
+      // Optimistic local update, then persisted via PUT /placement.
+      expect(result.current.childPlacement).toBe("42");
+      const putCall = calls.find((c) => c.url === `/api/epics/${EPIC_KEY}/placement` && c.method === "PUT");
+      expect(putCall?.body).toEqual({ placement: "42" });
+    });
+
+    it("exposes the epic childPlacement from the session response (BRDG-500 #1)", async () => {
+      vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+        const url = typeof input === "string" ? input : (input as Request).url;
+        if (url === `${EPIC_BASE}/session`) {
+          return { ok: true, json: async () => ({ session: epicSession, messages: [], aiDrafts: [], cards: [], childPlacement: "__backlog__" }) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+
+      const { result } = renderHook(() => useStoryWriter(EPIC_KEY, { mode: "epic" }));
+      await waitFor(() => expect(result.current.childPlacement).toBe("__backlog__"));
+    });
+
     it("reorderCards reorders locally, remaps link targets, and persists (BRDG-487 #10)", async () => {
       const calls: { url: string; method: string; body?: unknown }[] = [];
       const cards = [

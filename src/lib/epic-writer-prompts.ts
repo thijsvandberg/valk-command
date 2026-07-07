@@ -11,6 +11,15 @@ export function deepenCardPrompt(index: number, title: string): string {
   return `Deepen story ${index + 1}${label} into a full description and acceptance criteria.`;
 }
 
+/**
+ * Prompt that works every not-yet-full breakdown card out in one turn (BRDG-500
+ * #5). The break-down-epic skill can detail multiple cards per turn, so "Deepen
+ * all" is a single chat message rather than one turn per card. Cards that already
+ * have a full body are left alone (bulk "Deepen" is not bulk "Improve").
+ */
+export const DEEPEN_ALL_PROMPT =
+  "Deepen every story that is not yet fully worked out into a full description and acceptance criteria, in one pass. Leave the already-detailed stories as they are.";
+
 /** Prompt that asks for the first breakdown from the empty board. */
 export const GENERATE_BREAKDOWN_PROMPT =
   "Break this epic down into child stories. Propose a first set of story titles, each with a few bullets, as an epic breakdown.";

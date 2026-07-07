@@ -8,9 +8,9 @@ import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
 import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
 import { triggerWorkspaceHealthCheck } from "./useWorkspaceHealth";
 import { friendlyAgentError } from "@/lib/agent-errors";
-import { storyWriter as storyWriterApi, epicWriter as epicWriterApi, jira as jiraApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
+import { storyWriter as storyWriterApi, epicWriter as epicWriterApi, epics as epicsApi, jira as jiraApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
 import type { EpicWriterPhase, EpicChildCardWithSprint } from "@/types/epic-writer";
-import { deepenCardPrompt, GENERATE_BREAKDOWN_PROMPT } from "@/lib/epic-writer-prompts";
+import { deepenCardPrompt, DEEPEN_ALL_PROMPT, GENERATE_BREAKDOWN_PROMPT } from "@/lib/epic-writer-prompts";
 
 export type { WorkspaceUsage } from "./useTaskMonitoring";
 
@@ -35,6 +35,9 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
   const [allDrafts, setAllDrafts] = useState<StoryWriterDraftRow[]>([]);
   const [relatedCandidates, setRelatedCandidates] = useState<RelatedStoryCandidate[]>([]);
   const [cards, setCards] = useState<EpicChildCardWithSprint[]>([]);
+  // Per-epic default child placement (BRDG-500 #1). null = not configured, so
+  // each card's Create-in-Jira keeps today's full placement dropdown.
+  const [childPlacement, setChildPlacementState] = useState<string | null>(null);
   const [outdated, setOutdated] = useState(false);
   const [targetOutdated, setTargetOutdated] = useState(false);
   const [status, setStatus] = useState<StoryWriterStatus>("loading");
@@ -86,6 +89,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
         setOutdated(((data as Record<string, unknown>).outdated as boolean | undefined) ?? false);
         setTargetOutdated(((data as Record<string, unknown>).targetOutdated as boolean | undefined) ?? false);
         setCards(((data as Record<string, unknown>).cards as EpicChildCardWithSprint[] | undefined) ?? []);
+        setChildPlacementState(((data as Record<string, unknown>).childPlacement as string | null | undefined) ?? null);
       }
     } catch { /* ignore */ }
   }, [ticketKey, setSession, sessionApi]);
@@ -167,6 +171,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
             setOutdated((data.outdated as boolean | undefined) ?? false);
             setTargetOutdated((data.targetOutdated as boolean | undefined) ?? false);
             setCards((data.cards as EpicChildCardWithSprint[] | undefined) ?? []);
+            setChildPlacementState((data.childPlacement as string | null | undefined) ?? null);
 
             const loadedMsgs: Message[] = (data.messages as Message[]) ?? [];
             const lastUserMsg = [...loadedMsgs].reverse().find((m: Message) => m.role === "user");
@@ -202,6 +207,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
                       setOutdated((refreshed.outdated as boolean | undefined) ?? false);
                       setTargetOutdated((refreshed.targetOutdated as boolean | undefined) ?? false);
                       setCards((refreshed.cards as EpicChildCardWithSprint[] | undefined) ?? []);
+                      setChildPlacementState((refreshed.childPlacement as string | null | undefined) ?? null);
                     }
                   } catch { /* ignore refresh failure */ }
                   if (!cancelled) {
@@ -501,6 +507,37 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     return sendMessage(deepenCardPrompt(index, title));
   }, [isEpicMode, session, ticketKey, setSession, sendMessage]);
 
+  // Deepen every not-yet-full card in one chat turn (BRDG-500 #5). Same
+  // phase-bump-to-"refine" behaviour as deepenCard, but a single message: the
+  // break-down-epic skill can detail multiple cards at once when asked. The
+  // board hides this once every card is already full.
+  const deepenAllCards = useCallback(async (): Promise<boolean> => {
+    if (!isEpicMode || !session) return false;
+    if (session.phase !== "refine") {
+      setSession((prev) => (prev ? { ...prev, phase: "refine" } : prev));
+      try {
+        await epicWriterApi.setPhase(ticketKey, { phase: "refine" });
+      } catch { /* the message still carries [phase: refine] guidance */ }
+    }
+    return sendMessage(DEEPEN_ALL_PROMPT);
+  }, [isEpicMode, session, ticketKey, setSession, sendMessage]);
+
+  // Set (or clear) the epic's default child placement (BRDG-500 #1).
+  // Optimistically updates local state so the board control and every card's
+  // Create-in-Jira reflect the choice immediately; on failure we resync.
+  const setChildPlacement = useCallback(
+    async (placement: string | null) => {
+      if (!isEpicMode) return;
+      setChildPlacementState(placement);
+      try {
+        await epicsApi.setPlacement(ticketKey, placement);
+      } catch {
+        void refreshSession();
+      }
+    },
+    [isEpicMode, ticketKey, refreshSession],
+  );
+
   // Kick off the first breakdown from the empty board. Moves the session into the
   // breakdown phase (so the break-down-epic skill emits an <epic-breakdown> block)
   // and sends the request as one chat turn. This is the discoverable equivalent of
@@ -652,6 +689,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     targetAiDrafts,
     relatedCandidates,
     cards,
+    childPlacement,
     outdated,
     targetOutdated,
     status,
@@ -687,6 +725,8 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     linkCandidate,
     setPhase,
     deepenCard,
+    deepenAllCards,
+    setChildPlacement,
     generateBreakdown,
     updateCard,
     updateCardBody,
