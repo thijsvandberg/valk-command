@@ -322,22 +322,31 @@ carry a default placement for newly-created child stories in
 `epicMetadata.childPlacement` (`__backlog__` / `__default__` / a sprint id, or
 `null` = unconfigured), set via `PUT /api/epics/[key]/placement` and returned on
 the writer session so `useStoryWriter` exposes `childPlacement` /
-`setChildPlacement`. The Breakdown header hosts a **placement control** (a
-`SprintPlacementMenu` `setting` variant reusing the same option list, with a
-"Choose each time" reset) next to Collapse all. When configured, each DRAFT card's
-**Create in Jira** becomes a split button - the label creates immediately with the
-epic's placement, a trailing chevron (`SprintPlacementMenu chevronOnly`) still
-allows a one-off per-card override; when unset it stays a full dropdown. Three
-header master actions mirror Collapse all / Expand all, each hidden when it has
-nothing to act on: **Create all** (loops `createCardInJira` over remaining DRAFT
-cards with `childPlacement ?? "__default__"`, idempotent per the create-in-jira
-guard), **Confirm all** (loops `confirmCardLink` over pending `suggestedLinks`
-whose both ends are already created), and **Deepen all** (`deepenAllCards`: one
-`DEEPEN_ALL_PROMPT` chat turn detailing every not-yet-full card). The compact
-**phase rail** (`PhaseRail`) gained a bounded-capsule treatment and is centered in
-the header via an additive optional `ViewHeader` `centerSlot` (renders nothing on
-other views), so its position no longer trails the epic title's length; the epic
-title is capped so it truncates before the centered rail.
+`setChildPlacement`. When configured, each DRAFT card's **Create in Jira** becomes
+a split button - the label creates immediately with the epic's placement, a
+trailing chevron (`SprintPlacementMenu chevronOnly`) still allows a one-off
+per-card override; when unset it stays a full dropdown. Three bulk master actions,
+each hidden when it has nothing to act on: **Create all** (loops `createCardInJira`
+over remaining DRAFT cards with `childPlacement ?? "__default__"`, idempotent per
+the create-in-jira guard), **Confirm all** (loops `confirmCardLink` over pending
+`suggestedLinks` whose both ends are already created), and **Deepen all**
+(`deepenAllCards`: one `DEEPEN_ALL_PROMPT` chat turn detailing every not-yet-full
+card). The compact **phase rail** (`PhaseRail`) gained a bounded-capsule treatment
+and is centered in the header via an additive optional `ViewHeader` `centerSlot`
+(renders nothing on other views), so its position no longer trails the epic
+title's length; the epic title is capped so it truncates before the centered rail.
+
+**Header + card decluttering (BRDG-500 UX pass):** to keep the board calm, the
+occasional header controls collapse behind one **Actions menu**
+(`BreakdownActionsMenu`) - placement (a drill-in sub-page rather than an inline
+sprint list), the Create/Deepen/Confirm-all master actions, and Link existing;
+only **Collapse all** + the story count stay inline. The placement option list is
+shared: `SprintPlacementOptions` (presentational) renders inside both
+`SprintPlacementMenu` (card create/reassign) and the Actions menu, fed by the
+`useSprintOptions` loader. Each card's **suggested links** collapse to a one-line
+summary (target names + a single "Confirm N" button that creates every ready link
+for that card) with an expand chevron revealing the individual rows and their
+per-link Confirm (and the reason a link is not yet ready).
 
 **Chat as a toggleable app (BRDG-487 #3):** the chat is no longer a permanent left
 column. `EpicAppsMenu` lists **Chat** as a toggle above the mutually-exclusive right
