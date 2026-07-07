@@ -301,11 +301,12 @@ markdown** (`renderMarkdown`) in the read view and edits in place with the share
 `RichEditor` (Save/Cancel), not a raw textarea. Created cards stay read-only here -
 they round-trip through the story editor (the Open action).
 
-**Card AI-actions are split buttons (BRDG-490 #8):** Deepen/Improve and the
-empty-board Generate breakdown each have a primary (send now) plus a trailing
-arrow that **stages** the same prompt in the chat compose box (`pendingInput`) so
-the PO can tweak it first. Prompt strings live in `@/lib/epic-writer-prompts`
-(one source of truth for send-now and stage).
+**Card AI-actions are split buttons (BRDG-490 #8, model refined in BRDG-491 #1):**
+Deepen/Improve and the empty-board Generate breakdown follow the same send/stage
+model as the chat quick-prompt chips and quick-actions popover - the **label
+stages** the prompt in the compose box (`pendingInput`) so the PO can tweak it,
+and the **trailing paper-plane arrow sends now**. No leading icon. Prompt strings
+live in `@/lib/epic-writer-prompts` (one source of truth for send-now and stage).
 
 **Per-card collapse (BRDG-490 #1)** supersedes BRDG-487 #2's persisted board-wide
 compact boolean: each card has its own collapse chevron, and a header **Collapse
@@ -321,7 +322,17 @@ column. `EpicAppsMenu` lists **Chat** as a toggle above the mutually-exclusive r
 views; hiding it drops the chat column + resizer so the right region takes the full
 width. The choice persists under `ew:{key}:chat`. The phase rail (`PhaseRail`) is
 folded into the header row after the epic title (BRDG-490 #4, superseding BRDG-487
-#4's left-edge alignment), so it no longer needs its own full-width band.
+#4's left-edge alignment), so it no longer needs its own full-width band. It is a
+compact control (BRDG-491 #2) - prev / next icon buttons around the current
+step's name plus a small "all steps" button that opens a popover to jump directly
+- so it scales on a narrow header instead of laying all five steps out inline.
+
+**Slash commands (BRDG-491 #3):** the shared chat recognises `/`-prefixed input as
+an in-app command rather than a message. Typing `/` surfaces an autocomplete of
+matching commands (currently just `/clear`, gated on `onClearChat`) in place of the
+quick-prompt chips, and the compose box takes a distinct brand-accent border.
+`resolveCommand` matches an exact name or a unique prefix (`/cl` -> `/clear`), so
+submitting runs it; `/clear` is always swallowed (never sent) per BRDG-489.
 
 No shared pane internals (`PaneContext`, `PaneArea`, `AppsMenu`, the apps) are
 modified, so the single-story Story Writer is unaffected. The chat / right split
